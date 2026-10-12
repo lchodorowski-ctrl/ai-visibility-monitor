@@ -45,11 +45,14 @@ export function computeMetrics(rows: ResponseFacts[]): MetricRow[] {
   const engines = [...new Set(rows.map((r) => r.engineId))];
   const prompts = [...new Set(rows.map((r) => r.promptId))];
   const out: MetricRow[] = [summarize(null, null, rows)];
-  for (const e of engines) out.push(summarize(e, null, rows.filter((r) => r.engineId === e)));
-  for (const p of prompts) out.push(summarize(null, p, rows.filter((r) => r.promptId === p)));
+  // wiersze bez poprawnych odpowiedzi (responsesCount === 0) pomijamy, żeby cichy silnik/prompt
+  // nie pojawiał się na dashboardzie jako "0% widoczności"
+  const push = (m: MetricRow) => { if (m.responsesCount > 0) out.push(m); };
+  for (const e of engines) push(summarize(e, null, rows.filter((r) => r.engineId === e)));
+  for (const p of prompts) push(summarize(null, p, rows.filter((r) => r.promptId === p)));
   for (const e of engines) for (const p of prompts) {
     const cell = rows.filter((r) => r.engineId === e && r.promptId === p);
-    if (cell.length) out.push(summarize(e, p, cell));
+    if (cell.length) push(summarize(e, p, cell));
   }
   return out;
 }

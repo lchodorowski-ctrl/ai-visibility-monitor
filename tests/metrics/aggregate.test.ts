@@ -44,6 +44,14 @@ describe("computeMetrics", () => {
     expect(cell.visibilityRate).toBeCloseTo(0.5);
   });
 
+  it("pomija wiersze per silnik/prompt/komórka bez poprawnych odpowiedzi", () => {
+    const out = computeMetrics(rows);
+    expect(out.find((m) => m.engineId === "gemini" && m.promptId === "p2")).toBeUndefined();
+    expect(out.find((m) => m.engineId === null && m.promptId === "p2")).toBeUndefined();
+    const gemini = out.find((m) => m.engineId === "gemini" && m.promptId === null)!;
+    expect(gemini.responsesCount).toBe(1);
+  });
+
   it("pusty zbiór → jeden wiersz ogółem z zerami", () => {
     const out = computeMetrics([]);
     expect(out).toHaveLength(1);

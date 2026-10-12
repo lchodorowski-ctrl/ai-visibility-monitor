@@ -8,6 +8,8 @@ export async function upsertDailyMetrics(
   date: string, // YYYY-MM-DD
   rows: MetricRow[],
 ) {
+  // pusta tablica nie może skasować istniejącego snapshotu dnia
+  if (rows.length === 0) return;
   // unikalny indeks używa coalesce(), więc upsert robimy przez delete + insert dla tej daty
   const { error: delErr } = await admin.from("daily_metrics").delete().eq("project_id", projectId).eq("date", date);
   if (delErr) throw new Error(delErr.message);
