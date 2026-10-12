@@ -4,6 +4,7 @@ import { isEngineId } from "@/lib/engines/registry";
 import type { EngineId } from "@/lib/engines/types";
 import { planQueries, estimateCost } from "@/lib/runs/plan";
 import { decideRun } from "@/lib/runs/guard";
+import { tallyBatch } from "@/lib/runs/tally";
 import { monthSpend } from "@/lib/budget";
 import { queryEngine } from "./query-engine";
 import { aggregateProject } from "./aggregate-project";
@@ -17,6 +18,7 @@ export const runProject = task({
   id: "run-project",
   queue: { concurrencyLimit: 1 },
   retry: { maxAttempts: 1 },
+  maxDuration: 3600,
   run: async (payload: RunProjectPayload) => {
     const admin = createAdminSupabase();
     const { projectId } = payload;
@@ -78,15 +80,22 @@ export const runProject = task({
         jobs.map((job) => ({ payload: { runId, projectId, job, project: brand, competitors } })),
       );
 
-      for (const r of results.runs) {
-        if (r.ok) { cost += r.output.costUsd; if (!r.output.ok) failed++; }
-        else failed++;
+      ({ cost, failed } = tallyBatch(results.runs));
+
+      // wszystkie zapytania nieudane: nie agregujemy (nie zapisujemy zer), zamykamy run jako failed
+      if (failed === jobs.length) {
+        const { error: allFailedError } = await admin.from("runs").update({
+          status: "failed", finished_at: new Date().toISOString(), cost_usd: cost, queries_failed: failed,
+          error: "Wszystkie zapytania nie powiodły się",
+        }).eq("id", runId);
+        if (allFailedError) throw new Error(allFailedError.message);
+        return { runId, status: "failed" as const, cost, failed, total: jobs.length };
       }
 
       const agg = await aggregateProject.triggerAndWait({ projectId, runId, date });
       const aggregationError = agg.ok ? null : `aggregation failed: ${String(agg.error)}`;
 
-      const status = aggregationError || failed === jobs.length ? ("failed" as const) : ("done" as const);
+      const status = aggregationError ? ("failed" as const) : ("done" as const);
       const { error: finishError } = await admin.from("runs").update({
         status, finished_at: new Date().toISOString(), cost_usd: cost, queries_failed: failed,
         ...(aggregationError ? { error: aggregationError } : {}),

@@ -9,6 +9,7 @@ import { RunStatus } from "@/components/RunStatus";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { isRunStale } from "@/lib/runs/stale";
 import { runNow } from "./actions";
 
 export default async function OverviewPage() {
@@ -24,7 +25,7 @@ export default async function OverviewPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Przegląd</h1>
-        <form action={runNow}><Button type="submit" disabled={o.lastRun?.status === "running"}>Uruchom teraz</Button></form>
+        <form action={runNow}><Button type="submit" disabled={o.lastRun?.status === "running" && !isRunStale(o.lastRun)}>Uruchom teraz</Button></form>
       </div>
       <RunStatus run={o.lastRun} />
 

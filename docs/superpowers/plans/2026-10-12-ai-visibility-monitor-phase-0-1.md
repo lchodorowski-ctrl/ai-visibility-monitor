@@ -406,7 +406,7 @@ end $$;
 
 - [ ] **Step 3: Seed**
 
-`supabase/seed.sql` (dane startowe; `user_id` członkostwa dopisze `ensureWorkspace()` przy pierwszym logowaniu, więc seed tworzy tylko org + projekt):
+`supabase/seed.sql` (dane startowe; członkostwo pierwszego użytkownika dodajemy ręcznie w SQL PRZED pierwszym logowaniem (patrz Task 3 krok 3); `ensureWorkspace()` tworzy nową organizację tylko dla użytkowników bez żadnego członkostwa):
 ```sql
 insert into organizations (id, name) values ('11111111-1111-1111-1111-111111111111', 'Polska Szkoła AI');
 

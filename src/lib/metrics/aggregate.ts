@@ -42,6 +42,8 @@ function summarize(engineId: string | null, promptId: string | null, rows: Respo
 }
 
 export function computeMetrics(rows: ResponseFacts[]): MetricRow[] {
+  // brak poprawnych odpowiedzi (same noAnswer/error albo pusty zbiór) = brak pomiaru, nie "0% widoczności"
+  if (!rows.some((r) => !r.noAnswer && !r.error)) return [];
   const engines = [...new Set(rows.map((r) => r.engineId))];
   const prompts = [...new Set(rows.map((r) => r.promptId))];
   const out: MetricRow[] = [summarize(null, null, rows)];

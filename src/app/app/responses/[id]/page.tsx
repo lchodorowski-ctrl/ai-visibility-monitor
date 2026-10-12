@@ -2,10 +2,12 @@ import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getCurrentProject } from "@/lib/workspace";
+import { isUuid } from "@/lib/validation/uuid";
 import { HighlightedText } from "@/components/HighlightedText";
 
 export default async function ResponsePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  if (!isUuid(id)) notFound();
   const project = await getCurrentProject();
   const supabase = await createServerSupabase();
   const [{ data: r, error }, { data: competitors, error: competitorsError }] = await Promise.all([

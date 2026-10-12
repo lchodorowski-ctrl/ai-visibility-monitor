@@ -52,9 +52,11 @@ describe("computeMetrics", () => {
     expect(gemini.responsesCount).toBe(1);
   });
 
-  it("pusty zbiór → jeden wiersz ogółem z zerami", () => {
-    const out = computeMetrics([]);
-    expect(out).toHaveLength(1);
-    expect(out[0]).toMatchObject({ engineId: null, promptId: null, responsesCount: 0, score: 0, avgPosition: null });
+  it("pusty zbiór → []", () => {
+    expect(computeMetrics([])).toEqual([]);
+  });
+
+  it("wszystkie odpowiedzi noAnswer/error → []", () => {
+    expect(computeMetrics([f({ noAnswer: true }), f({ error: true }), f({ engineId: "gemini", error: true })])).toEqual([]);
   });
 });

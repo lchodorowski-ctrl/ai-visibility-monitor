@@ -29,6 +29,8 @@ cp .env.example .env.local
    values ('11111111-1111-1111-1111-111111111111', '<auth.users.id>');
    ```
 
+   **Uwaga: to członkostwo (`insert into memberships ...`) dla organizacji z seedu MUSI być dodane PRZED pierwszym logowaniem. Inaczej `ensureWorkspace` utworzy osobną, pustą organizację dla tego użytkownika.**
+
 4. Uruchom aplikację i worker Trigger.dev w dwóch terminalach:
 
    ```bash
@@ -57,7 +59,7 @@ Run to task Trigger.dev `run-project` (`src/trigger/run-project.ts`), uruchamian
 1. **Plan.** Z aktywnych promptów projektu i włączonych silników (`project_engines`) powstaje lista zapytań (`planQueries`, `src/lib/runs/plan.ts`): zwykły prompt dostaje 1 próbkę na silnik, prompt kluczowy (`is_key`) 3 próbki.
 2. **Cost guard.** Task tworzy wiersz w `runs`, po czym `decideRun` (`src/lib/runs/guard.ts`) porównuje szacunek kosztu runu (suma `ENGINE_COST_USD` po zapytaniach) plus wydatki bieżącego miesiąca (`monthSpend`, suma `runs.cost_usd` od początku miesiąca UTC) z `projects.monthly_budget_usd`.
 3. **Fan-out.** Każde zapytanie to osobny task `query-engine` (`concurrencyLimit: 4`, do 2 prób). Zapytuje adapter silnika, a następnie ekstrahuje dane z odpowiedzi: dopasowanie marki własnej i konkurentów po aliasach (z pozycją w odpowiedzi), cytowane adresy URL i domeny (oznaczone jako własne lub konkurenta) oraz sentyment opisu marki oceniany przez Claude (Anthropic). Odpowiedź, wzmianki i cytowania trafiają do `responses`, `mentions` i `citations`. Błąd jednego silnika zapisuje się jako odpowiedź z błędem i nie przerywa runu.
-4. **Agregacja.** Task `aggregate-project` liczy metryki z odpowiedzi tego runu i zapisuje je w `daily_metrics` (łącznie, per silnik, per prompt i per komórka prompt x silnik) pod datą startu runu.
+4. **Agregacja.** Task `aggregate-project` liczy metryki z odpowiedzi i zapisuje je w `daily_metrics` (łącznie, per silnik, per prompt i per komórka prompt x silnik) pod datą startu runu. Snapshot dnia obejmuje wszystkie runy rozpoczęte tego dnia (UTC). Jeśli wszystkie zapytania runu się nie powiodły, agregacja nie jest uruchamiana, a run kończy się statusem `failed` (nie zapisujemy zer).
 5. **Zamknięcie.** Run dostaje status i koszt (`runs.cost_usd` z kosztów zwróconych przez adaptery).
 
 Statusy runu (`runs.status`):
@@ -82,7 +84,7 @@ Szacunkowy koszt jednego zapytania (`src/lib/engines/costs.ts`), używany przez 
 | Google AI Overviews (`google_ai_overview`) | 0,004 |
 | Razem 1 zapytanie na każdy z 4 silników | 0,036 |
 
-Przykład: seed ma 10 promptów, z czego 4 kluczowe. Przy 4 silnikach daje to 6 x 4 x 1 + 4 x 4 x 3 = 72 zapytania. Szacunek to 18 x 0,036 = ok. 0,65 USD za run; z uwzględnieniem sentymentu (Anthropic) i rzeczywistych kosztów mieści się w przedziale ok. 0,5-0,8 USD. Przy cotygodniowym runie to kilka USD miesięcznie.
+Przykład: seed ma 10 promptów, z czego 4 kluczowe. Przy 4 silnikach daje to 6 x 4 x 1 + 4 x 4 x 3 = 72 zapytania. Szacunek to 18 x 0,036 = ok. 0,65 USD za run; z uwzględnieniem sentymentu (Anthropic) i rzeczywistych kosztów mieści się w przedziale ok. 0,5-0,8 USD. Przy cotygodniowym runie to kilka USD miesięcznie. Wywołania sentymentu (Claude Haiku) i generatora promptów (Claude Opus) nie wchodzą do `runs.cost_usd`; ich koszt jest pomijalny.
 
 Domyślny budżet to 30 USD miesięcznie na projekt (`projects.monthly_budget_usd`, domyślnie `30`). Wydatki miesiąca liczone są z `runs.cost_usd`. Jeśli suma wydatków i szacunku nowego runu przekracza budżet, run kończy się statusem `budget_exceeded`.
 

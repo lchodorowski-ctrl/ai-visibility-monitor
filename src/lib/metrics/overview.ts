@@ -18,7 +18,8 @@ export function shapeOverview(
   mentions: { brand_name: string }[],
 ): { latest: MetricRow | null; byEngine: MetricRow[]; trend: TrendPoint[]; competitors: Competitor[] } {
   // Wiersze per prompt (prompt_id != null) nie należą do przeglądu.
-  const base = rows.filter((r) => r.prompt_id === null).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  // wiersze bez poprawnych odpowiedzi (responses_count === 0) traktujemy jak brak pomiaru
+  const base = rows.filter((r) => r.prompt_id === null && r.responses_count > 0).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   const latestDate = base.length ? base[base.length - 1].date : null;
   const latestRows = latestDate === null ? [] : base.filter((r) => r.date === latestDate);
   const latestOverall = latestRows.find((r) => r.engine_id === null) ?? null;

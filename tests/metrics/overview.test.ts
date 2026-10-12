@@ -52,6 +52,20 @@ describe("shapeOverview", () => {
     expect(latest).toMatchObject({ score: 55, visibilityRate: 0.75, avgPosition: 1.5, citationRate: 0.1, shareOfVoice: 0.2 });
   });
 
+  it("wiersze z responses_count === 0 są pomijane (latest, byEngine, trend)", () => {
+    const rows = [
+      row({ date: "2026-10-01", score: 40 }),
+      row({ date: "2026-10-01", engine_id: "openai", score: 30 }),
+      row({ date: "2026-10-02", score: 0, responses_count: 0 }),
+      row({ date: "2026-10-02", engine_id: "openai", score: 0, responses_count: 0 }),
+    ];
+    const o = shapeOverview(rows, []);
+    expect(o.latest?.score).toBe(40);
+    expect(o.byEngine.map((e) => e.score)).toEqual([30]);
+    expect(o.trend).toEqual([{ date: "2026-10-01", score: 40, visibilityRate: 0.5 }]);
+    expect(shapeOverview([row({ responses_count: 0 })], [])).toEqual({ latest: null, byEngine: [], trend: [], competitors: [] });
+  });
+
   it("avg_position null pozostaje null", () => {
     expect(shapeOverview([row({ avg_position: null })], []).latest?.avgPosition).toBeNull();
   });

@@ -109,7 +109,7 @@ create table mentions (
   project_id uuid not null references projects(id) on delete cascade,
   brand_kind text not null check (brand_kind in ('own','competitor')),
   brand_name text not null,
-  competitor_id uuid references competitors(id) on delete cascade,
+  competitor_id uuid references competitors(id) on delete set null,
   position int not null,
   char_index int not null
 );
