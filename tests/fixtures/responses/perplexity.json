@@ -1,0 +1,18 @@
+{
+  "id": "resp_1", "object": "response", "model": "openai/gpt-6-luna", "status": "completed",
+  "output": [
+    {
+      "type": "search_results",
+      "queries": ["szkolenia AI dla firm Polska"],
+      "results": [
+        { "id": 1, "title": "Szkolenia AI dla firm – PSAI", "url": "https://polskaszkola.ai/dla-firm", "date": "2026-05-01", "last_updated": "2026-05-01", "snippet": "", "source": "web" },
+        { "id": 2, "title": "Ranking kursów AI", "url": "https://www.example-ranking.pl/kursy-ai", "date": "2026-03-10", "last_updated": "2026-03-10", "snippet": "…", "source": "web" }
+      ]
+    },
+    {
+      "type": "message", "id": "msg_1", "role": "assistant", "status": "completed",
+      "content": [{ "type": "output_text", "text": "Warto rozważyć Polską Szkołę AI[1] oraz kursy z rankingu[2].", "annotations": [], "logprobs": [] }]
+    }
+  ],
+  "usage": { "input_tokens": 50, "output_tokens": 40, "total_tokens": 90 }
+}
