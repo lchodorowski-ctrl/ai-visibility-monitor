@@ -1,0 +1,122 @@
+/*
+  Tokeny stylu Apple iPad platformy PSAI.
+  Źródło: Platforma/src/app/globals.css. Dwa warianty: A) zwykłe CSS, B) Tailwind v4 (@theme).
+*/
+
+/* ============ A. Zwykłe CSS (strony statyczne) ============ */
+:root {
+  --bg: #ffffff;
+  --s1: #f5f5f7;                 /* tło kafli */
+  --s2: #ececf0;                 /* szkielety, nieaktywne */
+  --s3: #e2e2e7;
+  --line: rgb(0 0 0 / 0.08);
+  --line-2: rgb(0 0 0 / 0.14);   /* obramowania przycisków i pól */
+  --line-3: rgb(0 0 0 / 0.28);   /* obramowania po najechaniu */
+  --accent: #1d1d1f;             /* czarne przyciski, pasek postępu, fokus */
+  --t0: #1d1d1f;                 /* tekst główny */
+  --t1: #515154;                 /* tekst drugoplanowy */
+  --t2: #636366;                 /* metadane (mono) */
+  --red: #c3283f;                /* tylko błędy / odwołane */
+  --teal: #0a7a63;               /* tylko sukces */
+  --logo: #1d1d1f;
+
+  --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+
+  --nav: 56px;                   /* wysokość nagłówka */
+  --page: 1240px;                /* max szerokość treści */
+  --r-tile: 28px;                /* duże kafle */
+  --r-box: 24px;                 /* drugorzędne kontenery */
+  --r-control: 8px;              /* przyciski i pola */
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #000000;
+  --s1: #1c1c1e;
+  --s2: #2c2c2e;
+  --s3: #3a3a3c;
+  --line: rgb(255 255 255 / 0.12);
+  --line-2: rgb(255 255 255 / 0.2);
+  --line-3: rgb(255 255 255 / 0.36);
+  --accent: #f5f5f7;
+  --t0: #f5f5f7;
+  --t1: #b0b0b5;
+  --t2: #a1a1a6;
+  --red: #ff7a8a;
+  --teal: #3ccbaa;
+  --logo: #ffffff;
+  color-scheme: dark;
+}
+
+/* Fonty (w <head>):
+   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+*/
+html { background: var(--bg); }
+body {
+  margin: 0; background: var(--bg); color: var(--t0);
+  font-family: var(--font-sans); font-weight: 400; line-height: 1.5;
+  letter-spacing: -0.005em; -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { letter-spacing: -0.025em; margin: 0; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* Okładki kafli bez obrazka: łagodne pastelowe gradienty. Kolor wybieraj stabilnie z identyfikatora (hash % 6). */
+.cover-0 { background: linear-gradient(135deg, #e8f0ff, #d6e4ff); }  /* niebieski */
+.cover-1 { background: linear-gradient(135deg, #f1e8ff, #e0d2ff); }  /* fioletowy */
+.cover-2 { background: linear-gradient(135deg, #ffeadf, #ffd8c4); }  /* brzoskwiniowy */
+.cover-3 { background: linear-gradient(135deg, #e0f5ec, #c8ebdc); }  /* miętowy */
+.cover-4 { background: linear-gradient(135deg, #fff3d6, #ffe6a8); }  /* żółty */
+.cover-5 { background: linear-gradient(135deg, #ffe6ee, #ffd0de); }  /* różowy */
+:root[data-theme="dark"] .cover-0 { background: linear-gradient(135deg, #16233f, #1f3463); }
+:root[data-theme="dark"] .cover-1 { background: linear-gradient(135deg, #261a40, #3a2763); }
+:root[data-theme="dark"] .cover-2 { background: linear-gradient(135deg, #3b2417, #5a3622); }
+:root[data-theme="dark"] .cover-3 { background: linear-gradient(135deg, #14332a, #1f4d3f); }
+:root[data-theme="dark"] .cover-4 { background: linear-gradient(135deg, #3a2f12, #594818); }
+:root[data-theme="dark"] .cover-5 { background: linear-gradient(135deg, #3b1a26, #5a2638); }
+
+/* Odcień okładki w kolorze klienta (przykład Kramp #9B1915): ten sam kształt gradientu, kolor z marki klienta rozjaśniony do ok. 8-20%. */
+.cover-client { background: linear-gradient(135deg, #fbeceb, #f3cfcc); }
+
+
+/* ============ B. Tailwind v4 (aplikacje Next.js) ============
+   Wklej do globals.css po `@import "tailwindcss";`
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --color-bg: #ffffff;
+  --color-s1: #f5f5f7;
+  --color-s2: #ececf0;
+  --color-s3: #e2e2e7;
+  --color-line: rgb(0 0 0 / 0.08);
+  --color-line-2: rgb(0 0 0 / 0.14);
+  --color-line-3: rgb(0 0 0 / 0.28);
+  --color-accent: #1d1d1f;
+  --color-teal: #0a7a63;
+  --color-red: #c3283f;
+  --color-t0: #1d1d1f;
+  --color-t1: #515154;
+  --color-t2: #636366;
+  --color-logo: #1d1d1f;
+  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, Menlo, monospace;
+  --spacing-nav: 56px;
+  --container-page: 1240px;
+}
+:root[data-theme="dark"] { ...ciemne wartości jak w bloku A... }
+
+Typowe klasy platformy:
+  kafel        rounded-[28px] bg-s1 p-8 md:p-12   (hover: hover:-translate-y-1 hover:shadow-[0_18px_40px_-18px_rgb(0_0_0/0.35)] transition duration-300)
+  tytuł strony text-5xl font-semibold tracking-tight md:text-7xl
+  sekcja       text-3xl font-semibold tracking-tight
+  etykieta     font-mono text-[11px] uppercase tracking-[0.14em] text-t2
+  meta         font-mono text-[11px] uppercase tracking-[0.08em] text-t2
+  przycisk     rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-bg transition hover:opacity-85
+  drugorzędny  rounded-lg border border-line-2 px-3.5 py-2 text-sm font-medium text-t0 transition hover:border-line-3
+  pole         w-full rounded-lg border border-line-2 bg-bg px-3.5 py-3 text-sm text-t0 placeholder:text-t2 focus:border-accent focus:outline-none
+  nagłówek     sticky top-0 z-10 border-b border-line bg-bg/90 backdrop-blur ; wnętrze: mx-auto flex h-nav max-w-page items-center justify-between px-6 lg:px-12
+*/

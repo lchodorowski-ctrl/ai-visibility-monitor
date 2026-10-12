@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#ffffff" />
+<title>Klient · Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ===== Tokeny stylu Apple iPad (PSAI). Pełny zestaw i ciemny motyw: references/tokens.css ===== */
+  :root {
+    --bg: #ffffff; --s1: #f5f5f7; --s2: #ececf0;
+    --line: rgb(0 0 0 / 0.08); --line-2: rgb(0 0 0 / 0.14); --line-3: rgb(0 0 0 / 0.28);
+    --accent: #1d1d1f; --t0: #1d1d1f; --t1: #515154; --t2: #636366;
+    --red: #c3283f; --logo: #1d1d1f;
+    --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+    --nav: 56px; --page: 1240px;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--t0); font-family: var(--font-sans); font-size: 16px; line-height: 1.5; letter-spacing: -0.005em; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3, p { margin: 0; } h1, h2, h3 { letter-spacing: -0.025em; }
+  a { color: inherit; }
+  button, input { font-family: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  .cover-0 { background: linear-gradient(135deg, #e8f0ff, #d6e4ff); }
+  .cover-1 { background: linear-gradient(135deg, #f1e8ff, #e0d2ff); }
+  .cover-2 { background: linear-gradient(135deg, #ffeadf, #ffd8c4); }
+  .cover-3 { background: linear-gradient(135deg, #e0f5ec, #c8ebdc); }
+  .cover-4 { background: linear-gradient(135deg, #fff3d6, #ffe6a8); }
+  .cover-5 { background: linear-gradient(135deg, #ffe6ee, #ffd0de); }
+
+  /* ===== Nagłówek ===== */
+  .site-header { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--line); background: rgb(255 255 255 / 0.9); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+  .site-header__inner { max-width: var(--page); height: var(--nav); margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 20px; color: var(--logo); }
+  .brand .divider { width: 1px; height: 26px; background: var(--line-2); }
+  .logo-psai { display: block; height: 36px; width: auto; }
+  .logo-client { display: block; height: 22px; width: auto; color: var(--t2); } /* ZAMIEŃ na logo klienta w jego kolorach */
+
+  /* ===== Przyciski ===== */
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border: none; border-radius: 8px; background: var(--accent); color: var(--bg); font-size: 14px; font-weight: 500; line-height: 1.4; text-decoration: none; cursor: pointer; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn-ghost { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line-2); border-radius: 8px; background: transparent; color: var(--t0); font-size: 14px; font-weight: 500; line-height: 1.4; text-decoration: none; cursor: pointer; transition: border-color .15s; }
+  .btn-ghost:hover { border-color: var(--line-3); }
+  .btn svg, .btn-ghost svg { width: 15px; height: 15px; }
+  .link-quiet { font-size: 14px; color: var(--t1); text-decoration: none; transition: color .15s; }
+  .link-quiet:hover { color: var(--t0); }
+  .link-more { font-size: 16px; font-weight: 500; color: var(--t1); text-decoration: none; transition: color .15s; }
+  .link-more:hover { color: var(--t0); }
+
+  /* ===== Strona ===== */
+  .page { max-width: var(--page); margin: 0 auto; padding: 48px 24px 0; }
+  .section { margin-top: 80px; }
+  .hero { padding-top: 24px; }
+  .eyebrow { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .14em; color: var(--t2); margin-bottom: 12px; }
+  .hero h1 { font-size: clamp(40px, 7vw, 72px); font-weight: 600; line-height: 1.02; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+  .section-head h2 { font-size: 30px; font-weight: 600; line-height: 1.15; }
+  .meta { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--t2); }
+
+  /* ===== Kafle ===== */
+  .grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
+  .tile { display: flex; flex-direction: column; height: 100%; overflow: hidden; border-radius: 28px; background: var(--s1); text-decoration: none; color: inherit; transition: transform .3s, box-shadow .3s; }
+  .tile:hover { transform: translateY(-4px); box-shadow: 0 18px 40px -18px rgb(0 0 0 / .35); }
+  .tile-cover { aspect-ratio: 16 / 9; display: grid; place-items: center; }
+  .tile-cover .big { font-size: 64px; line-height: 1; font-weight: 600; letter-spacing: -.03em; color: rgb(29 29 31 / .2); }
+  .tile-body { display: flex; flex: 1; flex-direction: column; gap: 8px; padding: 24px; }
+  .tile h3 { font-size: 20px; font-weight: 600; line-height: 1.3; }
+  .tile .desc { font-size: 14px; color: var(--t1); }
+  .tile .meta { margin-top: auto; padding-top: 12px; }
+  .tile-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; padding-top: 12px; }
+
+  .stat { border-radius: 28px; background: var(--s1); padding: 32px; }
+  .stat h2 { font-size: 16px; font-weight: 500; color: var(--t1); }
+  .stat .num { margin-top: 12px; font-size: 96px; line-height: 1; font-weight: 600; letter-spacing: -.05em; }
+  .stat .num span { font-size: 36px; color: var(--t2); letter-spacing: -.02em; }
+  .stat .detail { margin-top: 12px; max-width: 320px; color: var(--t1); }
+  .stat-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px; }
+  .progress { margin-top: 32px; height: 6px; border-radius: 999px; background: var(--line-2); overflow: hidden; }
+  .progress > div { height: 100%; border-radius: 999px; background: var(--accent); transition: width .5s; }
+
+  .tile-inverse { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 32px; border-radius: 28px; background: var(--accent); color: var(--bg); padding: 32px; text-decoration: none; }
+  .tile-inverse .meta { color: inherit; opacity: .7; }
+  .tile-inverse h3 { margin-top: 8px; font-size: clamp(26px, 3.4vw, 36px); font-weight: 600; line-height: 1.15; }
+  .btn-inverse { padding: 12px 24px; border-radius: 8px; background: var(--bg); color: var(--accent); font-size: 14px; font-weight: 500; transition: opacity .15s; }
+  .tile-inverse:hover .btn-inverse { opacity: .9; }
+
+  /* ===== Formularz ===== */
+  .form { max-width: 384px; display: grid; gap: 20px; }
+  .form label { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: var(--t1); }
+  .form input { width: 100%; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--bg); color: var(--t0); font-size: 14px; }
+  .form input::placeholder { color: var(--t2); }
+  .form input:focus { border-color: var(--accent); outline: none; }
+  .form .btn { width: 100%; justify-content: center; padding: 12px 16px; }
+
+  /* ===== Stan pusty ===== */
+  .state-box { border-radius: 28px; background: var(--s1); padding: 64px 24px; text-align: center; }
+  .state-icon { width: 56px; height: 56px; margin: 0 auto 20px; border-radius: 50%; display: grid; place-items: center; background: var(--bg); color: var(--t2); }
+  .state-box h2 { margin-bottom: 12px; font-size: 30px; font-weight: 600; line-height: 1.15; }
+  .state-box p { max-width: 440px; margin: 0 auto 28px; color: var(--t1); line-height: 1.6; }
+  .state-box .btn { padding: 12px 24px; }
+
+  /* ===== Stopka ===== */
+  .page-footer { margin-top: 80px; padding: 24px 0 40px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 24px; font-size: 14px; color: var(--t2); }
+  .page-footer .name { font-weight: 500; color: var(--t0); }
+
+  @media (min-width: 1024px) {
+    .site-header__inner, .page { padding-left: 48px; padding-right: 48px; }
+    .stat, .tile-inverse { padding: 48px; }
+  }
+  @media (max-width: 520px) {
+    .brand { gap: 14px; } .logo-psai { height: 30px; } .logo-client { height: 18px; }
+    .stat .num { font-size: 72px; }
+    .btn-ghost .label { display: none; } .btn-ghost { padding: 9px 11px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <div class="brand" role="group" aria-label="Polska Szkoła AI i Klient">
+      <svg class="logo-psai" xmlns="http://www.w3.org/2000/svg" viewBox="63.2 74.7 1069.3 466.6" role="img" aria-label="Polska Szkoła AI" fill="currentColor"><path d="M678.2 154.7h31.7c5.1 0 9.8-.8 14.2-2.4s8.2-3.9 11.6-6.9q4.95-4.5 7.8-11.1c1.9-4.4 2.8-9.4 2.8-15s-.9-10.6-2.8-15-4.4-8.1-7.8-11.1c-3.3-3-7.2-5.3-11.6-6.9s-9.1-2.4-14.2-2.4h-45.2v109.6h13.5zm0-58.1h31.7c6.7 0 12.2 2.1 16.4 6.2s6.3 9.6 6.3 16.6-2.1 12.2-6.3 16.4-9.7 6.3-16.4 6.3h-31.7zm99.5 93.4c6.3 3.5 13 5.2 20.2 5.2s13.9-1.7 20.2-5.2c6.2-3.5 11.3-8.5 15.1-15.1q5.7-9.9 5.7-23.4c0-13.5-1.9-16.8-5.7-23.4s-8.9-11.7-15.1-15.3-13-5.4-20.2-5.4-13.9 1.8-20.2 5.4q-9.45 5.4-15.3 15.3c-3.9 6.6-5.8 14.4-5.8 23.4s1.9 16.8 5.8 23.4 9 11.6 15.3 15.1m-3.6-55.6c2.7-4.7 6.2-8.2 10.4-10.6s8.7-3.6 13.4-3.6 9.2 1.2 13.3 3.7c4.2 2.5 7.6 6 10.2 10.7s4 10.3 4 16.9-1.3 12.3-4 16.9q-3.9 7.05-10.2 10.5c-4.2 2.4-8.6 3.5-13.3 3.5s-9.2-1.2-13.5-3.5c-4.3-2.4-7.7-5.9-10.4-10.5-2.6-4.7-4-10.3-4-16.9s1.3-12.4 4-17.1Zm83.7-58.9h13.5v118h-13.5zm36.1 104.7c1.4 2.6 3.4 5 6 7.3s5.8 4.2 9.7 5.6q5.85 2.1 14.1 2.1c8.25 0 11.2-1 15.4-3s7.4-4.9 9.6-8.5c2.2-3.7 3.3-7.8 3.3-12.6s-.7-7.2-2.1-9.9c-1.4-2.6-3.3-4.9-5.7-6.7s-5.1-3.4-8.1-4.7-6.2-2.7-9.4-4c-3.3-1.3-6.3-2.7-9.2-4s-5.2-2.8-7-4.4-2.7-3.7-2.7-6.2 1.2-6.1 3.7-8.1 6-3 10.6-3 8 1.2 10.4 3.5 4 6 4.8 11h11.6c-.1-5.4-1.2-10.1-3.3-14.3-2.1-4.1-5.1-7.3-8.9-9.5-3.9-2.2-8.6-3.4-14.3-3.4s-8 .6-11.4 1.9c-3.4 1.2-6.4 3-8.9 5.1-2.5 2.2-4.5 4.8-5.8 7.8s-2 6.2-2 9.5.9 7.5 2.7 10.4q2.7 4.35 7.2 7.2 4.5 3 9.6 5.1c3.4 1.4 6.8 2.7 10 4 2.8.9 5.3 1.9 7.5 2.9s3.9 2.3 5.2 3.8 1.9 3.6 1.9 6.2-.5 4.1-1.5 5.8-2.6 3.1-4.8 4.1q-3.3 1.5-9 1.5c-6.3 0-11.1-1.5-14.4-4.6-3.3-3-5.1-7-5.5-11.8h-12.5c-.2 1.7-.1 3.8.3 6.2.4 2.5 1.4 5 2.8 7.6Zm150 13.3-40.7-46.9 37.8-37.4h-19.2l-36.7 37.3 41.6 47zm-72.7-118h13.5v118h-13.5zm95.6 114.1q8.4 5.7 18.3 5.7c9.9 0 11.2-1.4 15.2-4.3 3.9-2.9 7-6.6 9.2-11.1 2-4.1 3.4-8.5 4.3-13v9.9c0 1.8.1 4 .3 6.7s.5 6.1.8 10.1h12.3v-84.3h-13.5v23.9c-.2-1.2-.3-2.5-.6-3.6q-2.25-9.9-8.4-15.9t-18-6c-11.85 0-13.7 1.9-19.5 5.7s-10.4 9-13.7 15.7c-3.4 6.6-5.1 14.2-5.1 22.6s1.7 15.9 5 22.5 7.8 11.7 13.3 15.5Zm2.1-60.4c4.6-5.9 11.1-8.9 19.6-8.9s10.3 1.3 14.1 4c3.8 2.6 6.6 6.3 8.4 11 1.9 4.7 2.8 10.1 2.8 16.3s-.9 10.8-2.7 15.4c-1.8 4.7-4.6 8.4-8.4 11.2s-8.5 4.2-14.2 4.2-9.6-1.3-13.6-4c-4-2.6-7.1-6.3-9.4-11s-3.5-10-3.5-15.9c0-9 2.3-16.4 6.9-22.3M661.2 348.3q2.55 5.1 7.5 9.9c3.3 3.2 7.4 5.7 12.6 7.7 5.1 2 11.3 3 18.5 3s15.3-1.4 20.7-4.2c5.3-2.8 9.3-6.5 11.8-11 2.5-4.6 3.8-9.5 3.8-14.8s-1-10.1-3-13.7q-3-5.55-7.8-9c-3.2-2.4-6.7-4.3-10.5-5.9s-7.4-2.9-11-4c-5.5-1.8-10.2-3.5-13.9-5-3.8-1.5-6.7-3.1-8.9-4.6-2.2-1.6-3.8-3.3-4.7-5.1-1-1.9-1.4-4-1.4-6.5 0-5.6 2.1-9.8 6.4-12.4s9.3-4 15-4 12.4 1.7 16.7 5.2 6.5 9.2 6.7 17.2h12.1q.3-15.9-8.4-25.5c-5.8-6.4-14.7-9.6-26.5-9.6s-14 1.4-19.3 4.1c-5.3 2.8-9.4 6.3-12.1 10.8-2.8 4.4-4.1 9.2-4.1 14.2s1.2 9.6 3.5 13.2c2.4 3.7 5.5 6.8 9.4 9.4q5.85 3.9 12.6 6.6c4.5 1.8 8.9 3.4 13.3 4.7 4.6 1.5 8.6 3 12 4.6q5.1 2.4 7.8 5.7c1.8 2.3 2.7 5.2 2.7 8.9s-.9 6.7-2.6 9.4q-2.55 4.05-7.8 6.3c-3.4 1.5-7.7 2.3-12.7 2.3s-10.9-1.1-15.3-3.2c-4.3-2.1-7.7-5.1-10.2-8.8q-3.75-5.55-4.2-12.6h-12.1c-.5 1.7-.4 4 .2 7.1.6 3 1.7 6.3 3.5 9.7Zm156.3 6.2h-48.6l48.1-59v-12.7h-65v12.7h48.9l-48.9 59v12.6h65.5zm92-71.7h-19.2l-36.8 37.3 41.7 47h17.2l-40.8-46.8zm-69.8-33.7h13.5v118h-13.5zm138.7 37.4c-6.2-3.6-13-5.4-20.2-5.4s-13.9 1.8-20.2 5.4q-9.45 5.4-15.3 15.3c-3.9 6.6-5.8 14.4-5.8 23.4s1.9 16.8 5.8 23.4 9 11.6 15.3 15.1 13 5.2 20.2 5.2 13.9-1.7 20.2-5.2c6.2-3.5 11.3-8.5 15.1-15.1q5.7-9.9 5.7-23.4c0-13.5-1.9-16.8-5.7-23.4s-8.9-11.7-15.1-15.3m3.4 55.6q-3.9 7.05-10.2 10.5c-4.2 2.4-8.6 3.5-13.3 3.5s-9.2-1.2-13.5-3.5-7.7-5.9-10.4-10.5c-2.6-4.7-4-10.3-4-16.9s1.3-12.4 4-17.1 6.2-8.2 10.4-10.6 8.7-3.6 13.4-3.6 9.2 1.2 13.3 3.7c4.2 2.5 7.6 6 10.2 10.7s4 10.3 4 16.9-1.3 12.3-4 16.9Zm51.5-45.2v-47.8h-13.5v57.1l-16.9 11.5 5.9 9 11-7.5v47.9h13.5V310l16.9-11.5-6.3-8.9zm85.8-14.1v23.9c-.2-1.2-.3-2.5-.6-3.6q-2.25-9.9-8.4-15.9t-18-6c-11.85 0-13.7 1.9-19.5 5.7s-10.4 9-13.7 15.7c-3.4 6.6-5.1 14.2-5.1 22.6s1.7 15.9 5 22.5 7.8 11.7 13.3 15.5q8.4 5.7 18.3 5.7c9.9 0 11.2-1.4 15.2-4.3 3.9-2.9 7-6.6 9.2-11.1 2-4.1 3.4-8.5 4.3-13v9.9c0 1.8.1 4 .3 6.7s.5 6.1.8 10.1h12.3v-84.3H1119Zm-2.7 57.8c-1.8 4.7-4.6 8.4-8.4 11.2s-8.5 4.2-14.2 4.2-9.6-1.3-13.6-4c-4-2.6-7.1-6.3-9.4-11s-3.5-10-3.5-15.9c0-9 2.3-16.4 6.9-22.3s11.1-8.9 19.6-8.9 10.3 1.3 14.1 4c3.8 2.6 6.6 6.3 8.4 11 1.9 4.7 2.8 10.1 2.8 16.3s-.9 10.8-2.7 15.4m-419.8 90.6-41.7 109.6h14.2l10.6-28.7h48l10.6 28.7h14.5l-42-109.6zm-12.3 68.3 19.3-52.4 19.3 52.4zm88.6-68.3h13.5v109.6h-13.5zM299.3 182.5l106.1 287 26.5 71.8h87.9L375 182.5zM286 287.9h-80.6l39.8-109.8-38-103.4-144 356.8H151l26.6-71.8h135l-2-5.3zm553.8 145.8c-3.4-1.9-7.1-2.9-11.2-2.9s-8 1-11.3 2.9c-3.4 1.9-6 4.5-8 7.8s-2.9 7-2.9 11.2 1 8 2.9 11.3 4.6 5.9 8 7.9c3.3 2 7.1 2.9 11.3 2.9s8-1 11.3-2.9 5.9-4.6 7.8-7.9 2.9-7.1 2.9-11.3-1-7.8-2.9-11.2c-1.9-3.3-4.5-5.9-7.9-7.8m4.9 28.5c-1.6 2.8-3.8 5.1-6.6 6.7s-5.9 2.4-9.4 2.4-6.7-.8-9.5-2.4-5-3.8-6.6-6.7q-2.4-4.2-2.4-9.6c0-5.4.8-6.6 2.4-9.4q2.4-4.2 6.6-6.6c2.8-1.6 6-2.4 9.5-2.4s6.7.8 9.4 2.4q4.2 2.4 6.6 6.6c1.6 2.8 2.4 6 2.4 9.5s-.8 6.7-2.4 9.6Z"/><path d="M837 451.9c.8-1.3 1.3-2.7 1.3-4.3s-.8-4.1-2.4-5.4-3.8-2-6.4-2h-9.3v24.6h3.8v-9.3h5.7l4.9 9.3h4.2l-5.5-10.2c1.7-.6 3-1.5 3.8-2.8Zm-7.7.2h-5.4v-8.4h5.4c3.3 0 5 1.4 5 4.1s-.4 2.5-1.3 3.2-2.1 1.1-3.6 1.1Z"/></svg>
+      <div class="divider" aria-hidden="true"></div>
+      <!-- ZAMIEŃ na oficjalne logo klienta (SVG, jego kolory) -->
+      <svg class="logo-client" viewBox="0 0 120 22" role="img" aria-label="Klient"><text x="0" y="17" font-family="Space Grotesk, sans-serif" font-weight="700" font-size="19" fill="currentColor" letter-spacing="1">KLIENT</text></svg>
+    </div>
+    <a class="btn-ghost" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg><span class="label">Odśwież</span></a>
+  </div>
+</header>
+
+<main class="page" id="main">
+  <section class="hero">
+    <p class="eyebrow">Klient · Materiały</p>
+    <h1>Twoje szkolenie</h1>
+  </section>
+
+  <section class="section" aria-labelledby="progress">
+    <div class="stat">
+      <div class="stat-row">
+        <div>
+          <h2 id="progress">Ogólny postęp</h2>
+          <p class="num">64<span>%</span></p>
+        </div>
+        <p class="detail">Ukończone 9 z 14 materiałów we wszystkich modułach.</p>
+      </div>
+      <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="64" aria-label="Postęp: 64%"><div style="width:64%"></div></div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="cont">
+    <div class="section-head"><h2 id="cont">Kontynuuj naukę</h2></div>
+    <a class="tile-inverse" href="#">
+      <div>
+        <p class="meta">Moduł 2 · Praktyka</p>
+        <h3>Promptowanie ustrukturyzowane</h3>
+      </div>
+      <span class="btn-inverse">Wznów</span>
+    </a>
+  </section>
+
+  <section class="section" aria-labelledby="mat">
+    <div class="section-head">
+      <h2 id="mat">Materiały</h2>
+      <a class="link-more" href="#">Zobacz wszystkie →</a>
+    </div>
+    <div class="grid">
+      <div class="tile">
+        <div class="tile-cover cover-2"><span class="big" aria-hidden="true">PDF</span></div>
+        <div class="tile-body">
+          <h3>Fotografia dnia pracy – instrukcja.pdf</h3>
+          <p class="desc">Krótki pre-work przed szkoleniem: jak opisać swój dzień pracy.</p>
+          <p class="meta">PDF · 2,4 MB · 9 paź 2026</p>
+          <div class="tile-actions"><a class="btn" href="#">Pobierz</a><a class="link-quiet" href="#">Otwórz w Dysku</a></div>
+        </div>
+      </div>
+      <div class="tile">
+        <div class="tile-cover cover-0"><span class="big" aria-hidden="true">PPTX</span></div>
+        <div class="tile-body">
+          <h3>Prezentacja – Dzień 1.pptx</h3>
+          <p class="meta">PPTX · 17,5 MB · 11 paź 2026</p>
+          <div class="tile-actions"><a class="btn" href="#">Pobierz</a><a class="link-quiet" href="#">Otwórz w Dysku</a></div>
+        </div>
+      </div>
+      <div class="tile">
+        <div class="tile-cover cover-3"><span class="big" aria-hidden="true">XLSX</span></div>
+        <div class="tile-body">
+          <h3>Karta ADKAR – szablon.xlsx</h3>
+          <p class="desc">Szablon do pracy własnej po szkoleniu.</p>
+          <p class="meta">XLSX · 0,9 MB · 12 paź 2026</p>
+          <div class="tile-actions"><a class="btn" href="#">Pobierz</a><a class="link-quiet" href="#">Otwórz w Dysku</a></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="login">
+    <div class="section-head"><h2 id="login">Formularz</h2></div>
+    <form class="form" onsubmit="return false">
+      <div><label for="email">E-mail</label><input id="email" type="email" placeholder="ty@firma.pl" autocomplete="email"></div>
+      <div><label for="pass">Hasło</label><input id="pass" type="password" autocomplete="current-password"></div>
+      <button class="btn" type="submit">Zaloguj się</button>
+    </form>
+  </section>
+
+  <section class="section" aria-labelledby="empty">
+    <div class="state-box">
+      <div class="state-icon"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+      <h2 id="empty">Na razie brak plików</h2>
+      <p>W udostępnionym folderze nic jeszcze nie ma. Nowe pliki dodane na Dysku Google pojawią się tutaj automatycznie.</p>
+      <button class="btn" type="button">Odśwież</button>
+    </div>
+  </section>
+
+  <footer class="page-footer">
+    <span class="name">Polska Szkoła AI × Klient</span>
+    <span>Pliki są przechowywane na Dysku Google.</span>
+  </footer>
+</main>
+</body>
+</html>
