@@ -45,47 +45,62 @@ export const runProject = task({
     if (runError) throw new Error(runError.message);
     const runId = run.id;
 
-    const spent = await monthSpend(admin, projectId);
-    const estimate = estimateCost(jobs);
-    const budget = Number(project.monthly_budget_usd);
-    const decision = decideRun(jobs.length, spent, estimate, budget);
-    if (decision.kind === "empty") {
-      const { error } = await admin.from("runs").update({ status: "empty", finished_at: new Date().toISOString(), error: "Brak aktywnych promptów lub silników" }).eq("id", runId);
-      if (error) throw new Error(error.message);
-      return { runId, status: "empty" as const };
-    }
-    if (decision.kind === "budget_exceeded") {
-      const { error } = await admin.from("runs").update({
-        status: "budget_exceeded", finished_at: new Date().toISOString(),
-        error: `Budżet ${budget} USD: wydano ${spent.toFixed(2)}, run kosztowałby ~${estimate.toFixed(2)}`,
-      }).eq("id", runId);
-      if (error) throw new Error(error.message);
-      return { runId, status: "budget_exceeded" as const };
-    }
-
-    const brand = {
-      brandName: project.brand_name, aliases: project.brand_aliases, domains: project.domains,
-      locale: project.locale, country: project.country,
-    };
-    const results = await queryEngine.batchTriggerAndWait(
-      jobs.map((job) => ({ payload: { runId, projectId, job, project: brand, competitors } })),
-    );
-
-    let cost = 0, failed = 0;
-    for (const r of results.runs) {
-      if (r.ok) { cost += r.output.costUsd; if (!r.output.ok) failed++; }
-      else failed++;
-    }
-
+    // data snapshotu ustalana na starcie runu (run przez północ UTC nie rozbije metryk na dwa dni)
     const date = new Date().toISOString().slice(0, 10);
-    await aggregateProject.triggerAndWait({ projectId, runId, date });
+    let cost = 0;
+    let failed = 0;
 
-    const { error: finishError } = await admin.from("runs").update({
-      status: failed === jobs.length ? "failed" : "done",
-      finished_at: new Date().toISOString(), cost_usd: cost, queries_failed: failed,
-    }).eq("id", runId);
-    if (finishError) throw new Error(finishError.message);
+    // po utworzeniu wiersza runu każdy błąd musi zamknąć run jako failed (nie zostawiamy "running")
+    try {
+      const spent = await monthSpend(admin, projectId);
+      const estimate = estimateCost(jobs);
+      const budget = Number(project.monthly_budget_usd);
+      const decision = decideRun(jobs.length, spent, estimate, budget);
+      if (decision.kind === "empty") {
+        const { error } = await admin.from("runs").update({ status: "empty", finished_at: new Date().toISOString(), error: "Brak aktywnych promptów lub silników" }).eq("id", runId);
+        if (error) throw new Error(error.message);
+        return { runId, status: "empty" as const };
+      }
+      if (decision.kind === "budget_exceeded") {
+        const { error } = await admin.from("runs").update({
+          status: "budget_exceeded", finished_at: new Date().toISOString(),
+          error: `Budżet ${budget} USD: wydano ${spent.toFixed(2)}, run kosztowałby ~${estimate.toFixed(2)}`,
+        }).eq("id", runId);
+        if (error) throw new Error(error.message);
+        return { runId, status: "budget_exceeded" as const };
+      }
 
-    return { runId, status: "done" as const, cost, failed, total: jobs.length };
+      const brand = {
+        brandName: project.brand_name, aliases: project.brand_aliases, domains: project.domains,
+        locale: project.locale, country: project.country,
+      };
+      const results = await queryEngine.batchTriggerAndWait(
+        jobs.map((job) => ({ payload: { runId, projectId, job, project: brand, competitors } })),
+      );
+
+      for (const r of results.runs) {
+        if (r.ok) { cost += r.output.costUsd; if (!r.output.ok) failed++; }
+        else failed++;
+      }
+
+      const agg = await aggregateProject.triggerAndWait({ projectId, runId, date });
+      const aggregationError = agg.ok ? null : `aggregation failed: ${String(agg.error)}`;
+
+      const status = aggregationError || failed === jobs.length ? ("failed" as const) : ("done" as const);
+      const { error: finishError } = await admin.from("runs").update({
+        status, finished_at: new Date().toISOString(), cost_usd: cost, queries_failed: failed,
+        ...(aggregationError ? { error: aggregationError } : {}),
+      }).eq("id", runId);
+      if (finishError) throw new Error(finishError.message);
+
+      return { runId, status, cost, failed, total: jobs.length };
+    } catch (err) {
+      const { error: closeError } = await admin.from("runs").update({
+        status: "failed", error: err instanceof Error ? err.message : String(err),
+        finished_at: new Date().toISOString(), cost_usd: cost,
+      }).eq("id", runId);
+      if (closeError) console.error(`run-project: nie udało się oznaczyć runu ${runId} jako failed: ${closeError.message}`);
+      throw err;
+    }
   },
 });

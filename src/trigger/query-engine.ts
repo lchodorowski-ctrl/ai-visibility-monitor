@@ -20,6 +20,14 @@ export const queryEngine = task({
   run: async (payload: QueryEnginePayload) => {
     const admin = createAdminSupabase();
     const { runId, projectId, job, project, competitors } = payload;
+
+    // idempotentność przy retry Trigger.dev: usuwamy ewentualny wiersz z poprzedniej próby
+    // (mentions/citations znikają kaskadowo), żeby nie powstały duplikaty odpowiedzi
+    const { error: cleanupError } = await admin.from("responses").delete().match({
+      run_id: runId, prompt_id: job.promptId, engine_id: job.engineId, sample_idx: job.sampleIdx,
+    });
+    if (cleanupError) throw new Error(cleanupError.message);
+
     let result: EngineResult | null = null;
     let errorMessage: string | null = null;
 

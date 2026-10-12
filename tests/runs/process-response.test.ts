@@ -31,12 +31,16 @@ describe("processResponse", () => {
     expect(sentiment).not.toHaveBeenCalled();
   });
 
-  it("noAnswer przenosi się do faktów", async () => {
+  it("noAnswer przenosi się do faktów i ignoruje tekst", async () => {
+    const sentiment = vi.fn();
     const out = await processResponse({
       promptId: "p", engineId: "google_ai_overview",
-      result: { text: "", model: "m", raw: {}, costUsd: 0, citations: [], noAnswer: true },
+      result: { text: "Polecam PSAI.", model: "m", raw: {}, costUsd: 0, citations: [], noAnswer: true },
       project, competitors,
-    }, { sentiment: vi.fn() });
+    }, { sentiment });
     expect(out.facts.noAnswer).toBe(true);
+    expect(out.mentions).toEqual([]);
+    expect(out.facts.ownMentioned).toBe(false);
+    expect(sentiment).not.toHaveBeenCalled();
   });
 });
