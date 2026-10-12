@@ -1,0 +1,21 @@
+{
+  "id": "int_1", "model": "gemini-3.8-flash", "status": "completed",
+  "output_text": "Dobre szkolenia AI dla firm oferuje Polska Szkoła AI; alternatywą jest Akademia AI.",
+  "steps": [
+    { "type": "google_search_call", "arguments": { "queries": ["szkolenia AI dla firm"] } },
+    { "type": "google_search_result", "search_suggestions": "<div/>" },
+    {
+      "type": "model_output",
+      "content": [
+        {
+          "type": "text",
+          "text": "Dobre szkolenia AI dla firm oferuje Polska Szkoła AI; alternatywą jest Akademia AI.",
+          "annotations": [
+            { "type": "url_citation", "url": "https://polskaszkola.ai/", "title": "Polska Szkoła AI", "startIndex": 36, "endIndex": 52 },
+            { "type": "url_citation", "url": "https://akademia-ai.pl/oferta", "title": "Akademia AI", "startIndex": 71, "endIndex": 82 }
+          ]
+        }
+      ]
+    }
+  ]
+}
