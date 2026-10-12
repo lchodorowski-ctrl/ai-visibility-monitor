@@ -18,11 +18,10 @@ const adapters: Record<EngineId, EngineAdapter> = {
 };
 
 export function getAdapter(id: EngineId): EngineAdapter {
-  const a = adapters[id];
-  if (!a) throw new Error(`Nieznany silnik: ${id}`);
-  return a;
+  if (!isEngineId(id)) throw new Error(`Nieznany silnik: ${id}`);
+  return adapters[id];
 }
 
 export function isEngineId(s: string): s is EngineId {
-  return s in adapters;
+  return Object.prototype.hasOwnProperty.call(adapters, s);
 }

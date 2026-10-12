@@ -5,7 +5,7 @@ export function normalizeDomain(urlOrHost: string): string {
   if (!s) return "";
   const withProto = /^[a-z]+:\/\//.test(s) ? s : `https://${s}`;
   try {
-    const host = new URL(withProto).hostname;
+    const host = new URL(withProto).hostname.replace(/\.$/, "");
     if (!host.includes(".")) return "";
     return host.replace(/^www\./, "");
   } catch {
