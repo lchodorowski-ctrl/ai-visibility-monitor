@@ -1,0 +1,91 @@
+import { task } from "@trigger.dev/sdk";
+import { createAdminSupabase } from "@/lib/supabase/admin";
+import { isEngineId } from "@/lib/engines/registry";
+import type { EngineId } from "@/lib/engines/types";
+import { planQueries, estimateCost } from "@/lib/runs/plan";
+import { decideRun } from "@/lib/runs/guard";
+import { monthSpend } from "@/lib/budget";
+import { queryEngine } from "./query-engine";
+import { aggregateProject } from "./aggregate-project";
+
+export interface RunProjectPayload {
+  projectId: string;
+  source: "manual" | "cron";
+}
+
+export const runProject = task({
+  id: "run-project",
+  queue: { concurrencyLimit: 1 },
+  retry: { maxAttempts: 1 },
+  run: async (payload: RunProjectPayload) => {
+    const admin = createAdminSupabase();
+    const { projectId } = payload;
+
+    const [projectRes, promptsRes, enginesRes, competitorsRes] = await Promise.all([
+      admin.from("projects").select("*").eq("id", projectId).single(),
+      admin.from("prompts").select("id, text, is_key").eq("project_id", projectId).eq("active", true),
+      admin.from("project_engines").select("engine_id").eq("project_id", projectId).eq("enabled", true),
+      admin.from("competitors").select("id, name, aliases, domains").eq("project_id", projectId),
+    ]);
+    for (const res of [projectRes, promptsRes, enginesRes, competitorsRes]) {
+      if (res.error) throw new Error(res.error.message);
+    }
+    const project = projectRes.data;
+    if (!project) throw new Error(`Projekt ${projectId} nie istnieje`);
+    const prompts = promptsRes.data ?? [];
+    const competitors = competitorsRes.data ?? [];
+
+    const engineIds = (enginesRes.data ?? []).map((e) => e.engine_id).filter(isEngineId) as EngineId[];
+    const jobs = planQueries(prompts, engineIds);
+
+    // wiersz runu powstaje przed decyzją, żeby runy empty/budget_exceeded też były widoczne w historii
+    const { data: run, error: runError } = await admin.from("runs")
+      .insert({ project_id: projectId, trigger_source: payload.source, queries_total: jobs.length })
+      .select("id").single();
+    if (runError) throw new Error(runError.message);
+    const runId = run.id;
+
+    const spent = await monthSpend(admin, projectId);
+    const estimate = estimateCost(jobs);
+    const budget = Number(project.monthly_budget_usd);
+    const decision = decideRun(jobs.length, spent, estimate, budget);
+    if (decision.kind === "empty") {
+      const { error } = await admin.from("runs").update({ status: "empty", finished_at: new Date().toISOString(), error: "Brak aktywnych promptów lub silników" }).eq("id", runId);
+      if (error) throw new Error(error.message);
+      return { runId, status: "empty" as const };
+    }
+    if (decision.kind === "budget_exceeded") {
+      const { error } = await admin.from("runs").update({
+        status: "budget_exceeded", finished_at: new Date().toISOString(),
+        error: `Budżet ${budget} USD: wydano ${spent.toFixed(2)}, run kosztowałby ~${estimate.toFixed(2)}`,
+      }).eq("id", runId);
+      if (error) throw new Error(error.message);
+      return { runId, status: "budget_exceeded" as const };
+    }
+
+    const brand = {
+      brandName: project.brand_name, aliases: project.brand_aliases, domains: project.domains,
+      locale: project.locale, country: project.country,
+    };
+    const results = await queryEngine.batchTriggerAndWait(
+      jobs.map((job) => ({ payload: { runId, projectId, job, project: brand, competitors } })),
+    );
+
+    let cost = 0, failed = 0;
+    for (const r of results.runs) {
+      if (r.ok) { cost += r.output.costUsd; if (!r.output.ok) failed++; }
+      else failed++;
+    }
+
+    const date = new Date().toISOString().slice(0, 10);
+    await aggregateProject.triggerAndWait({ projectId, runId, date });
+
+    const { error: finishError } = await admin.from("runs").update({
+      status: failed === jobs.length ? "failed" : "done",
+      finished_at: new Date().toISOString(), cost_usd: cost, queries_failed: failed,
+    }).eq("id", runId);
+    if (finishError) throw new Error(finishError.message);
+
+    return { runId, status: "done" as const, cost, failed, total: jobs.length };
+  },
+});
