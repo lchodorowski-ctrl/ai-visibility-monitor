@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db-types";
@@ -56,20 +57,21 @@ export async function ensureWorkspace(userId: string, email: string) {
   return ensureWorkspaceWith(createAdminSupabase(), userId, email);
 }
 
-export async function requireUser() {
+export const requireUser = cache(async () => {
   const supabase = await createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   return { supabase, user };
-}
+});
 
-export async function getCurrentProject() {
+export const getCurrentProject = cache(async () => {
   const { supabase, user } = await requireUser();
-  const { data: project } = await supabase
+  const { data: project, error } = await supabase
     .from("projects").select("*").order("created_at").limit(1).maybeSingle();
+  if (error) throw new Error(`Nie udało się pobrać projektu: ${error.message}`);
   if (!project) {
     await ensureWorkspace(user.id, user.email ?? "");
     redirect("/app");
   }
   return project;
-}
+});

@@ -1,34 +1,63 @@
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "@/lib/db-types";
+import { createServerSupabase } from "@/lib/supabase/server";
 import type { MetricRow } from "./aggregate";
 import { shapeOverview } from "./overview";
 
-export async function getOverview(
-  supabase: SupabaseClient<Database>,
-  projectId: string,
-): Promise<{
+function daysAgoIso(days: number): string {
+  const d = new Date(); d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+const getOverallRows = cache(async (projectId: string, days: number) => {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from("daily_metrics").select("*").eq("project_id", projectId).is("prompt_id", null)
+    .gte("date", daysAgoIso(days)).order("date");
+  if (error) throw new Error(`Nie udało się pobrać metryk: ${error.message}`);
+  return data ?? [];
+});
+
+export const getLatestMetrics = cache(async (projectId: string) => {
+  const rows = await getOverallRows(projectId, 90);
+  const { latest, byEngine } = shapeOverview(rows, []);
+  return { latest, byEngine };
+});
+
+export const getTrend = cache(async (projectId: string, days = 90) => {
+  const rows = await getOverallRows(projectId, days);
+  return shapeOverview(rows, []).trend;
+});
+
+export const getLastRun = cache(async (projectId: string): Promise<Tables<"runs"> | null> => {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from("runs").select("*").eq("project_id", projectId).order("started_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw new Error(`Nie udało się pobrać ostatniego runu: ${error.message}`);
+  return data ?? null;
+});
+
+export const getMentionCounts = cache(async (projectId: string, runId: string) => {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from("mentions").select("brand_name, response_id, responses!inner(run_id)")
+    .eq("project_id", projectId).eq("responses.run_id", runId).limit(5000);
+  if (error) throw new Error(`Nie udało się pobrać wzmianek: ${error.message}`);
+  return shapeOverview([], data ?? []).competitors;
+});
+
+// Zachowane dla zgodności z istniejącą stroną; nowe ekrany używają funkcji powyżej bezpośrednio.
+export async function getOverview(_supabase: SupabaseClient<Database>, projectId: string): Promise<{
   latest: MetricRow | null;
   byEngine: MetricRow[];
   trend: { date: string; score: number; visibilityRate: number }[];
   competitors: { name: string; mentions: number }[];
   lastRun: Tables<"runs"> | null;
 }> {
-  const { data: all, error: metricsError } = await supabase
-    .from("daily_metrics").select("*").eq("project_id", projectId).is("prompt_id", null).order("date");
-  if (metricsError) throw new Error(`Nie udało się pobrać metryk: ${metricsError.message}`);
-
-  const { data: lastRun, error: runError } = await supabase
-    .from("runs").select("*").eq("project_id", projectId).order("started_at", { ascending: false }).limit(1).maybeSingle();
-  if (runError) throw new Error(`Nie udało się pobrać ostatniego runu: ${runError.message}`);
-
-  let mentions: { brand_name: string }[] = [];
-  if (lastRun) {
-    const { data, error: mentionsError } = await supabase
-      .from("mentions").select("brand_name, response_id, responses!inner(run_id)")
-      .eq("project_id", projectId).eq("responses.run_id", lastRun.id);
-    if (mentionsError) throw new Error(`Nie udało się pobrać wzmianek: ${mentionsError.message}`);
-    mentions = data ?? [];
-  }
-
-  return { ...shapeOverview(all ?? [], mentions), lastRun: lastRun ?? null };
+  const [{ latest, byEngine }, trend, lastRun] = await Promise.all([
+    getLatestMetrics(projectId), getTrend(projectId), getLastRun(projectId),
+  ]);
+  const competitors = lastRun ? await getMentionCounts(projectId, lastRun.id) : [];
+  return { latest, byEngine, trend, competitors, lastRun };
 }
