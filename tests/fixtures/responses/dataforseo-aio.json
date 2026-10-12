@@ -1,0 +1,24 @@
+{
+  "status_code": 20000, "cost": 0.004,
+  "tasks": [{
+    "result": [{
+      "keyword": "najlepsze szkolenia AI dla firm", "type": "organic",
+      "items": [
+        { "type": "organic", "rank_absolute": 1, "url": "https://example.pl/" },
+        {
+          "type": "ai_overview", "rank_absolute": 0, "asynchronous_ai_overview": true,
+          "markdown": "Najlepsze szkolenia AI dla firm w Polsce oferują m.in. **Polska Szkoła AI** oraz Akademia AI.",
+          "items": [
+            { "type": "ai_overview_element", "title": null, "text": "Polska Szkoła AI prowadzi warsztaty dla firm.", "markdown": "Polska Szkoła AI prowadzi warsztaty dla firm.",
+              "links": [{ "title": "PSAI dla firm", "url": "https://polskaszkola.ai/dla-firm", "domain": "polskaszkola.ai" }],
+              "references": [] }
+          ],
+          "references": [
+            { "type": "ai_overview_reference", "source": "polskaszkola.ai", "domain": "polskaszkola.ai", "url": "https://polskaszkola.ai/dla-firm", "title": "PSAI dla firm", "text": "…" },
+            { "type": "ai_overview_reference", "source": "akademia-ai.pl", "domain": "akademia-ai.pl", "url": "https://www.akademia-ai.pl/", "title": "Akademia AI", "text": "…" }
+          ]
+        }
+      ]
+    }]
+  }]
+}

@@ -1,0 +1,1 @@
+{ "status_code": 20000, "cost": 0.002, "tasks": [{ "result": [{ "keyword": "x", "type": "organic", "items": [{ "type": "organic", "rank_absolute": 1, "url": "https://example.pl/" }] }] }] }

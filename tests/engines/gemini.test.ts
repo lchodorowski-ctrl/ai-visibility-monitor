@@ -18,6 +18,7 @@ describe("gemini adapter", () => {
 
   it("parseGeminiResponse: bez output_text składa tekst ze steps", async () => {
     const { parseGeminiResponse } = await import("@/lib/engines/gemini");
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructure only to drop output_text
     const { output_text: _omit, ...noText } = fixture;
     expect(parseGeminiResponse(noText).text).toContain("Akademia AI");
   });
