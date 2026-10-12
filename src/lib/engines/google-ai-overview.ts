@@ -23,9 +23,16 @@ export function parseDataForSeoResponse(raw: unknown): { text: string; citations
   pushRefs(aio.references, citations);
   const parts: string[] = [];
   if (typeof aio.markdown === "string" && aio.markdown.trim()) parts.push(aio.markdown.trim());
+  const useElementText = parts.length === 0;
   for (const el of (aio.items ?? []) as AnyRecord[]) {
-    const t = (el.markdown ?? el.text) as string | undefined;
-    if (t && !parts.length) parts.push(String(t));
+    if (useElementText) {
+      for (const candidate of [el.markdown, el.text]) {
+        if (typeof candidate === "string" && candidate.trim()) {
+          parts.push(candidate.trim());
+          break;
+        }
+      }
+    }
     pushRefs(el.references, citations);
     pushRefs(el.links, citations);
   }
@@ -38,9 +45,11 @@ export const googleAiOverviewAdapter: EngineAdapter = {
   async query(prompt): Promise<EngineResult> {
     const login = process.env.DATAFORSEO_LOGIN, password = process.env.DATAFORSEO_PASSWORD;
     if (!login || !password) throw new Error("Brak DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD");
+    const parsedLocation = Number(process.env.DATAFORSEO_LOCATION_CODE);
+    const location_code = Number.isInteger(parsedLocation) && parsedLocation > 0 ? parsedLocation : 2616;
     const body = [{
       keyword: prompt.slice(0, 700),
-      location_code: Number(process.env.DATAFORSEO_LOCATION_CODE ?? 2616),
+      location_code,
       language_code: "pl",
       device: "desktop",
       load_async_ai_overview: true,

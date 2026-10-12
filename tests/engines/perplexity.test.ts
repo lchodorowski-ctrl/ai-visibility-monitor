@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import fixture from "../fixtures/responses/perplexity.json";
 
 describe("perplexity adapter", () => {
   beforeEach(() => { process.env.PERPLEXITY_API_KEY = "test"; });
+  afterEach(() => vi.unstubAllGlobals());
 
   it("parsePerplexityResponse łączy tekst i search_results", async () => {
     const { parsePerplexityResponse } = await import("@/lib/engines/perplexity");
@@ -21,13 +22,11 @@ describe("perplexity adapter", () => {
     expect(init.headers.Authorization).toBe("Bearer test");
     expect(JSON.parse(init.body)).toEqual({ preset: "fast", input: "Pytanie" });
     expect(res.citations).toHaveLength(2);
-    vi.unstubAllGlobals();
   });
 
   it("rzuca czytelny błąd przy HTTP 429", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("rate limited", { status: 429 })));
     const { perplexityAdapter } = await import("@/lib/engines/perplexity");
     await expect(perplexityAdapter.query("x", { locale: "pl-PL", country: "PL" })).rejects.toThrow(/429/);
-    vi.unstubAllGlobals();
   });
 });

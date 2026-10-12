@@ -6,7 +6,7 @@ import { ENGINE_COST_USD } from "./costs";
 type AnyRecord = Record<string, unknown>;
 
 export function parseGeminiResponse(raw: unknown): { text: string; citations: Citation[] } {
-  const r = raw as AnyRecord;
+  const r = (raw as AnyRecord | null) ?? {};
   const texts: string[] = [];
   const citations: Citation[] = [];
   for (const step of (r.steps ?? []) as AnyRecord[]) {

@@ -50,4 +50,32 @@ describe("google ai overview adapter", () => {
     const { googleAiOverviewAdapter } = await import("@/lib/engines/google-ai-overview");
     await expect(googleAiOverviewAdapter.query("x", { locale: "pl-PL", country: "PL" })).rejects.toThrow(/task 40501: Invalid Field/);
   });
+
+  it("parse: bez top-level markdown składa tekst ze wszystkich elementów", async () => {
+    const { parseDataForSeoResponse } = await import("@/lib/engines/google-ai-overview");
+    const variant = {
+      status_code: 20000,
+      tasks: [{ result: [{ items: [{
+        type: "ai_overview",
+        items: [
+          { type: "ai_overview_element", markdown: "", text: "Pierwszy element." },
+          { type: "ai_overview_element", markdown: "Drugi element.", text: "ignorowany" },
+        ],
+        references: [],
+      }] }] }],
+    };
+    const r = parseDataForSeoResponse(variant);
+    expect(r.noAnswer).toBe(false);
+    expect(r.text).toContain("Pierwszy element.");
+    expect(r.text).toContain("Drugi element.");
+  });
+
+  it("niepoprawny DATAFORSEO_LOCATION_CODE → fallback 2616", async () => {
+    process.env.DATAFORSEO_LOCATION_CODE = "abc";
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(withAio), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { googleAiOverviewAdapter } = await import("@/lib/engines/google-ai-overview");
+    await googleAiOverviewAdapter.query("x", { locale: "pl-PL", country: "PL" });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)[0].location_code).toBe(2616);
+  });
 });

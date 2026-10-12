@@ -11,8 +11,9 @@ describe("gemini adapter", () => {
 
   it("parseGeminiResponse: tekst z output_text, cytowania z annotations", async () => {
     const { parseGeminiResponse } = await import("@/lib/engines/gemini");
-    const r = parseGeminiResponse(fixture);
-    expect(r.text).toContain("Polska Szkoła AI");
+    const withOutputText = { ...fixture, output_text: `${fixture.output_text} (output_text)` };
+    const r = parseGeminiResponse(withOutputText);
+    expect(r.text).toBe(withOutputText.output_text);
     expect(r.citations.map((c) => c.domain)).toEqual(["polskaszkola.ai", "akademia-ai.pl"]);
   });
 
@@ -21,6 +22,11 @@ describe("gemini adapter", () => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructure only to drop output_text
     const { output_text: _omit, ...noText } = fixture;
     expect(parseGeminiResponse(noText).text).toContain("Akademia AI");
+  });
+
+  it("parseGeminiResponse: null → pusty wynik", async () => {
+    const { parseGeminiResponse } = await import("@/lib/engines/gemini");
+    expect(parseGeminiResponse(null)).toEqual({ text: "", citations: [] });
   });
 
   it("query używa google_search i zwraca EngineResult", async () => {
