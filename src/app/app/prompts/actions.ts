@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getCurrentProject } from "@/lib/workspace";
@@ -58,27 +59,34 @@ export async function deletePrompt(formData: FormData) {
   revalidatePath("/app/prompts");
 }
 
-export async function generateProposals(formData: FormData): Promise<PromptProposal[]> {
+export type GenerateResult = { ok: true; proposals: PromptProposal[] } | { ok: false; error: string };
+
+export async function generateProposals(formData: FormData): Promise<GenerateResult> {
   const project = await getCurrentProject();
   const supabase = await createServerSupabase();
   const { data: topics, error } = await supabase.from("topics").select("name").eq("project_id", project.id);
   if (error) throw new Error(error.message);
   const count = Math.min(50, Math.max(1, Math.trunc(Number(formData.get("count") ?? 15)) || 15));
-  return generatePromptProposals({
-    brandName: project.brand_name,
-    facts: project.facts as Record<string, unknown>,
-    topics: (topics ?? []).map((t) => t.name),
-    seedPhrases: parseList(String(formData.get("seed") ?? "")),
-    personas: parseList(String(formData.get("personas") ?? "")),
-    count,
-  });
+  try {
+    const proposals = await generatePromptProposals({
+      brandName: project.brand_name,
+      facts: project.facts as Record<string, unknown>,
+      topics: (topics ?? []).map((t) => t.name),
+      seedPhrases: parseList(String(formData.get("seed") ?? "")),
+      personas: parseList(String(formData.get("personas") ?? "")),
+      count,
+    });
+    return { ok: true, proposals };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 export async function acceptProposals(formData: FormData) {
   const project = await getCurrentProject();
   const supabase = await createServerSupabase();
   const selected = formData.getAll("selected").map((v) => Proposal.parse(JSON.parse(String(v))));
-  if (!selected.length) return;
+  if (!selected.length) redirect("/app/prompts");
   const { data: existing, error: topicsError } = await supabase.from("topics").select("id, name").eq("project_id", project.id);
   if (topicsError) throw new Error(topicsError.message);
   const topicIds = new Map((existing ?? []).map((t) => [t.name, t.id]));
@@ -94,4 +102,5 @@ export async function acceptProposals(formData: FormData) {
   })));
   if (error) throw new Error(error.message);
   revalidatePath("/app/prompts");
+  redirect("/app/prompts");
 }

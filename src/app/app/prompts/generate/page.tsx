@@ -18,10 +18,17 @@ export default function GeneratePage() {
       <h1 className="text-xl font-semibold">Generator promptów</h1>
       <form
         className="grid gap-2 text-sm"
-        action={(fd) => start(async () => {
-          setError(null);
-          try { setProposals(await generateProposals(fd)); } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
-        })}
+        onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          start(async () => {
+            setError(null);
+            try {
+              const res = await generateProposals(fd);
+              if (res.ok) setProposals(res.proposals); else setError(res.error);
+            } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
+          });
+        }}
       >
         <Input name="seed" placeholder="Frazy seed (po przecinku): szkolenia AI, kurs ChatGPT" aria-label="Frazy seed" />
         <Input name="personas" placeholder="Persony (po przecinku): HR manager, CEO MŚP, nauczyciel" aria-label="Persony" />
