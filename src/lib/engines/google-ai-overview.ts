@@ -1,6 +1,7 @@
 import type { EngineAdapter, EngineResult, Citation } from "./types";
 import { toCitation, dedupeCitations } from "./domain";
 import { ENGINE_COST_USD } from "./costs";
+import { withRetry, TransientError, isTransientStatus } from "./retry";
 
 type AnyRecord = Record<string, unknown>;
 const ENDPOINT = "https://api.dataforseo.com/v3/serp/google/organic/live/advanced";
@@ -54,21 +55,31 @@ export const googleAiOverviewAdapter: EngineAdapter = {
       device: "desktop",
       load_async_ai_overview: true,
     }];
-    const res = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${login}:${password}`).toString("base64")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
+    const raw = await withRetry(async () => {
+      const res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${login}:${password}`).toString("base64")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const message = `DataForSEO HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`;
+        throw isTransientStatus(res.status) ? new TransientError(message) : new Error(message);
+      }
+      const data = (await res.json()) as AnyRecord;
+      if (data.status_code !== 20000) throw new Error(`DataForSEO status ${data.status_code}: ${data.status_message}`);
+      const taskStatus = ((data.tasks as AnyRecord[])?.[0]?.status_code) as number | undefined;
+      if (taskStatus === 40101) {
+        // Błąd serwera po stronie DataForSEO (przejściowy) — ponawiamy.
+        throw new TransientError(`DataForSEO task ${taskStatus}: ${(data.tasks as AnyRecord[])[0].status_message}`);
+      }
+      if (taskStatus && taskStatus !== 20000) {
+        throw new Error(`DataForSEO task ${taskStatus}: ${(data.tasks as AnyRecord[])[0].status_message}`);
+      }
+      return data;
     });
-    if (!res.ok) throw new Error(`DataForSEO HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
-    const raw = (await res.json()) as AnyRecord;
-    if (raw.status_code !== 20000) throw new Error(`DataForSEO status ${raw.status_code}: ${raw.status_message}`);
-    const taskStatus = ((raw.tasks as AnyRecord[])?.[0]?.status_code) as number | undefined;
-    if (taskStatus && taskStatus !== 20000) {
-      throw new Error(`DataForSEO task ${taskStatus}: ${(raw.tasks as AnyRecord[])[0].status_message}`);
-    }
     const { text, citations, noAnswer } = parseDataForSeoResponse(raw);
     const cost = typeof raw.cost === "number" ? raw.cost : ENGINE_COST_USD.google_ai_overview;
     return { text, citations, raw, model: "google_ai_overview", costUsd: cost, noAnswer };

@@ -43,3 +43,8 @@ yarn-error.log*
 next-env.d.ts
 
 !.env.example
+
+# Trigger.dev local cache
+.trigger/
+# Supabase Studio saved snippets (local)
+supabase/snippets/

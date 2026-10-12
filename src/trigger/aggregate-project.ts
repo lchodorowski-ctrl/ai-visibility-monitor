@@ -22,24 +22,22 @@ export const aggregateProject = task({
     if (runsError) throw new Error(runsError.message);
     const runIds = (dayRuns ?? []).map((r) => r.id);
     console.log(`aggregate-project: ${payload.date}, run ${payload.runId}, runów z dnia: ${runIds.length}`);
+    // Wzmianki i cytowania pobieramy przez relację (embedded select), a nie przez `.in(ids)` —
+    // lista id odpowiedzi w URL rosła z każdym runem dnia i przekraczała limit długości URI.
     const { data: responses, error } = await admin
-      .from("responses").select("id, prompt_id, engine_id, no_answer, error").in("run_id", runIds);
+      .from("responses")
+      .select("id, prompt_id, engine_id, no_answer, error, mentions(brand_kind, position), citations(is_own)")
+      .in("run_id", runIds)
+      .limit(5000);
     if (error) throw new Error(error.message);
-    const ids = (responses ?? []).map((r) => r.id);
-    const [{ data: mentions, error: mentionsError }, { data: citations, error: citationsError }] = await Promise.all([
-      admin.from("mentions").select("response_id, brand_kind, position").in("response_id", ids),
-      admin.from("citations").select("response_id, is_own").in("response_id", ids),
-    ]);
-    if (mentionsError) throw new Error(mentionsError.message);
-    if (citationsError) throw new Error(citationsError.message);
     const facts: ResponseFacts[] = (responses ?? []).map((r) => {
-      const ms = (mentions ?? []).filter((m) => m.response_id === r.id);
+      const ms = r.mentions ?? [];
       const own = ms.find((m) => m.brand_kind === "own");
       return {
         promptId: r.prompt_id, engineId: r.engine_id,
         noAnswer: r.no_answer, error: Boolean(r.error),
         ownMentioned: Boolean(own), ownPosition: own?.position ?? null,
-        ownCited: (citations ?? []).some((c) => c.response_id === r.id && c.is_own),
+        ownCited: (r.citations ?? []).some((c) => c.is_own),
         brandsMentioned: ms.length,
       };
     });

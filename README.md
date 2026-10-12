@@ -21,7 +21,7 @@ cp .env.example .env.local
 ```
 
 1. Uzupełnij `.env.local`. Wartości `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` i `SUPABASE_SERVICE_ROLE_KEY` weź z `npx supabase status`. Klucze silników, Anthropic i Trigger.dev (`TRIGGER_SECRET_KEY`, `TRIGGER_PROJECT_REF`) pochodzą z paneli odpowiednich usług. `CRON_SECRET` ustaw na dowolny losowy ciąg.
-2. W Supabase Studio (`http://127.0.0.1:54323`, Authentication → Users) dodaj użytkownika z e-mailem i hasłem.
+2. W Supabase Studio (`http://127.0.0.1:64323`, Authentication → Users) dodaj użytkownika z e-mailem i hasłem.
 3. Przypisz go do organizacji z seedu (w SQL Editorze), podstawiając `id` użytkownika z `auth.users`:
 
    ```sql
@@ -44,7 +44,7 @@ Opcjonalnie:
 
 ```bash
 # test RLS na żywej lokalnej bazie (bez SUPABASE_DB_URL ten test jest pomijany)
-SUPABASE_DB_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres npm test -- tests/db
+SUPABASE_DB_URL=postgresql://postgres:postgres@127.0.0.1:64322/postgres npm test -- tests/db
 
 # pojedyncze zapytanie do wybranego silnika (openai | perplexity | gemini | google_ai_overview), czyta .env.local
 npm run try:engine -- openai "pytanie"

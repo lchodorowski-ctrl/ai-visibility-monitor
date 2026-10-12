@@ -25,7 +25,7 @@ describe("perplexity adapter", () => {
   });
 
   it("rzuca czytelny błąd przy HTTP 429", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("rate limited", { status: 429 })));
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => new Response("rate limited", { status: 429 })));
     const { perplexityAdapter } = await import("@/lib/engines/perplexity");
     await expect(perplexityAdapter.query("x", { locale: "pl-PL", country: "PL" })).rejects.toThrow(/429/);
   });

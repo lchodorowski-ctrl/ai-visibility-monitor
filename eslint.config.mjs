@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Lokalne katalogi robocze (build Trigger.dev, ledger SDD) — lintowanie ich trwało kilkanaście minut.
+    ".trigger/**",
+    ".superpowers/**",
   ]),
 ]);
 

@@ -1,6 +1,7 @@
 import type { EngineAdapter, EngineResult, Citation } from "./types";
 import { toCitation, dedupeCitations } from "./domain";
 import { ENGINE_COST_USD } from "./costs";
+import { withRetry, TransientError, isTransientStatus } from "./retry";
 
 type AnyRecord = Record<string, unknown>;
 const ENDPOINT = "https://api.perplexity.ai/v1/agent";
@@ -31,13 +32,18 @@ export const perplexityAdapter: EngineAdapter = {
     const key = process.env.PERPLEXITY_API_KEY;
     if (!key) throw new Error("Brak PERPLEXITY_API_KEY");
     const preset = process.env.PERPLEXITY_PRESET ?? "fast";
-    const res = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ preset, input: prompt }),
+    const raw = await withRetry(async () => {
+      const res = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ preset, input: prompt }),
+      });
+      if (!res.ok) {
+        const message = `Perplexity HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`;
+        throw isTransientStatus(res.status) ? new TransientError(message) : new Error(message);
+      }
+      return (await res.json()) as AnyRecord;
     });
-    if (!res.ok) throw new Error(`Perplexity HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
-    const raw = (await res.json()) as AnyRecord;
     const { text, citations } = parsePerplexityResponse(raw);
     return {
       text, citations, raw,

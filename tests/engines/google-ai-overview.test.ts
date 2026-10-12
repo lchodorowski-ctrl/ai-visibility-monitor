@@ -39,7 +39,7 @@ describe("google ai overview adapter", () => {
   });
 
   it("rzuca błąd z kodem HTTP przy !res.ok", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("boom", { status: 500 })));
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => new Response("boom", { status: 500 })));
     const { googleAiOverviewAdapter } = await import("@/lib/engines/google-ai-overview");
     await expect(googleAiOverviewAdapter.query("x", { locale: "pl-PL", country: "PL" })).rejects.toThrow(/HTTP 500: boom/);
   });

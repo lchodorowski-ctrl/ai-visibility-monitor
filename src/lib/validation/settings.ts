@@ -22,8 +22,12 @@ export const ProjectSettingsSchema = z.object({
   domains: domainsField,
   monthly_budget_usd: z.coerce.number().min(0, "Budżet nie może być ujemny"),
   facts: z.string().default("{}").transform((s, ctx) => {
-    try { return JSON.parse(s) as Json; }
-    catch { ctx.addIssue({ code: "custom", message: "Karta faktów musi być poprawnym JSON" }); return z.NEVER; }
+    try {
+      const parsed: unknown = JSON.parse(s);
+      if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as NonNullable<Json>;
+    } catch { /* niżej: błąd walidacji */ }
+    ctx.addIssue({ code: "custom", message: "Karta faktów musi być poprawnym JSON (obiekt)" });
+    return z.NEVER;
   }),
 });
 
