@@ -6,7 +6,7 @@
 
 **Architecture:** Next.js (App Router, `src/`) + Supabase (Postgres z RLS, Auth) + Trigger.dev (zadania w tle: orkiestrator `run-project` → fan-out `query-engine` → agregacja). Adaptery silników mają wspólny interfejs `EngineAdapter`; ekstrakcja wzmianek jest regułowa (aliasy marek), sentyment przez Claude Haiku. Multi-tenant od początku: `organizations → projects`.
 
-**Tech Stack:** TypeScript, Next.js ≥ 15 (App Router), Tailwind, Supabase (`@supabase/supabase-js`, `@supabase/ssr`), Trigger.dev SDK v4, Vitest, Zod, `openai`, `@google/genai`, `@anthropic-ai/sdk`, Recharts.
+**Tech Stack:** TypeScript, Next.js ≥ 15 (App Router), Tailwind + shadcn/ui, Supabase (`@supabase/supabase-js`, `@supabase/ssr`), Trigger.dev SDK v4, Vitest, Zod, `openai`, `@google/genai`, `@anthropic-ai/sdk`, Recharts.
 
 **Spec:** `docs/superpowers/specs/2026-10-12-ai-visibility-monitor-design.md`
 
@@ -21,6 +21,7 @@
 - Odpowiedzi bez AI Overview (Google nie pokazał AIO) zapisywane z `no_answer = true` i **wyłączane z mianownika** metryk.
 - Dopasowanie marek: bez rozróżniania wielkości liter i **bez polskich znaków diakrytycznych** (NFD + usunięcie znaków łączących), granice słów unicode.
 - Sekrety tylko w env (`.env.local`, Vercel, Trigger.dev); `.env.example` bez wartości.
+- **UI: Tailwind + shadcn/ui.** Formularze, przyciski, tabele, karty i odznaki budujemy z komponentów shadcn (`@/components/ui/*`: `Button`, `Input`, `Label`, `Textarea`, `Select`, `Checkbox`, `Card`, `Table`, `Badge`, `Switch`). Kod JSX w zadaniach UI pokazuje strukturę i zachowanie; implementer zastępuje surowe elementy (`<button className=…>`, `<input className=…>`, `<table>`) odpowiednikami shadcn, zachowując nazwy pól formularzy, akcje i teksty. Bez innych bibliotek komponentów.
 
 ## Review Focus
 
@@ -85,7 +86,9 @@
 │   │   ├── run-project.ts
 │   │   ├── query-engine.ts
 │   │   └── aggregate-project.ts
-│   └── components/                  # małe komponenty UI (Card, Table, Heatmap, TrendChart)
+│   └── components/
+│       ├── ui/                      # shadcn/ui (generowane przez `npx shadcn add`)
+│       └── *.tsx                    # StatCard, TrendChart, RunStatus, Heatmap, HighlightedText
 └── tests/
     ├── fixtures/responses/*.json    # zapisane odpowiedzi API do testów adapterów i ekstraktora
     ├── engines/*.test.ts
@@ -121,6 +124,14 @@ Jeśli kreator pyta o React Compiler lub Turbopack, odpowiedz „No”. Jeśli o
 npm i @supabase/supabase-js @supabase/ssr zod @trigger.dev/sdk openai @google/genai @anthropic-ai/sdk recharts
 npm i -D vitest @vitejs/plugin-react vite-tsconfig-paths supabase
 ```
+
+- [ ] **Step 2b: shadcn/ui**
+
+```bash
+npx shadcn@latest init -d
+npx shadcn@latest add button input label textarea select checkbox card table badge switch
+```
+`-d` przyjmuje domyślne ustawienia (styl, kolor bazowy, zmienne CSS). Komponenty lądują w `src/components/ui/`. Sprawdź, że `src/app/globals.css` zawiera zmienne shadcn, a `npm run build` przechodzi.
 
 - [ ] **Step 3: Konfiguracja Vitest**
 
@@ -184,7 +195,7 @@ Expected: build OK, lint bez błędów, 1 test passed.
 
 ```bash
 git add -A
-git commit -m "chore: scaffold Next.js app with Vitest"
+git commit -m "chore: scaffold Next.js app with Tailwind, shadcn/ui and Vitest"
 ```
 
 ---
