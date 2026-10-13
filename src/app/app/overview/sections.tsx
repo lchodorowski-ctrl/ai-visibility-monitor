@@ -73,7 +73,7 @@ export async function MentionsSection({ projectId, brandName }: { projectId: str
   );
 }
 
-export async function TopRecommendationSlot({ projectId }: { projectId: string }) {
+export async function TopRecommendationSlot({ projectId, siteUrl }: { projectId: string; siteUrl: string }) {
   const supabase = await createServerSupabase();
   const top = await getTopRecommendation(supabase, projectId);
   return (
@@ -81,7 +81,7 @@ export async function TopRecommendationSlot({ projectId }: { projectId: string }
       <SectionHead title="Najważniejsza rekomendacja"
         actions={<Link href="/app/recommendations" className="text-sm text-t1 underline-offset-4 hover:text-t0 hover:underline">Wszystkie rekomendacje →</Link>} />
       {top
-        ? <RecommendationCard r={top} inverse />
+        ? <RecommendationCard r={top} siteUrl={siteUrl} inverse />
         : <EmptyState title="Brak otwartych rekomendacji" description="Nowe pojawią się po następnym pomiarze albo po kliknięciu Odśwież na stronie Rekomendacje." />}
     </section>
   );

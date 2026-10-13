@@ -26,7 +26,7 @@ export default async function OverviewPage() {
       <Suspense fallback={<div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4"><TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton /></div>}>
         <StatsSection projectId={project.id} />
       </Suspense>
-      <Suspense fallback={null}><TopRecommendationSlot projectId={project.id} /></Suspense>
+      <Suspense fallback={null}><TopRecommendationSlot projectId={project.id} siteUrl={project.site_url} /></Suspense>
       <Suspense fallback={<TileSkeleton lines={6} />}><TrendSection projectId={project.id} /></Suspense>
       <Suspense fallback={<div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4"><TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton /></div>}>
         <EnginesSection projectId={project.id} />

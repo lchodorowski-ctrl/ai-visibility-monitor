@@ -7,6 +7,9 @@ vi.mock("@/app/app/recommendations/actions", () => ({ setRecommendationStatus: a
 import { RecommendationCard } from "@/app/app/recommendations/RecommendationCard";
 import { StatusForm } from "@/app/app/recommendations/StatusForm";
 import type { RecommendationRow } from "@/lib/recommend/queries";
+import { resolveTargetUrl } from "@/lib/recommend/target-url";
+
+const SITE = "https://www.polskaszkola.ai";
 
 const base = {
   id: "11111111-1111-4111-8111-111111111111", project_id: "p", prompt_id: "q", run_id: null, type: "content_new",
@@ -18,7 +21,7 @@ const base = {
 
 describe("RecommendationCard", () => {
   it("pokazuje typ, tytuł, priorytet, wysiłek, pytanie i link zewnętrzny", () => {
-    const html = renderToStaticMarkup(<RecommendationCard r={base} />);
+    const html = renderToStaticMarkup(<RecommendationCard r={base} siteUrl={SITE} />);
     expect(html).toContain("Nowa treść");
     expect(html).toContain("Opublikuj stronę o szkoleniach AI dla firm");
     expect(html).toContain("priorytet wysoki");
@@ -29,19 +32,40 @@ describe("RecommendationCard", () => {
     expect(html).toContain(`href="/app/recommendations/${base.id}"`);
     expect(html).not.toContain("bg-ink");
   });
-  it("wewnętrzny target_url to zwykły link, a priority null liczy się z impact i effort", () => {
-    const html = renderToStaticMarkup(<RecommendationCard r={{ ...base, target_url: "/llms.txt", priority: null, impact: 1, effort: 5, prompts: null }} />);
-    expect(html).toContain('href="/llms.txt"');
-    expect(html).not.toContain("noreferrer");
+  it("ścieżka w target_url prowadzi na stronę marki (site_url), nie do aplikacji; priority null liczy się z impact i effort", () => {
+    const html = renderToStaticMarkup(<RecommendationCard r={{ ...base, target_url: "/llms.txt", priority: null, impact: 1, effort: 5, prompts: null }} siteUrl={SITE} />);
+    expect(html).toContain('href="https://www.polskaszkola.ai/llms.txt"');
+    expect(html).not.toContain('href="/llms.txt"');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noreferrer"');
+    expect(html).toContain(">/llms.txt<");
     expect(html).toContain("priorytet niski");
     expect(html).toContain("wysiłek duży");
     expect(html).not.toContain("Pytanie:");
   });
   it("wersja odwrócona używa tła ink", () => {
-    expect(renderToStaticMarkup(<RecommendationCard r={base} inverse />)).toContain("bg-ink");
+    expect(renderToStaticMarkup(<RecommendationCard r={base} siteUrl={SITE} inverse />)).toContain("bg-ink");
   });
   it("odrzucona pokazuje status na czerwono", () => {
-    expect(renderToStaticMarkup(<RecommendationCard r={{ ...base, status: "dismissed" }} />)).toContain("text-red");
+    expect(renderToStaticMarkup(<RecommendationCard r={{ ...base, status: "dismissed" }} siteUrl={SITE} />)).toContain("text-red");
+  });
+});
+
+describe("resolveTargetUrl", () => {
+  it("rozwiązuje ścieżkę względem site_url, zostawia http(s), uzupełnia samą domenę", () => {
+    expect(resolveTargetUrl("/szkolenia-ai", "https://staging.example.netlify.app/")).toBe("https://staging.example.netlify.app/szkolenia-ai");
+    expect(resolveTargetUrl("https://parp.gov.pl/kurs", SITE)).toBe("https://parp.gov.pl/kurs");
+    expect(resolveTargetUrl("parp.gov.pl/kurs", SITE)).toBe("https://parp.gov.pl/kurs");
+  });
+  it("nie robi linku z //host, „TBD” ani javascript:", () => {
+    expect(resolveTargetUrl("//evil.example/x", SITE)).toBeNull();
+    expect(resolveTargetUrl("TBD", SITE)).toBeNull();
+    expect(resolveTargetUrl("javascript:alert(1)", SITE)).toBeNull();
+  });
+  it("niepoprawny target_url jest pokazany jako tekst, bez linku", () => {
+    const html = renderToStaticMarkup(<RecommendationCard r={{ ...base, target_url: "TBD" }} siteUrl={SITE} />);
+    expect(html).toContain(">TBD<");
+    expect(html).not.toContain('href="TBD"');
   });
 });
 

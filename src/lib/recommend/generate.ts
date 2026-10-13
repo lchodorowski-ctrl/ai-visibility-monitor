@@ -3,6 +3,9 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import type { RecommendationInput } from "./input";
 import { createAnthropic } from "@/lib/anthropic";
+import { isConcreteUrl, normalizeTargetUrl } from "./target-url";
+
+export { normalizeTargetUrl };
 
 export const RecommendationSchema = z.object({
   type: z.enum(["content_new", "content_improve", "offsite", "technical", "fact_fix"]),
@@ -41,19 +44,6 @@ Zasady:
 - impact 1–5 (jak bardzo zwiększy widoczność przy tym pytaniu), effort 1–5 (ile pracy).`;
 
 const URL_REASON = "target_url musi być ścieżką (/…) lub adresem http(s)";
-// "//host/x" is protocol-relative (another host), not a site path.
-const isConcreteUrl = (u: string | null): boolean => {
-  const t = u?.trim() ?? "";
-  return (t.startsWith("/") && !t.startsWith("//")) || /^https?:\/\/\S+/i.test(t);
-};
-
-const BARE_DOMAIN = /^[a-z0-9.-]+\.[a-z]{2,}(\/.*)?$/i;
-/** Trims target_url and turns a bare domain ("parp.gov.pl/kurs") into a full https URL; other values are returned trimmed. */
-export function normalizeTargetUrl(u: string | null): string | null {
-  if (u == null) return null;
-  const t = u.trim();
-  return BARE_DOMAIN.test(t) ? `https://${t}` : t;
-}
 
 export function validateConcreteness(raw: GeneratedRecommendation): string | null {
   const r = { ...raw, target_url: normalizeTargetUrl(raw.target_url) };

@@ -58,7 +58,7 @@ export default async function RecommendationPage({ params }: { params: Promise<{
           <Meta className="text-bg/70">priorytet {priorityLabel(priorityOf(r))} · wysiłek {effortLabel(r.effort)} · {(STATUS_LABEL[status] ?? r.status).toLowerCase()}</Meta>
         </div>
         <h1 className="mt-3 text-[clamp(26px,3.4vw,36px)] font-semibold leading-[1.15]">{r.title}</h1>
-        {r.target_url && <div className="mt-3"><TargetUrl url={r.target_url} inverse /></div>}
+        {r.target_url && <div className="mt-3"><TargetUrl url={r.target_url} siteUrl={project.site_url} inverse /></div>}
         {r.prompts?.text && <Meta className="mt-4 block normal-case tracking-normal text-bg/70">Pytanie: {r.prompts.text}</Meta>}
       </Tile>
 
