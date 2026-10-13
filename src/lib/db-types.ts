@@ -235,14 +235,14 @@ isOneToOne: false
                   ]
                 },"recommendations": {
                   Row: {
-                    "action_steps": NonNullable<Json>,"created_at": string,"effort": number,"evidence": NonNullable<Json>,"fingerprint": string,"id": string,"impact": number,"priority": number | null,"project_id": string,"prompt_id": string | null,"run_id": string | null,"status": string,"suggested_outline": Json | null,"summary": string,"target_url": string | null,"title": string,"type": string,"updated_at": string
+                    "action_steps": NonNullable<Json>,"created_at": string,"effort": number,"evidence": NonNullable<Json>,"fingerprint": string,"id": string,"impact": number,"priority": number | null,"project_id": string,"prompt_id": string | null,"rationale": string | null,"run_id": string | null,"status": string,"suggested_outline": Json | null,"summary": string,"target_url": string | null,"title": string,"type": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "action_steps"?: NonNullable<Json>,"created_at"?: string,"effort": number,"evidence"?: NonNullable<Json>,"fingerprint": string,"id"?: string,"impact": number,"priority"?: never,"project_id": string,"prompt_id"?: string | null,"run_id"?: string | null,"status"?: string,"suggested_outline"?: Json | null,"summary": string,"target_url"?: string | null,"title": string,"type": string,"updated_at"?: string
+                    "action_steps"?: NonNullable<Json>,"created_at"?: string,"effort": number,"evidence"?: NonNullable<Json>,"fingerprint": string,"id"?: string,"impact": number,"priority"?: never,"project_id": string,"prompt_id"?: string | null,"rationale"?: string | null,"run_id"?: string | null,"status"?: string,"suggested_outline"?: Json | null,"summary": string,"target_url"?: string | null,"title": string,"type": string,"updated_at"?: string
                   }
                   Update: {
-                    "action_steps"?: NonNullable<Json>,"created_at"?: string,"effort"?: number,"evidence"?: NonNullable<Json>,"fingerprint"?: string,"id"?: string,"impact"?: number,"priority"?: never,"project_id"?: string,"prompt_id"?: string | null,"run_id"?: string | null,"status"?: string,"suggested_outline"?: Json | null,"summary"?: string,"target_url"?: string | null,"title"?: string,"type"?: string,"updated_at"?: string
+                    "action_steps"?: NonNullable<Json>,"created_at"?: string,"effort"?: number,"evidence"?: NonNullable<Json>,"fingerprint"?: string,"id"?: string,"impact"?: number,"priority"?: never,"project_id"?: string,"prompt_id"?: string | null,"rationale"?: string | null,"run_id"?: string | null,"status"?: string,"suggested_outline"?: Json | null,"summary"?: string,"target_url"?: string | null,"title"?: string,"type"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {

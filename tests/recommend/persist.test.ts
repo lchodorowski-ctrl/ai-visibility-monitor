@@ -21,6 +21,7 @@ describe("upsertRecommendations", () => {
     const r = await upsertRecommendations(client, "proj", "run", "p1", [item], ev);
     expect(r).toEqual({ inserted: 1, merged: 0 });
     expect((inserted[0] as { fingerprint: string }).fingerprint).toBe(fingerprint("offsite", item.title));
+    expect((inserted[0] as { rationale: string }).rationale).toBe(item.rationale_pl);
   });
   it("scala z istniejącą: łączy evidence, zachowuje status, bierze max impact/effort", async () => {
     const fp = fingerprint("offsite", item.title);
@@ -30,6 +31,7 @@ describe("upsertRecommendations", () => {
     expect(updated[0].id).toBe("r1");
     expect((updated[0].patch.evidence as { prompt_ids: string[] }).prompt_ids).toEqual(["p0", "p1"]);
     expect(updated[0].patch.status).toBeUndefined();
+    expect(updated[0].patch.rationale).toBe(item.rationale_pl);
     expect(updated[0].patch.impact).toBe(4); expect(updated[0].patch.effort).toBe(5);
   });
 });

@@ -65,7 +65,7 @@ export default async function RecommendationPage({ params }: { params: Promise<{
       <div className="grid gap-6 md:grid-cols-2">
         <Tile>
           <SectionHead title="Dlaczego" />
-          <p className="text-t1">{r.summary}</p>
+          <p className="text-t1">{r.rationale ?? r.summary}</p>
         </Tile>
         <Tile>
           <SectionHead title="Kroki" />

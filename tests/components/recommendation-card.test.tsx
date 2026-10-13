@@ -11,7 +11,7 @@ import type { RecommendationRow } from "@/lib/recommend/queries";
 const base = {
   id: "11111111-1111-4111-8111-111111111111", project_id: "p", prompt_id: "q", run_id: null, type: "content_new",
   title: "Opublikuj stronę o szkoleniach AI dla firm", summary: "Asystenci cytują konkurencję, bo Wasza oferta nie ma osobnej strony.",
-  action_steps: [], target_url: "https://example.com/szkolenia-ai", suggested_outline: null, evidence: {},
+  action_steps: [], target_url: "https://example.com/szkolenia-ai", suggested_outline: null, evidence: {}, rationale: null,
   impact: 5, effort: 2, priority: 8, status: "todo", fingerprint: "f", created_at: "2026-10-13T10:00:00Z", updated_at: "2026-10-13T10:00:00Z",
   prompts: { text: "Jakie są najlepsze szkolenia z AI dla firm w Polsce?" },
 } as RecommendationRow;
