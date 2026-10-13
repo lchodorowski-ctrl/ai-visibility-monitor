@@ -20,8 +20,8 @@ export default async function OverviewPage() {
         <div className="mt-6"><RunStatus run={lastRun} /></div>
       </div>
       {!lastRun && (
-        <TileInverse eyebrow="Pierwszy krok" title="Uruchom pierwszy pomiar, żeby zobaczyć, czy asystenci AI polecają Polską Szkołę AI."
-          action={<form action={runNow}><Button type="submit" className="bg-bg text-ink hover:opacity-90">Uruchom pomiar</Button></form>} />
+        <TileInverse eyebrow="Pierwszy krok" title={`Uruchom pierwszy pomiar i sprawdź, czy asystenci AI polecają markę ${project.brand_name}.`}
+          action={<form action={runNow}><Button type="submit" className="bg-bg text-ink hover:bg-bg/90">Uruchom pomiar</Button></form>} />
       )}
       <Suspense fallback={<div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4"><TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton /></div>}>
         <StatsSection projectId={project.id} />

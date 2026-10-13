@@ -58,6 +58,7 @@ export async function MentionsSection({ projectId, brandName }: { projectId: str
   return (
     <section>
       <SectionHead title="Wzmianki w ostatnim pomiarze" meta={own ? <Meta>{pluralPl(own.mentions, ["wzmianka o was", "wzmianki o was", "wzmianek o was"])}</Meta> : undefined} />
+      {counts.length > 0 && !own && <Meta className="mb-4 block">Brak wzmianek o {brandName} w tym pomiarze</Meta>}
       {counts.length === 0
         ? <EmptyState title="Brak wzmianek" description="Po pierwszym pomiarze zobaczysz tu, które marki wymieniają asystenci AI." />
         : <Rows>{counts.map((c) => (
