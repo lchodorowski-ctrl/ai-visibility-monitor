@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { Meta } from "@/components/psai";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,9 @@ const OPTIONS: { value: Mentioned; label: string }[] = [
   { value: "yes", label: "Tak" }, { value: "no", label: "Nie" }, { value: "unknown", label: "Nie sprawdzono" },
 ];
 const initialMentioned = (v: boolean | null): Mentioned => (v === null ? "unknown" : v ? "yes" : "no");
+
+const LABEL_MAX = 60;
+const shortText = (t: string) => (t.length > LABEL_MAX ? `${t.slice(0, LABEL_MAX).trimEnd()}…` : t);
 
 export function CopyPromptButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -31,13 +35,14 @@ export function CopyPromptButton({ text }: { text: string }) {
   }
   return (
     <span className="inline-flex items-center gap-3">
-      <Button type="button" variant="quiet" onClick={copy}>Kopiuj pytanie</Button>
+      <Button type="button" variant="quiet" onClick={copy} aria-label={`Kopiuj pytanie: ${shortText(text)}`}>Kopiuj pytanie</Button>
       <span aria-live="polite"><Meta>{copied ? "Skopiowano" : failed ? "Nie udało się skopiować" : ""}</Meta></span>
     </span>
   );
 }
 
 export function CheckRow({ check, calibrationId, readOnly }: { check: CalibrationCheckView; calibrationId: string; readOnly: boolean }) {
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [mentioned, setMentioned] = useState<Mentioned>(initialMentioned(check.manualMentioned));
   const [pending, startTransition] = useTransition();
@@ -56,6 +61,8 @@ export function CheckRow({ check, calibrationId, readOnly }: { check: Calibratio
         setSaved(true);
       } catch {
         setError(true);
+        // Błąd bywa skutkiem zamknięcia sesji w innej karcie: odświeżamy, żeby ekran stał się tylko do odczytu.
+        router.refresh();
       }
     });
   }
@@ -85,14 +92,14 @@ export function CheckRow({ check, calibrationId, readOnly }: { check: Calibratio
         ))}
       </fieldset>
       <Textarea
-        name="urls" rows={2} defaultValue={check.manualUrls.join("\n")} disabled={readOnly}
+        name="urls" rows={2} maxLength={5000} defaultValue={check.manualUrls.join("\n")} disabled={readOnly}
         placeholder="Cytowane adresy, jeden w linii" aria-label={`Cytowane adresy: ${CALIBRATION_ENGINE_LABEL[check.engineId]}`}
         onBlur={save}
       />
       {mentioned === "yes" && (
         <label className="grid gap-1.5 text-sm">
           <span className="font-medium">Jak Was nazwał?</span>
-          <Input name="alias" defaultValue={check.manualAlias ?? ""} disabled={readOnly} onBlur={save} />
+          <Input name="alias" maxLength={200} defaultValue={check.manualAlias ?? ""} disabled={readOnly} onBlur={save} />
         </label>
       )}
     </form>

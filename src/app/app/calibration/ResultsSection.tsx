@@ -2,15 +2,13 @@ import Link from "next/link";
 import { cn } from "cn";
 import { EmptyState, Meta, Row, Rows, SectionHead, Tile } from "@/components/psai";
 import { Button } from "@/components/ui/button";
-import { agreementByEngine, calibrationTone, citationCoverage, type CalibrationTone } from "@/lib/calibration/compare";
+import { agreementByEngine, calibrationToneClass, citationCoverage } from "@/lib/calibration/compare";
 import { CALIBRATION_ENGINE_LABEL } from "@/lib/calibration/engines";
 import { mergeAlias } from "@/lib/calibration/session";
 import type { CalibrationCheckView, CalibrationView } from "@/lib/calibration/queries";
 import { pct } from "@/lib/format/number";
 import { pluralPl } from "@/lib/format/plural";
 import { addAliasFromCalibration } from "./actions";
-
-export const TONE_CLASS: Record<CalibrationTone, string> = { good: "text-teal", weak: "text-t0", bad: "text-red" };
 
 function DiscrepancyRow({ check, children }: { check: CalibrationCheckView; children?: React.ReactNode }) {
   return (
@@ -36,14 +34,16 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-export function ResultsSection({ view, brandAliases }: { view: CalibrationView; brandAliases: string[] }) {
+export function ResultsSection({ view, brandAliases, brandName }: { view: CalibrationView; brandAliases: string[]; brandName?: string }) {
+  // Nazwa marki też liczy się jako znana fraza, tak samo jak w akcji dodawania aliasu.
+  const knownNames = brandName ? [brandName, ...brandAliases] : brandAliases;
   const agreement = agreementByEngine(view.checks.map((c) => ({ promptId: c.promptId, engineId: c.engineId, result: c.result })));
   const apiOnly = view.checks.filter((c) => c.result === "api_only");
   const manualOnly = view.checks.filter((c) => c.result === "manual_only");
   const discrepancies = apiOnly.length + manualOnly.length;
   const noData = view.checks.filter((c) => c.api === "no_data" && c.manualMentioned !== null);
   const coverage = view.checks
-    .filter((c) => c.manualUrls.length > 0)
+    .filter((c) => c.api !== "no_data" && c.manualUrls.length > 0)
     .reduce((acc, c) => {
       const r = citationCoverage(c.manualUrls, c.apiDomains);
       return { matched: acc.matched + r.matched, total: acc.total + r.total };
@@ -64,7 +64,7 @@ export function ResultsSection({ view, brandAliases }: { view: CalibrationView; 
                 </>
               ) : (
                 <>
-                  <p className={cn("mt-3 text-[44px] font-semibold leading-none", TONE_CLASS[calibrationTone(a.rate)])}>{`${a.agreed} z ${a.checked}`}</p>
+                  <p className={cn("mt-3 text-[44px] font-semibold leading-none", calibrationToneClass(a.rate))}>{`${a.agreed} z ${a.checked}`}</p>
                   <Meta className="mt-3">{pct(a.rate)}</Meta>
                 </>
               )}
@@ -90,7 +90,7 @@ export function ResultsSection({ view, brandAliases }: { view: CalibrationView; 
                   const alias = c.manualAlias?.trim() ?? "";
                   return (
                     <DiscrepancyRow key={c.id} check={c}>
-                      {alias && (mergeAlias(brandAliases, alias) === null
+                      {alias && (mergeAlias(knownNames, alias) === null
                         ? <Meta>już w aliasach</Meta>
                         : (
                           <form action={addAliasFromCalibration}>

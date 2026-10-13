@@ -1,14 +1,13 @@
 import { Fragment } from "react";
 import { cn } from "cn";
 import { EmptyState, Meta, PageHero, Row, Rows } from "@/components/psai";
-import { Button } from "@/components/ui/button";
-import { calibrationTone } from "@/lib/calibration/compare";
+import { calibrationToneClass } from "@/lib/calibration/compare";
 import { CALIBRATION_ENGINE_LABEL } from "@/lib/calibration/engines";
 import { getLatestDoneRun, listCalibrations } from "@/lib/calibration/queries";
 import { fmtDate } from "@/lib/format/number";
 import { getCurrentProject } from "@/lib/workspace";
 import { createCalibration } from "./actions";
-import { TONE_CLASS } from "./ResultsSection";
+import { SubmitButton } from "./SubmitButton";
 
 const SHORT_LABEL = { openai: "ChatGPT", perplexity: "Perplexity", google_ai_overview: "Google" } as const;
 
@@ -18,7 +17,7 @@ export default async function CalibrationListPage() {
 
   const newButton = (
     <form action={createCalibration} className="flex flex-wrap items-center gap-3">
-      <Button type="submit" disabled={!run}>Nowa kalibracja</Button>
+      <SubmitButton disabled={!run}>Nowa kalibracja</SubmitButton>
       {!run && <Meta>Najpierw uruchom pomiar</Meta>}
     </form>
   );
@@ -44,7 +43,7 @@ export default async function CalibrationListPage() {
                   <Fragment key={a.engineId}>
                     {i > 0 && " · "}
                     <span title={CALIBRATION_ENGINE_LABEL[a.engineId]}>{`${SHORT_LABEL[a.engineId]} `}</span>
-                    <span className={cn(a.rate !== null && TONE_CLASS[calibrationTone(a.rate)])}>
+                    <span className={cn(a.rate !== null && calibrationToneClass(a.rate))}>
                       {a.rate === null ? "—" : `${a.agreed}/${a.checked}`}
                     </span>
                   </Fragment>

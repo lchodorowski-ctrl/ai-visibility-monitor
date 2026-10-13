@@ -50,3 +50,9 @@ export function citationCoverage(manualUrls: string[], apiDomains: string[]): { 
 export function calibrationTone(rate: number): CalibrationTone {
   return rate >= 0.8 ? "good" : rate >= 0.6 ? "weak" : "bad";
 }
+
+const TONE_CLASS: Record<CalibrationTone, string> = { good: "text-teal", weak: "text-t0", bad: "text-red" };
+
+export function calibrationToneClass(rate: number): string {
+  return TONE_CLASS[calibrationTone(rate)];
+}

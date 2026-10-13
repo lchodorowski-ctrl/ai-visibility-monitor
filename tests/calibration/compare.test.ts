@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { apiOutcome, compareRow, agreementByEngine, normalizeDomain, citationCoverage, calibrationTone, type ApiResponse, type CalibrationRow } from "@/lib/calibration/compare";
+import { apiOutcome, compareRow, agreementByEngine, normalizeDomain, citationCoverage, calibrationTone, calibrationToneClass, type ApiResponse, type CalibrationRow } from "@/lib/calibration/compare";
 
 const r = (p: Partial<ApiResponse>): ApiResponse => ({ id: "x", error: null, no_answer: false, ownMention: false, domains: [], ...p });
 
@@ -58,4 +58,8 @@ describe("citationCoverage", () => {
 
 describe("calibrationTone", () => {
   it.each([[1, "good"], [0.8, "good"], [0.79, "weak"], [0.6, "weak"], [0.59, "bad"], [0, "bad"]] as const)("%s → %s", (v, t) => expect(calibrationTone(v)).toBe(t));
+});
+
+describe("calibrationToneClass", () => {
+  it.each([[1, "text-teal"], [0.8, "text-teal"], [0.7, "text-t0"], [0.6, "text-t0"], [0.59, "text-red"], [0, "text-red"]] as const)("%s → %s", (v, c) => expect(calibrationToneClass(v)).toBe(c));
 });

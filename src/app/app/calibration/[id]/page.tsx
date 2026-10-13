@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Meta, PageHero, SectionHead, Tile } from "@/components/psai";
-import { Button } from "@/components/ui/button";
 import { getCalibration, type CalibrationCheckView } from "@/lib/calibration/queries";
 import { fmtDate } from "@/lib/format/number";
 import { isUuid } from "@/lib/validation/uuid";
@@ -9,6 +8,7 @@ import { getCurrentProject } from "@/lib/workspace";
 import { closeCalibration } from "../actions";
 import { CheckRow, CopyPromptButton } from "../CheckRow";
 import { ResultsSection } from "../ResultsSection";
+import { SubmitButton } from "../SubmitButton";
 
 function groupByPrompt(checks: CalibrationCheckView[]): { promptId: string; promptText: string; checks: CalibrationCheckView[] }[] {
   const groups = new Map<string, { promptId: string; promptText: string; checks: CalibrationCheckView[] }>();
@@ -42,7 +42,7 @@ export default async function CalibrationPage({ params }: { params: Promise<{ id
           actions={readOnly ? undefined : (
             <form action={closeCalibration}>
               <input type="hidden" name="id" value={view.id} />
-              <Button type="submit">Zakończ kalibrację</Button>
+              <SubmitButton>Zakończ kalibrację</SubmitButton>
             </form>
           )}
         />
@@ -52,7 +52,7 @@ export default async function CalibrationPage({ params }: { params: Promise<{ id
         </div>
       </div>
 
-      <ResultsSection view={view} brandAliases={project.brand_aliases} />
+      <ResultsSection view={view} brandAliases={project.brand_aliases} brandName={project.brand_name} />
 
       <section>
         <SectionHead title="Wyniki ręczne" />

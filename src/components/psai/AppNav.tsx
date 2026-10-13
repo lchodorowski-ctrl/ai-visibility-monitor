@@ -13,7 +13,8 @@ export function AppNav() {
   return (
     <nav aria-label="Główna" className="-mx-2 flex items-center gap-1 overflow-x-auto px-2 [scrollbar-width:none]">
       {NAV.map(([href, label]) => {
-        const active = href === "/app" ? pathname === "/app" : pathname.startsWith(href);
+        // Kalibracja jest podstroną Ustawień (Ustawienia → Kalibracja).
+        const active = href === "/app" ? pathname === "/app" : pathname.startsWith(href) || (href === "/app/settings" && pathname.startsWith("/app/calibration"));
         return (
           <Link key={href} href={href} aria-current={active ? "page" : undefined}
             className={cn("whitespace-nowrap rounded-lg px-3 py-1.5 text-sm transition", active ? "font-medium text-t0" : "text-t1 hover:text-t0")}>

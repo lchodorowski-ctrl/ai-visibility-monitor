@@ -31,8 +31,8 @@ const view: CalibrationView = {
   ],
 };
 
-const render = (v: CalibrationView = view, brandAliases: string[] = []) =>
-  renderToStaticMarkup(<ResultsSection view={v} brandAliases={brandAliases} />);
+const render = (v: CalibrationView = view, brandAliases: string[] = [], brandName?: string) =>
+  renderToStaticMarkup(<ResultsSection view={v} brandAliases={brandAliases} brandName={brandName} />);
 
 describe("ResultsSection", () => {
   it("pokazuje kafel ChatGPT z 1 z 2 i czerwonym tonem (50% < 60%)", () => {
@@ -59,6 +59,12 @@ describe("ResultsSection", () => {
 
   it("zamiast przycisku pokazuje „już w aliasach”, gdy alias istnieje w innej pisowni", () => {
     const html = render(view, ["polska szkola sztucznej inteligencji"]);
+    expect(html).toContain("już w aliasach");
+    expect(html).not.toContain("do aliasów");
+  });
+
+  it("zamiast przycisku pokazuje „już w aliasach”, gdy alias to nazwa marki", () => {
+    const html = render(view, ["PSAI"], "polska szkoła sztucznej inteligencji");
     expect(html).toContain("już w aliasach");
     expect(html).not.toContain("do aliasów");
   });
@@ -91,5 +97,16 @@ describe("ResultsSection", () => {
     expect(render()).toContain("Nie wpisano cytowanych adresów");
     const withUrls: CalibrationView = { ...view, checks: [check({ id: "c9", promptText: "Q", result: "match", manualMentioned: true, api: "mentioned", manualUrls: ["https://www.a.pl/x", "https://b.pl"], apiDomains: ["a.pl"] })] };
     expect(render(withUrls)).toContain("Aplikacja widziała 1 z 2 domen wskazanych ręcznie");
+  });
+
+  it("pokrycie cytowań pomija wiersze bez danych z API", () => {
+    const urls = { manualMentioned: true, manualUrls: ["https://a.pl", "https://b.pl"] };
+    const v: CalibrationView = { ...view, checks: [
+      check({ id: "k1", promptText: "Q1", result: "match", api: "mentioned", apiDomains: ["a.pl"], ...urls }),
+      check({ id: "k2", promptText: "Q2", result: "skipped", api: "no_data", engineId: "perplexity", ...urls }),
+    ] };
+    expect(render(v)).toContain("Aplikacja widziała 1 z 2 domen wskazanych ręcznie");
+    const onlyNoData: CalibrationView = { ...view, checks: [v.checks[1]] };
+    expect(render(onlyNoData)).toContain("Nie wpisano cytowanych adresów");
   });
 });
