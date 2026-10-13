@@ -36,10 +36,10 @@ export function HighlightedText({ text, mentions, aliases }: {
   aliases: Record<string, string[]>;
 }) {
   return (
-    <p className="whitespace-pre-wrap text-sm leading-6">
+    <p className="whitespace-pre-wrap break-words text-sm leading-6">
       {buildHighlightSegments(text, mentions, aliases).map((s, i) =>
         s.kind
-          ? <mark key={i} className={s.kind === "own" ? "bg-green-200 text-foreground dark:bg-green-900/60 dark:text-green-100" : "bg-amber-200 text-foreground dark:bg-amber-900/60 dark:text-amber-100"}>{s.text}</mark>
+          ? <mark key={i} className={s.kind === "own" ? "bg-ink/10 text-t0 underline decoration-ink/60 underline-offset-4 rounded px-0.5" : "bg-s3 text-t0 rounded px-0.5"}>{s.text}</mark>
           : <span key={i}>{s.text}</span>,
       )}
     </p>
