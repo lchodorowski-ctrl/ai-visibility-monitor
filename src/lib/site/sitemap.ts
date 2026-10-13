@@ -1,8 +1,13 @@
 const decodeXml = (s: string) => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, "&");
 
 export function parseSitemap(xml: string): { urls: string[]; sitemaps: string[] } {
-  const locs = [...xml.matchAll(/<(?:\w+:)?loc>\s*(?:<!\[CDATA\[)?\s*([^<\s\]]+)\s*(?:\]\]>)?\s*<\/(?:\w+:)?loc>/g)].map((m) => decodeXml(m[1]));
-  const isIndex = /<(?:\w+:)?sitemapindex[\s>]/i.test(xml);
+  // tylko <loc> w przestrzeni nazw sitemapy (prefiks z tagu <urlset>/<sitemapindex>, najczęściej brak);
+  // dzięki temu <image:loc>, <video:loc>, <news:…> z rozszerzeń nie trafiają na listę stron
+  const root = xml.match(/<(?:(\w+):)?(urlset|sitemapindex)[\s>]/i);
+  const prefix = root?.[1] ? `${root[1]}:` : "";
+  const loc = new RegExp(`<${prefix}loc>\\s*(?:<!\\[CDATA\\[)?\\s*([^<\\s\\]]+)\\s*(?:\\]\\]>)?\\s*<\\/${prefix}loc>`, "g");
+  const locs = [...xml.matchAll(loc)].map((m) => decodeXml(m[1]));
+  const isIndex = root?.[2].toLowerCase() === "sitemapindex";
   return isIndex ? { urls: [], sitemaps: locs } : { urls: locs, sitemaps: [] };
 }
 

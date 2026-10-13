@@ -19,6 +19,14 @@ describe("parseSitemap — warianty XML", () => {
     const xml = `<sm:urlset xmlns:sm="http://www.sitemaps.org/schemas/sitemap/0.9"><sm:url><sm:loc>https://a.pl/y.html</sm:loc></sm:url></sm:urlset>`;
     expect(parseSitemap(xml).urls).toEqual(["https://a.pl/y.html"]);
   });
+  it("ignoruje <image:loc> i inne rozszerzenia wewnątrz <url>", () => {
+    const xml = `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"><url><loc>https://a.pl/page.html</loc><image:image><image:loc>https://cdn.a.pl/img.jpg</image:loc></image:image></url></urlset>`;
+    expect(parseSitemap(xml).urls).toEqual(["https://a.pl/page.html"]);
+  });
+  it("prefiksowana sitemapa też ignoruje rozszerzenia", () => {
+    const xml = `<sm:urlset xmlns:sm="s" xmlns:image="i"><sm:url><sm:loc>https://a.pl/p.html</sm:loc><image:image><image:loc>https://cdn.a.pl/i.jpg</image:loc></image:image></sm:url></sm:urlset>`;
+    expect(parseSitemap(xml).urls).toEqual(["https://a.pl/p.html"]);
+  });
   it("dekoduje &amp; w query", () => {
     const xml = `<urlset><url><loc>https://a.pl/p?a=1&amp;b=2</loc></url></urlset>`;
     expect(parseSitemap(xml).urls).toEqual(["https://a.pl/p?a=1&b=2"]);
