@@ -68,10 +68,24 @@ describe("GET /api/runs/[id]/progress", () => {
     expect(state.calls.some((c) => c.table === "responses")).toBe(false);
   });
 
-  it("błąd bazy → 500", async () => {
-    state.runError = { message: "boom" };
-    expect((await call(ID)).status).toBe(500);
-    state.runError = null; state.countError = { message: "boom" };
-    expect((await call(ID)).status).toBe(500);
+  it("poza etapem zapytań nie liczy odpowiedzi i zwraca 100%", async () => {
+    state.run = { status: "running", stage: "aggregating", queries_total: 8 };
+    const res = await call(ID);
+    expect(await res.json()).toEqual({ status: "running", stage: "aggregating", done: 8, total: 8, percent: 100 });
+    expect(state.calls.some((c) => c.table === "responses")).toBe(false);
+  });
+
+  it("błąd bazy → 500 z ogólnym komunikatem, szczegóły tylko w logu", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    state.runError = { message: "secret relation detail" };
+    let res = await call(ID);
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: "server_error" });
+    state.runError = null; state.countError = { message: "secret relation detail" };
+    res = await call(ID);
+    expect(res.status).toBe(500);
+    expect(JSON.stringify(await res.json())).not.toContain("secret");
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("secret relation detail"));
+    log.mockRestore();
   });
 });

@@ -3,43 +3,56 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Meta, ProgressBar } from "@/components/psai";
-import { stageLabel, type RunProgress as Progress } from "@/lib/runs/progress";
+import { isProgressFinished, stageLabel, type RunProgress as Progress } from "@/lib/runs/progress";
+import { createProgressPoller, type PollResult } from "@/lib/runs/poller";
 
 export const POLL_INTERVAL_MS = 5000;
 
-const isFinished = (p: Progress) => p.status !== "running" || p.stage === "done";
+async function fetchProgress(runId: string, signal: AbortSignal): Promise<PollResult> {
+  const res = await fetch(`/api/runs/${runId}/progress`, { cache: "no-store", signal });
+  if (res.status >= 500) throw new Error(`progress: ${res.status}`);
+  // 404, an expired session redirected to /login (HTML) or any other non-JSON answer: do not poll further
+  if (!res.ok || res.redirected || !res.headers.get("content-type")?.includes("application/json")) return "gone";
+  return (await res.json()) as Progress;
+}
 
-/** Live progress of a running measurement; refreshes the server-rendered status once it ends. */
+/**
+ * Live progress of a measurement. Polls while it is running or its recommendations are still being generated,
+ * and refreshes the server-rendered status twice at most: when the run leaves `running` and when everything is done.
+ */
 export function RunProgress({ runId, initial }: { runId: string; initial: Progress }) {
   const router = useRouter();
   const [progress, setProgress] = useState(initial);
-  const refreshed = useRef(false);
-  const finished = isFinished(progress);
-
-  useEffect(() => {
-    if (finished) return;
-    let cancelled = false;
-    const controller = new AbortController();
-    const poll = async () => {
-      try {
-        const res = await fetch(`/api/runs/${runId}/progress`, { cache: "no-store", signal: controller.signal });
-        if (!res.ok || cancelled) return;
-        setProgress((await res.json()) as Progress);
-      } catch {
-        // a missed poll (network blip, abort on unmount) is retried on the next tick
-      }
-    };
-    const timer = setInterval(poll, POLL_INTERVAL_MS);
-    return () => { cancelled = true; controller.abort(); clearInterval(timer); };
-  }, [runId, finished]);
-
-  useEffect(() => {
-    if (!finished || refreshed.current) return;
-    refreshed.current = true;
+  const refreshed = useRef(new Set<"status-changed" | "finished">());
+  const refreshOnce = (key: "status-changed" | "finished") => {
+    if (refreshed.current.has(key)) return;
+    refreshed.current.add(key);
     router.refresh();
-  }, [finished, router]);
+  };
+  // the latest closure, so the long-lived poller never calls a stale router
+  const refreshRef = useRef(refreshOnce);
+  useEffect(() => { refreshRef.current = refreshOnce; });
 
-  if (finished) return null;
+  useEffect(() => {
+    if (isProgressFinished(initial)) { refreshRef.current("finished"); return; }
+    const controller = new AbortController();
+    let lastStatus = initial.status;
+    const poller = createProgressPoller({
+      intervalMs: POLL_INTERVAL_MS,
+      fetchProgress: () => fetchProgress(runId, controller.signal),
+      onUpdate: (p) => {
+        setProgress(p);
+        if (lastStatus === "running" && p.status !== "running") refreshRef.current("status-changed");
+        lastStatus = p.status;
+      },
+      onFinish: () => refreshRef.current("finished"),
+    });
+    poller.start();
+    return () => { controller.abort(); poller.stop(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `initial` only seeds the first run of the poller
+  }, [runId]);
+
+  if (isProgressFinished(progress) || progress.stage === "done") return null;
 
   const label = stageLabel(progress.stage);
   if (!label) {
@@ -54,7 +67,7 @@ export function RunProgress({ runId, initial }: { runId: string; initial: Progre
   return (
     <div>
       <div role="progressbar" aria-label={label} className="mt-3 h-1.5 overflow-hidden rounded-full bg-line-2">
-        <div className="h-full w-full animate-pulse rounded-full bg-ink" />
+        <div className="h-full w-full animate-pulse rounded-full bg-ink motion-reduce:w-1/3" />
       </div>
       <Meta className="mt-2 block">{label}</Meta>
     </div>

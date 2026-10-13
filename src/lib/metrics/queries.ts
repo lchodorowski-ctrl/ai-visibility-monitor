@@ -4,7 +4,7 @@ import type { Database, Tables } from "@/lib/db-types";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { MetricRow } from "./aggregate";
 import { shapeOverview } from "./overview";
-import { toRunProgress } from "@/lib/runs/progress";
+import { toRunProgress, needsResponseCount, type RunProgress } from "@/lib/runs/progress";
 
 function daysAgoIso(days: number): string {
   const d = new Date(); d.setUTCDate(d.getUTCDate() - days);
@@ -97,10 +97,14 @@ export async function getOverview(_supabase: SupabaseClient<Database>, projectId
   return { latest, byEngine, trend, competitors, lastRun };
 }
 
-/** Responses written so far for a run (one count query; no per-query writes during a run). */
-export const getRunProgress = cache(async (run: Pick<Tables<"runs">, "id" | "status" | "stage" | "queries_total">) => {
+/**
+ * Responses written so far for a run (one count query; no per-query writes during a run). Skipped once the
+ * query stage is over. A failed count degrades to "no progress bar" rather than failing the Overview.
+ */
+export const getRunProgress = cache(async (run: Pick<Tables<"runs">, "id" | "status" | "stage" | "queries_total">): Promise<RunProgress | undefined> => {
+  if (!needsResponseCount(run.stage)) return toRunProgress(run, null);
   const supabase = await createServerSupabase();
   const { count, error } = await supabase.from("responses").select("id", { count: "exact", head: true }).eq("run_id", run.id);
-  if (error) throw new Error(`Nie udało się pobrać postępu pomiaru: ${error.message}`);
+  if (error) { console.error(`getRunProgress: nie udało się policzyć odpowiedzi runu ${run.id}: ${error.message}`); return undefined; }
   return toRunProgress(run, count ?? 0);
 });

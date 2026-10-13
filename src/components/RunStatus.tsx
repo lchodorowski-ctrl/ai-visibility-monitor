@@ -1,5 +1,5 @@
 import type { Tables } from "@/lib/db-types";
-import { isRunStale } from "@/lib/runs/stale";
+import { isRunStale, isRunInFlight } from "@/lib/runs/stale";
 import { fmtDate } from "@/lib/format/number";
 import { pluralPl } from "@/lib/format/plural";
 import { Meta } from "@/components/psai";
@@ -25,7 +25,7 @@ export function RunStatus({ run, progress }: { run: Tables<"runs"> | null; progr
         {" · "}{pluralPl(run.queries_failed, ["błąd", "błędy", "błędów"])}
         {" · "}{Number(run.cost_usd).toFixed(2)} USD
       </Meta>
-      {run.status === "running" && !stale && progress && <RunProgress key={run.id} runId={run.id} initial={progress} />}
+      {isRunInFlight(run) && progress && <RunProgress key={run.id} runId={run.id} initial={progress} />}
       {run.error && <Meta className="block normal-case tracking-normal text-red">{run.error}</Meta>}
     </div>
   );

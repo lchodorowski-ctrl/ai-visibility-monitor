@@ -27,19 +27,35 @@ describe("RunProgress", () => {
   it("rekomendacje: pasek nieokreślony i etykieta", () => {
     expect(text(html({ stage: "recommending" }))).toBe("Generowanie rekomendacji…");
   });
-  it.each([[{ stage: "done" }], [{ status: "done" }], [{ status: "failed" }]])("zakończony (%o) nie renderuje nic", (over) => {
+  it("rekomendacje po przejściu runu w done wciąż pokazują etykietę", () => {
+    expect(text(html({ status: "done", stage: "recommending" }))).toBe("Generowanie rekomendacji…");
+  });
+  it("pasek nieokreślony nie wygląda jak 100% przy ograniczonym ruchu", () => {
+    expect(html({ stage: "aggregating" })).toContain("motion-reduce:w-1/3");
+  });
+  it.each([
+    [{ stage: "done" }], [{ status: "done", stage: "done" }], [{ status: "failed", stage: "done" }],
+    [{ status: "empty", stage: "done" }], [{ status: "budget_exceeded", stage: "done" }], [{ status: "failed", stage: "queries" }],
+  ])("nic do pokazania (%o) nie renderuje nic", (over) => {
     expect(html(over)).toBe("");
   });
 });
 
 describe("RunStatus + RunProgress", () => {
   const run = (over: Partial<Tables<"runs">>) => ({
-    id: "r1", project_id: "p", status: "running", started_at: new Date().toISOString(), finished_at: null,
+    id: "r1", project_id: "p", status: "running", stage: "queries", started_at: new Date().toISOString(), finished_at: null,
     queries_total: 8, queries_failed: 0, cost_usd: 0, error: null, ...over,
   }) as Tables<"runs">;
+  it("pokazuje etap rekomendacji dla runu done, dopóki etap się nie zamknie", () => {
+    const r = run({ status: "done", stage: "recommending", finished_at: new Date(Date.now() - 60_000).toISOString() });
+    expect(renderToStaticMarkup(<RunStatus run={r} progress={initial({ status: "done", stage: "recommending" })} />)).toContain("Generowanie rekomendacji…");
+    const old = run({ status: "done", stage: "recommending", finished_at: new Date(Date.now() - 3 * 3_600_000).toISOString() });
+    expect(renderToStaticMarkup(<RunStatus run={old} progress={initial({ status: "done", stage: "recommending" })} />)).not.toContain("progressbar");
+  });
   it("pokazuje postęp tylko dla trwającego, nieprzerwanego runu", () => {
     expect(renderToStaticMarkup(<RunStatus run={run({})} progress={initial()} />)).toContain("Zapytania: 3 z 8");
-    expect(renderToStaticMarkup(<RunStatus run={run({ status: "done" })} progress={initial()} />)).not.toContain("progressbar");
+    expect(renderToStaticMarkup(<RunStatus run={run({ status: "done", stage: "done" })} progress={initial({ status: "done", stage: "done" })} />)).not.toContain("progressbar");
+    expect(renderToStaticMarkup(<RunStatus run={run({ status: "failed", stage: "done" })} progress={initial({ status: "failed" })} />)).not.toContain("progressbar");
     const stale = run({ started_at: new Date(Date.now() - 2 * 3_600_000).toISOString() });
     expect(renderToStaticMarkup(<RunStatus run={stale} progress={initial()} />)).not.toContain("progressbar");
   });

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { getCurrentProject } from "@/lib/workspace";
 import { getLastRun, getRunProgress } from "@/lib/metrics/queries";
-import { isRunStale } from "@/lib/runs/stale";
+import { isRunStale, isRunInFlight } from "@/lib/runs/stale";
 import { PageHero, TileSkeleton, TileInverse } from "@/components/psai";
 import { Button } from "@/components/ui/button";
 import { RunStatus } from "@/components/RunStatus";
@@ -13,7 +13,7 @@ export default async function OverviewPage() {
   const threshold = Number(project.low_visibility_threshold);
   const lastRun = await getLastRun(project.id);
   const running = lastRun?.status === "running" && !isRunStale(lastRun);
-  const progress = lastRun && running ? await getRunProgress(lastRun) : undefined;
+  const progress = lastRun && isRunInFlight(lastRun) ? await getRunProgress(lastRun) : undefined;
   return (
     <div className="space-y-20">
       <div>

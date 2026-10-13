@@ -94,7 +94,8 @@ export const runProject = task({
       }
 
       const { error: aggStageError } = await admin.from("runs").update({ stage: "aggregating" }).eq("id", runId);
-      if (aggStageError) throw new Error(aggStageError.message);
+      // etap służy tylko do paska postępu: błąd zapisu logujemy i liczymy dalej
+      if (aggStageError) console.error(`run-project: nie udało się ustawić etapu aggregating dla runu ${runId}: ${aggStageError.message}`);
       const agg = await aggregateProject.triggerAndWait({ projectId, runId, date });
       const aggregationError = agg.ok ? null : `agregacja nie powiodła się: ${String(agg.error)}`;
 
@@ -105,7 +106,7 @@ export const runProject = task({
         try {
           // etap ustawiamy przed zleceniem: recommend-project może skończyć (stage "done") zanim wrócimy z trigger()
           const { error: recStageError } = await admin.from("runs").update({ stage: "recommending" }).eq("id", runId);
-          if (recStageError) throw new Error(recStageError.message);
+          if (recStageError) console.error(`run-project: nie udało się ustawić etapu recommending dla runu ${runId}: ${recStageError.message}`);
           await recommendProject.trigger({ projectId, runId, date });
           recommendTriggered = true;
         } catch (err) {

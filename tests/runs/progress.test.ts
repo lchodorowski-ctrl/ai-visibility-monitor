@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { progressOf, stageLabel, toRunProgress } from "@/lib/runs/progress";
+import { progressOf, stageLabel, toRunProgress, isProgressFinished, needsResponseCount } from "@/lib/runs/progress";
 
 describe("progressOf", () => {
   it.each([
@@ -26,5 +26,26 @@ describe("toRunProgress", () => {
   it("składa odpowiedź endpointu", () => {
     expect(toRunProgress({ status: "running", stage: "queries", queries_total: 8 }, 2))
       .toEqual({ status: "running", stage: "queries", done: 2, total: 8, percent: 25 });
+  });
+});
+
+describe("toRunProgress bez liczenia", () => {
+  it("null oznacza, że wszystkie zapytania są za nami", () => {
+    expect(toRunProgress({ status: "running", stage: "aggregating", queries_total: 8 }, null)).toMatchObject({ done: 8, total: 8, percent: 100 });
+  });
+});
+
+describe("isProgressFinished", () => {
+  it.each([
+    ["running", "queries", false], ["running", "aggregating", false], ["running", "done", false],
+    ["done", "recommending", false], ["done", "done", true],
+    ["failed", "done", true], ["failed", "queries", true], ["empty", "done", true], ["budget_exceeded", "done", true],
+  ])("%s / %s → %s", (status, stage, expected) => expect(isProgressFinished({ status, stage })).toBe(expected));
+});
+
+describe("needsResponseCount", () => {
+  it("liczy odpowiedzi tylko w etapie zapytań", () => {
+    expect(needsResponseCount("queries")).toBe(true);
+    for (const s of ["aggregating", "recommending", "done"]) expect(needsResponseCount(s)).toBe(false);
   });
 });
