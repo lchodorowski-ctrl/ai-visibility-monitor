@@ -1,16 +1,18 @@
 # Kalibracja: złoty zestaw promptów
 
+Od 2026-10-13 kalibrację prowadzimy w aplikacji: Ustawienia → Kalibracja (`/app/calibration`), gdzie pytania, odpowiedzi i zgodność są zapisywane w bazie. Poniższa procedura i tabela zostają jako opis metody i szablon zapasowy, na wypadek gdyby ekran był niedostępny.
+
 Cel: sprawdzić, czy wyniki z API (strona `/app/responses` po ostatnim runie) zgadzają się kierunkowo z tym, co widzi człowiek w publicznych interfejsach asystentów. Rozbieżności są wejściem do kalibracji w fazie 2.
 
 ## Procedura
 
-1. Wybierz 5 promptów z `supabase/seed.sql` (najlepiej mieszankę: 2 kluczowe z kategorii kursy/szkolenia, 1 porównawczy, 1 brandowy, 1 informacyjny).
+1. Wybierz 10 promptów. W aplikacji dobiera je automatycznie z ostatniego zakończonego pomiaru (najpierw kluczowe, potem losowe). Ręcznie wybierz je z `supabase/seed.sql`, najlepiej mieszankę kategorii: kluczowe (kursy/szkolenia), porównawcze, brandowe i informacyjne.
 2. Zadaj każdy z nich ręcznie, w nowej sesji bez zalogowanego kontekstu i bez historii, w trzech interfejsach:
    - chatgpt.com (z włączonym wyszukiwaniem w sieci),
    - perplexity.ai,
    - Google (wersja PL, wynik z AI Overview, jeśli się pojawia).
 3. Dla każdej pary prompt x interfejs zanotuj: czy Polska Szkoła AI została wymieniona (tak/nie) i na której pozycji w odpowiedzi, o ile tak.
-4. Wykonaj run projektu (przycisk „Uruchom teraz”) i odczytaj te same prompty w `/app/responses`: czy marka jest wymieniona i na której pozycji.
+4. Wykonaj run projektu (przycisk „Uruchom pomiar”) i odczytaj te same prompty w `/app/responses`: czy marka jest wymieniona i na której pozycji.
 5. Porównaj kierunkowo (wymieniona / niewymieniona). Cel: zgodność w co najmniej 4 z 5 promptów na każdy silnik.
 6. Rozbieżności opisz (hipoteza: personalizacja, geolokalizacja, inny model, wariancja odpowiedzi, błąd dopasowania aliasów) i zapisz je w pliku dla danego dnia.
 

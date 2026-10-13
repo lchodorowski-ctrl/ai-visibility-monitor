@@ -83,6 +83,14 @@ Podczas pomiaru na Przeglądzie widać pasek postępu. Kolumna `runs.stage` ma c
 
 Widoczność (heatmapa pytań, kafle i silniki w Przeglądzie, kropki przy pytaniach) ma trzy stany: **dobrze** (teal) od 67%, **bardzo źle** (czerwony) poniżej progu niskiej widoczności i **słabo** (neutralny szary) pomiędzy. Granica 67% jest stałą w kodzie (`GOOD_VISIBILITY` w `src/lib/metrics/tone.ts`), a dolny próg (domyślnie 34%) ustawisz w Ustawieniach jako „Próg niskiej widoczności”; ten sam próg wybiera prompty do rekomendacji. Stan liczymy z zaokrąglonego procentu, więc kolor zawsze zgadza się z liczbą na ekranie. Kropka przy pytaniu pokazuje łączną widoczność pytania w ostatnim pomiarze (jak wiersz ogólny w Przeglądzie); bez danych kropki nie ma.
 
+## Kalibracja
+
+Kalibracja porównuje to, co widzi człowiek w publicznych interfejsach asystentów, z wynikami API. Ekran jest w Ustawieniach: Ustawienia → Kalibracja (`/app/calibration`). Przycisk „Nowa kalibracja” bierze ostatni zakończony pomiar (status `done`) i wybiera 10 pytań z tego zestawu: najpierw kluczowe, potem losowe. Dla każdego pytania i silnika (ChatGPT, Perplexity, Google AI Overview; Gemini nie jest w zestawie) zaznaczasz, czy marka została wymieniona: „Tak”, „Nie” albo „Nie sprawdzono”. Opcjonalnie wpisujesz cytowane adresy URL i to, jak Was nazwał asystent („Jak Was nazwał?”). Wiersze zapisują się automatycznie.
+
+Zgodność na silnik to liczba zgodnych wierszy podzielona przez liczbę sprawdzonych. Wiersze „nie sprawdzono” oraz te, w których silnik nie dał poprawnej odpowiedzi z API (grupa „Brak danych z API”), się nie liczą. Kolor zgodności: ≥ 80% teal, 60–79% neutralny, < 60% czerwony. Rozbieżności są w dwóch grupach: „API: wzmianka, czat: brak” i „czat: wzmianka, API: brak”, z linkiem do odpowiedzi z API. Przycisk „Dodaj „…” do aliasów” dopisuje frazę do aliasów marki: następny pomiar ją uwzględni, a stare odpowiedzi nie są przeliczane. Przy cytowaniach widać, ile wpisanych ręcznie domen aplikacja też znalazła w odpowiedziach API. „Zakończ kalibrację” zamraża sesję.
+
+Kalibracja nie generuje dodatkowych kosztów API.
+
 ## Szybkość: dev vs prod
 
 `npm run start:prod` to `next build && next start -p 3000`. Tak sprawdzaj szybkość: `npm run dev` kompiluje każdy ekran przy pierwszym wejściu (kilka sekund), więc jego czasy nie mówią nic o produkcji.
