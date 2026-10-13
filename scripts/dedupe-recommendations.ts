@@ -4,6 +4,9 @@
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { fingerprintFor, mergeEvidence, type Evidence } from "@/lib/recommend/fingerprint";
 
+// the most advanced status wins, so a todo keeper never swallows a row the user already acted on
+const STATUS_RANK: Record<string, number> = { done: 3, doing: 2, dismissed: 1, todo: 0 };
+
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
 const PROJECT_ID = args.find((a) => !a.startsWith("--")) ?? "22222222-2222-2222-2222-222222222222";
@@ -35,12 +38,14 @@ async function main() {
       mergedGroups++;
       console.log(`\nGrupa ${fp.slice(0, 8)} (${keeper.type}, ${rest.length + 1} wiersze) zostaje: "${keeper.title}" [priority ${keeper.priority}, ${keeper.status}]`);
       for (const r of rest) console.log(`  scalone: "${r.title}" [priority ${r.priority}, ${r.status}]${r.status !== keeper.status ? "  UWAGA: inny status niż zwycięzca" : ""}`);
+      const status = group.reduce((best, r) => ((STATUS_RANK[r.status] ?? 0) > (STATUS_RANK[best] ?? 0) ? r.status : best), keeper.status);
+      if (status !== keeper.status) console.log(`  status zwycięzcy: ${keeper.status} -> ${status}`);
       if (!dryRun) {
         const evidence = rest.reduce((acc, r) => mergeEvidence(acc, asEvidence(r.evidence)), asEvidence(keeper.evidence));
         const { error: upErr } = await admin.from("recommendations").update({
           evidence: evidence as never,
           impact: Math.max(...group.map((r) => r.impact)), effort: Math.max(...group.map((r) => r.effort)),
-          updated_at: new Date().toISOString(),
+          status, updated_at: new Date().toISOString(),
         }).eq("id", keeper.id).eq("project_id", PROJECT_ID);
         if (upErr) throw new Error(`recommendations update: ${upErr.message}`);
         const { error: delErr } = await admin.from("recommendations").delete().in("id", rest.map((r) => r.id)).eq("project_id", PROJECT_ID);
@@ -58,6 +63,6 @@ async function main() {
       renamed++;
     }
   }
-  console.log(`\n${dryRun ? "[dry-run] " : ""}Przed: ${rows.length}, po: ${rows.length - deleted}; zescalono grup: ${mergedGroups}, usunięto: ${deleted}, zmieniono fingerprint: ${renamed}`);
+  console.log(`\n${dryRun ? "[dry-run] " : ""}Przed: ${rows.length}, po: ${rows.length - deleted}; scalono grup: ${mergedGroups}, usunięto: ${deleted}, zmieniono fingerprint: ${renamed}`);
 }
 main().catch((e) => { console.error(e); process.exit(1); });

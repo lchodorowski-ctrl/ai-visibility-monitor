@@ -57,9 +57,28 @@ function normalizedHost(targetUrl: string | null): string | null {
   return u.hostname.toLowerCase().replace(/^www\./, "") || null;
 }
 
+/** User-generated-content hosts: one host holds many unrelated pages, so offsite recommendations there key on the page, not the host. */
+const UGC_HOSTS = ["linkedin.com", "facebook.com", "youtube.com", "youtu.be", "medium.com", "reddit.com", "wykop.pl", "x.com", "twitter.com", "instagram.com", "quora.com", "substack.com", "tiktok.com"];
+
+/** Offsite key: host for directory-style sites, registered domain + path (+ video id) for UGC hosts ("pl.linkedin.com" = "www.linkedin.com"). */
+function offsiteKey(targetUrl: string | null): string | null {
+  const host = normalizedHost(targetUrl);
+  if (host == null) return null;
+  const d = UGC_HOSTS.find((h) => host === h || host.endsWith(`.${h}`));
+  if (!d) return host;
+  const u = parseTarget(targetUrl)!;
+  // video ids are case-sensitive, so youtu.be paths and the youtube "v" param are not lowercased
+  let page = d === "youtu.be" ? u.pathname.replace(/\/+$/, "") : (normalizedPath(targetUrl) ?? "");
+  if (d === "youtube.com") {
+    const v = u.searchParams.get("v");
+    if (v) page += `?v=${v}`;
+  }
+  return `${d}${page}`;
+}
+
 /**
  * Dedup key of a recommendation. Titles vary run to run, the target does not, so it is the identity:
- * content_improve / content_new = target path, offsite = target host (different pages of one directory are one job),
+ * content_improve / content_new = target path, offsite = target host (different pages of one directory are one job) or, on UGC hosts like LinkedIn, the page,
  * technical / fact_fix and anything without a usable target = title.
  */
 export function fingerprintFor(item: { type: string; title: string; target_url: string | null }): string {
@@ -67,8 +86,8 @@ export function fingerprintFor(item: { type: string; title: string; target_url: 
     const path = normalizedPath(item.target_url);
     if (path != null) return sha1(`${item.type}:${path}`);
   } else if (item.type === "offsite") {
-    const host = normalizedHost(item.target_url);
-    if (host != null) return sha1(`offsite:${host}`);
+    const key = offsiteKey(item.target_url);
+    if (key != null) return sha1(`offsite:${key}`);
   }
   return fingerprint(item.type, item.title);
 }

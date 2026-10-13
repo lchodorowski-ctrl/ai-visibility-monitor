@@ -84,4 +84,16 @@ describe("fingerprintFor", () => {
     expect(f("fact_fix", "Popraw cenę", "/cennik")).toBe(fingerprint("fact_fix", "Popraw cenę"));
     expect(f("technical", "A", "/x")).not.toBe(f("technical", "B", "/x"));
   });
+  it("offsite na serwisach UGC: różne posty LinkedIn się nie scalają, subdomeny i www tak", () => {
+    expect(f("offsite", "a", "https://pl.linkedin.com/posts/a-1")).not.toBe(f("offsite", "a", "https://pl.linkedin.com/posts/b-2"));
+    expect(f("offsite", "x", "https://pl.linkedin.com/posts/a")).toBe(f("offsite", "y", "https://www.linkedin.com/posts/a/"));
+  });
+  it("offsite YouTube: różne parametry v się nie scalają, ten sam v tak; youtu.be po ścieżce", () => {
+    expect(f("offsite", "a", "https://www.youtube.com/watch?v=AbC123")).not.toBe(f("offsite", "a", "https://www.youtube.com/watch?v=abc123"));
+    expect(f("offsite", "a", "https://youtube.com/watch?v=AbC123&t=5")).toBe(f("offsite", "b", "https://www.youtube.com/watch?v=AbC123"));
+    expect(f("offsite", "a", "https://youtu.be/AbC123")).not.toBe(f("offsite", "a", "https://youtu.be/XyZ789"));
+  });
+  it("offsite parp.gov.pl nadal scala różne ścieżki", () => {
+    expect(f("offsite", "a", "https://uslugirozwojowe.parp.gov.pl/a?id=1")).toBe(f("offsite", "b", "https://uslugirozwojowe.parp.gov.pl/b"));
+  });
 });

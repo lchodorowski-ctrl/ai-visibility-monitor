@@ -35,20 +35,22 @@ describe("upsertRecommendations", () => {
     expect(updated[0].patch.impact).toBe(4); expect(updated[0].patch.effort).toBe(5);
   });
   it("ten sam host offsite pod innym tytułem i ścieżką scala się w jeden wiersz; wyższy impact podmienia tytuł", async () => {
-    const other = { ...item, title: "Wpis w innej podstronie", target_url: "https://www.parp.gov.pl/inna/sciezka?id=2", impact: 5 };
+    const other = { ...item, title: "Wpis w innej podstronie", target_url: "https://www.parp.gov.pl/inna/sciezka?id=2", suggested_outline: { h1: "Nowy" } as never, impact: 5 };
     expect(fingerprintFor(other)).toBe(fingerprintFor(item));
     const { client, updated, inserted } = fakeAdmin({ [fingerprintFor(item)]: { id: "r1", evidence: ev, status: "todo", impact: 4, effort: 2 } });
     const r = await upsertRecommendations(client, "proj", "run", "p1", [other], ev);
     expect(r).toEqual({ inserted: 0, merged: 1 });
     expect(inserted).toHaveLength(0);
     expect(updated[0].patch.title).toBe(other.title);
+    expect(updated[0].patch.target_url).toBe(other.target_url);
+    expect(updated[0].patch.suggested_outline).toEqual(other.suggested_outline);
     expect(updated[0].patch.impact).toBe(5);
   });
   it("niższy lub równy impact zachowuje istniejący tytuł, podsumowanie i kroki", async () => {
     const other = { ...item, title: "Inny tytuł tego samego celu", impact: 4 };
     const { client, updated } = fakeAdmin({ [fingerprintFor(item)]: { id: "r1", evidence: ev, status: "todo", impact: 4, effort: 2 } });
     await upsertRecommendations(client, "proj", "run", "p1", [other], ev);
-    for (const k of ["title", "summary", "rationale", "action_steps"]) expect(updated[0].patch[k]).toBeUndefined();
+    for (const k of ["title", "summary", "rationale", "action_steps", "target_url", "suggested_outline"]) expect(updated[0].patch[k]).toBeUndefined();
     expect(updated[0].patch.impact).toBe(4);
   });
   it("technical bez wspólnego tytułu nie scala się mimo tego samego targetu", async () => {
