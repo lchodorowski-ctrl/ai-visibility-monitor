@@ -32,6 +32,11 @@ export function promptVisibility(cells: { prompt_id: string; visibility_rate: nu
 
 const mixOf = (token: "teal" | "red", pctValue: number) => `color-mix(in srgb, var(--color-${token}) ${pctValue}%, transparent)`;
 
+// Kolor tekstu w komórce zależy od motywu: t0 jest ciemny w jasnym i jasny w ciemnym, bg odwrotnie. Krycie tła rośnie z procentem,
+// więc kontrast tekstu t0 maleje w jasnym motywie, a rośnie w ciemnym (tło bliższe jasnemu). Progi to miejsca przecięcia:
+// poniżej `from` t0 wygrywa w obu motywach, od `from` do `to` wygrywa t0 w jasnym i bg w ciemnym, od `to` bg wygrywa w obu.
+const cellText = (p: number, from: number, to: number) => (p >= to ? "text-bg" : p >= from ? "text-t0 dark:text-bg" : "text-t0");
+
 // Trzy stany (patrz visibilityTone): dobrze = teal, bardzo źle = red (kolor w tym stylu znaczy tylko sukces lub błąd),
 // słabo = monochromatyczna skala, gdzie widoczność = krycie tuszu (ink). Krycie koloru rośnie z wartością w obrębie stanu.
 export function heatmapCellStyle(v: number | null, threshold: number): { className: string; style?: React.CSSProperties; label: string; tone?: VisibilityTone } {
@@ -43,8 +48,7 @@ export function heatmapCellStyle(v: number | null, threshold: number): { classNa
   const tone = visibilityTone(v, threshold);
   if (tone === "good") {
     const mix = Math.round(35 + ((p - 67) / 33) * 65); // 35% przy 67%, 100% przy 100%
-    // Biały tekst na tealu spełnia AA dopiero przy pełnym kryciu (5,3:1); poniżej zostaje ciemny.
-    return { className: `${base} ${mix >= 100 ? "text-bg" : "text-t0"}`, style: { backgroundColor: mixOf("teal", mix) }, label, tone };
+    return { className: `${base} ${cellText(p, 80, 91)}`, style: { backgroundColor: mixOf("teal", mix) }, label, tone };
   }
   if (tone === "bad") {
     const top = Math.round(threshold * 100) - 1; // ostatni procent poniżej progu
@@ -55,7 +59,7 @@ export function heatmapCellStyle(v: number | null, threshold: number): { classNa
   if (p === 0) return { className: `${base} border border-line-2 bg-bg text-t1`, label, tone };
   // color-mix na tokenie ink, żeby skala podążała za motywem (jasny/ciemny).
   const mix = Math.round((0.12 + v * 0.7) * 100);
-  return { className: `${base} ${p >= 45 ? "text-bg" : "text-t0"}`, style: { backgroundColor: `color-mix(in srgb, var(--color-ink) ${mix}%, transparent)` }, label, tone };
+  return { className: `${base} ${cellText(p, 45, 65)}`, style: { backgroundColor: `color-mix(in srgb, var(--color-ink) ${mix}%, transparent)` }, label, tone };
 }
 
 function Legend({ threshold }: { threshold: number }) {

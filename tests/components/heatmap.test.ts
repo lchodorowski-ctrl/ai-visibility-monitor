@@ -75,22 +75,22 @@ describe("heatmapCellStyle (trzy stany, próg 0,34)", () => {
     const s = heatmapCellStyle(0.004, T);
     expect(s.label).toBe("0%"); expect(s.className).toContain("border-line-2"); expect(s.tone).toBe("bad");
   });
-  it("słabo (34–66%): dotychczasowa skala ink, tekst biały od 45%", () => {
+  it("słabo (34–66%): dotychczasowa skala ink, kolor tekstu wg motywu", () => {
     const lo = heatmapCellStyle(0.34, T), mid = heatmapCellStyle(0.5, T), hi = heatmapCellStyle(0.66, T);
     expect(lo.tone).toBe("weak"); expect(hi.tone).toBe("weak");
     expect(lo.style?.backgroundColor).toBe("color-mix(in srgb, var(--color-ink) 36%, transparent)");
     expect(lo.className).toContain("text-t0");
     expect(mid.style?.backgroundColor).toBe("color-mix(in srgb, var(--color-ink) 47%, transparent)");
-    expect(mid.className).toContain("text-bg");
+    expect(mid.className).toContain("text-t0 dark:text-bg");
     expect(hi.style?.backgroundColor).toBe("color-mix(in srgb, var(--color-ink) 58%, transparent)");
   });
-  it("dobrze (≥67%): teal, krycie 35% przy 67% do 100% przy 100%, ciemny tekst do 99%, biały dopiero przy 100%", () => {
+  it("dobrze (≥67%): teal, krycie 35% przy 67% do 100% przy 100%, tekst zależny od motywu (patrz niżej)", () => {
     const s67 = heatmapCellStyle(0.67, T), s83 = heatmapCellStyle(0.83, T), s100 = heatmapCellStyle(1, T);
     expect(s67.tone).toBe("good"); expect(s67.label).toBe("67%");
     expect(s67.style?.backgroundColor).toBe("color-mix(in srgb, var(--color-teal) 35%, transparent)");
     expect(s67.className).toContain("text-t0");
     expect(s83.style?.backgroundColor).toBe("color-mix(in srgb, var(--color-teal) 67%, transparent)");
-    expect(s83.className).toContain("text-t0"); expect(s83.className).not.toContain("text-bg");
+    expect(s83.className).toContain("text-t0 dark:text-bg");
     expect(s100.style?.backgroundColor).toBe("color-mix(in srgb, var(--color-teal) 100%, transparent)");
     expect(s100.className).toContain("text-bg");
   });
@@ -106,6 +106,24 @@ describe("heatmapCellStyle (trzy stany, próg 0,34)", () => {
     expect(zero.tone).toBe("weak"); expect(zero.className).toContain("border-line-2"); expect(zero.className).toContain("bg-bg");
     // próg 0,01: tylko 0% jest bardzo źle, bez dzielenia przez zero
     expect(heatmapCellStyle(0, 0.01).style?.backgroundColor).toContain("var(--color-red) 18%");
+  });
+});
+
+describe("kolor tekstu w komórce zależy od motywu", () => {
+  const cls = (v: number, t = 0.34) => heatmapCellStyle(v, t).className;
+  const text = (v: number, t = 0.34) => cls(v, t).split(" ").filter((c) => /^(dark:)?text-(t0|bg)$/.test(c)).join(" ");
+  it("teal: <80% t0, 80–90% t0 + dark:bg, ≥91% bg", () => {
+    expect(text(0.67)).toBe("text-t0"); expect(text(0.79)).toBe("text-t0");
+    expect(text(0.8)).toBe("text-t0 dark:text-bg"); expect(text(0.83)).toBe("text-t0 dark:text-bg"); expect(text(0.9)).toBe("text-t0 dark:text-bg");
+    expect(text(0.91)).toBe("text-bg"); expect(text(0.95)).toBe("text-bg"); expect(text(1)).toBe("text-bg");
+  });
+  it("ink (słabo): <45% t0, 45–64% t0 + dark:bg, ≥65% bg", () => {
+    expect(text(0.34)).toBe("text-t0"); expect(text(0.44)).toBe("text-t0");
+    expect(text(0.45)).toBe("text-t0 dark:text-bg"); expect(text(0.5)).toBe("text-t0 dark:text-bg"); expect(text(0.64)).toBe("text-t0 dark:text-bg");
+    expect(text(0.65)).toBe("text-bg"); expect(text(0.66)).toBe("text-bg");
+  });
+  it("red (bardzo źle): zawsze t0", () => {
+    for (const v of [0, 0.1, 0.33]) expect(text(v)).toBe("text-t0");
   });
 });
 
