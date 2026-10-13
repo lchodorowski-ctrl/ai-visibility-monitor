@@ -8,6 +8,7 @@ import { tallyBatch } from "@/lib/runs/tally";
 import { monthSpend } from "@/lib/budget";
 import { queryEngine } from "./query-engine";
 import { aggregateProject } from "./aggregate-project";
+import { recommendProject } from "./recommend-project";
 
 export interface RunProjectPayload {
   projectId: string;
@@ -94,6 +95,9 @@ export const runProject = task({
 
       const agg = await aggregateProject.triggerAndWait({ projectId, runId, date });
       const aggregationError = agg.ok ? null : `aggregation failed: ${String(agg.error)}`;
+
+      // rekomendacje liczą się w tle (trigger, nie triggerAndWait) — run kończy się od razu
+      if (!aggregationError) await recommendProject.trigger({ projectId, runId, date });
 
       const status = aggregationError ? ("failed" as const) : ("done" as const);
       const { error: finishError } = await admin.from("runs").update({
