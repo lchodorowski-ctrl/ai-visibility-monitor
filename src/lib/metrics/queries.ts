@@ -38,13 +38,23 @@ export const getLastRun = cache(async (projectId: string): Promise<Tables<"runs"
   return data ?? null;
 });
 
+// PostgREST obcina odpowiedź do max_rows (1000), więc pobieramy stronami aż do niepełnej strony.
+const MENTIONS_PAGE = 1000;
+
 export const getMentionCounts = cache(async (projectId: string, runId: string) => {
   const supabase = await createServerSupabase();
-  const { data, error } = await supabase
-    .from("mentions").select("brand_name, response_id, responses!inner(run_id)")
-    .eq("project_id", projectId).eq("responses.run_id", runId).limit(5000);
-  if (error) throw new Error(`Nie udało się pobrać wzmianek: ${error.message}`);
-  return shapeOverview([], data ?? []).competitors;
+  const mentions: { brand_name: string }[] = [];
+  for (let from = 0; ; from += MENTIONS_PAGE) {
+    const { data, error } = await supabase
+      .from("mentions").select("brand_name, response_id, responses!inner(run_id)")
+      .eq("project_id", projectId).eq("responses.run_id", runId)
+      .order("id").range(from, from + MENTIONS_PAGE - 1);
+    if (error) throw new Error(`Nie udało się pobrać wzmianek: ${error.message}`);
+    const page = data ?? [];
+    mentions.push(...page);
+    if (page.length < MENTIONS_PAGE) break;
+  }
+  return shapeOverview([], mentions).competitors;
 });
 
 // Zachowane dla zgodności z istniejącą stroną; nowe ekrany używają funkcji powyżej bezpośrednio.
