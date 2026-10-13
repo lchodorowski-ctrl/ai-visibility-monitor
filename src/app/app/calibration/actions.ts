@@ -26,12 +26,16 @@ export async function createCalibration() {
   const { data: prompts, error: pErr } = await supabase.from("prompts").select("id, is_key, created_at").eq("project_id", project.id).eq("active", true);
   if (pErr) throw new Error(pErr.message);
   const chosen = selectPrompts(prompts ?? [], 10);
+  if (chosen.length === 0) throw new Error("Brak aktywnych pytań do kalibracji");
   const { data: cal, error } = await supabase.from("calibrations").insert({ project_id: project.id, run_id: run.id, created_by: user.id }).select("id").single();
   if (error) throw new Error(error.message);
   const rows = chosen.flatMap((p) => CALIBRATION_ENGINES.map((engine_id) => ({ calibration_id: cal.id, project_id: project.id, prompt_id: p.id, engine_id })));
-  if (rows.length) {
-    const { error: cErr } = await supabase.from("calibration_checks").insert(rows);
-    if (cErr) throw new Error(cErr.message);
+  const { error: cErr } = await supabase.from("calibration_checks").insert(rows);
+  if (cErr) {
+    // Kompensacja: nie zostawiamy pustej, otwartej kalibracji.
+    const { error: dErr } = await supabase.from("calibrations").delete().eq("project_id", project.id).eq("id", cal.id);
+    if (dErr) console.error(`createCalibration: nie udało się usunąć kalibracji ${cal.id}: ${dErr.message}`);
+    throw new Error(cErr.message);
   }
   revalidatePath("/app/calibration");
   redirect(`/app/calibration/${cal.id}`);
@@ -70,10 +74,17 @@ export async function closeCalibration(formData: FormData) {
   revalidatePath(`/app/calibration/${id}`);
 }
 
+const AliasSchema = z.object({
+  calibrationId: z.string().optional(),
+  alias: z.string().trim().max(200),
+});
+
 export async function addAliasFromCalibration(formData: FormData) {
   const project = await getCurrentProject();
-  const calibrationId = String(formData.get("calibrationId"));
-  const merged = mergeAlias(project.brand_aliases, String(formData.get("alias") ?? ""));
+  const parsed = AliasSchema.safeParse({ calibrationId: formData.get("calibrationId") ?? undefined, alias: formData.get("alias") ?? "" });
+  if (!parsed.success) return;
+  const { calibrationId = "", alias } = parsed.data;
+  const merged = mergeAlias(project.brand_aliases, alias);
   if (!merged) return;
   const supabase = await createServerSupabase();
   const { error } = await supabase.from("projects").update({ brand_aliases: merged }).eq("id", project.id);
