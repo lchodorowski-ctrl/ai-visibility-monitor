@@ -138,7 +138,7 @@ npx tsx --env-file=.env.local scripts/recommend-now.ts [projectId] [YYYY-MM-DD]
 **Statusy** (`status`): `todo`, `doing`, `done`, `dismissed`.
 **Priorytet** = `impact` x 2 - `effort` (zakres od -3 do 9); lista na `/app/recommendations` jest sortowana malejąco po priorytecie.
 
-**Koszt.** Jedno wywołanie na zakwalifikowany prompt, ok. 0,05-0,15 USD na pytanie przy cenach Opus 5.5 (4 USD / 20 USD za milion tokenów wejścia / wyjścia). Suma z runu trafia do `runs.recommendations_cost_usd` (nie wchodzi do `runs.cost_usd` ani do budżetu miesięcznego).
+**Koszt.** Jedno wywołanie na zakwalifikowany prompt, ok. 0,05-0,15 USD na pytanie przy cenach Opus 5.5 (4 USD / 20 USD za milion tokenów wejścia / wyjścia). Suma trafia do `runs.recommendations_cost_usd` (dodawana, nie nadpisywana; przy ręcznym odświeżeniu bez runu do ostatniego runu projektu) i liczy się do budżetu miesięcznego razem z `runs.cost_usd`. Koszt wywołania, które zakończyło się odmową lub ucięciem (`max_tokens`), też jest liczony.
 
 **Znane ograniczenie.** Jeśli klucz Anthropic nie jest przypisany do workspace'u, żywe generowanie rekomendacji wymaga `ANTHROPIC_WORKSPACE_ID`. Bez niego wywołanie kończy się błędem, a prompt jest liczony jako nieudany. To obecnie blokuje pierwsze żywe uruchomienie.
 
