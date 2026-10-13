@@ -23,7 +23,65 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "citations": {
+            "calibration_checks": {
+                  Row: {
+                    "calibration_id": string,"engine_id": string,"id": string,"manual_alias": string | null,"manual_mentioned": boolean | null,"manual_urls": (string)[],"project_id": string,"prompt_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "calibration_id": string,"engine_id": string,"id"?: string,"manual_alias"?: string | null,"manual_mentioned"?: boolean | null,"manual_urls"?: (string)[],"project_id": string,"prompt_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "calibration_id"?: string,"engine_id"?: string,"id"?: string,"manual_alias"?: string | null,"manual_mentioned"?: boolean | null,"manual_urls"?: (string)[],"project_id"?: string,"prompt_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "calibration_checks_calibration_id_fkey"
+      columns: ["calibration_id"]
+isOneToOne: false
+      referencedRelation: "calibrations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "calibration_checks_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "calibration_checks_prompt_id_fkey"
+      columns: ["prompt_id"]
+isOneToOne: false
+      referencedRelation: "prompts"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"calibrations": {
+                  Row: {
+                    "closed_at": string | null,"created_at": string,"created_by": string | null,"id": string,"project_id": string,"run_id": string | null,"status": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "closed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"id"?: string,"project_id": string,"run_id"?: string | null,"status"?: string
+                  }
+                  Update: {
+                    "closed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"id"?: string,"project_id"?: string,"run_id"?: string | null,"status"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "calibrations_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "calibrations_run_id_fkey"
+      columns: ["run_id"]
+isOneToOne: false
+      referencedRelation: "runs"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"citations": {
                   Row: {
                     "competitor_id": string | null,"domain": string,"id": string,"is_own": boolean,"project_id": string,"response_id": string,"title": string | null,"url": string
                   }

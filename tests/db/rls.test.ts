@@ -93,4 +93,60 @@ describe.skipIf(!url)("RLS", () => {
       await c.end();
     }
   });
+
+  it("anon i nie-członek nie widzą kalibracji ani ich punktów, członek org widzi", async () => {
+    const c = new Client({ connectionString: url });
+    await c.connect();
+
+    const countCalibrationRowsAs = async (role: "anon" | "authenticated", claims: object, calibrationId: string) => {
+      try {
+        await c.query(`set role ${role}`);
+        await c.query(`select set_config('request.jwt.claims', $1, false)`, [JSON.stringify(claims)]);
+        const res = await c.query(
+          `select (select count(*) from calibrations where id = $1)::int as calibrations,
+                  (select count(*) from calibration_checks where calibration_id = $1)::int as checks`,
+          [calibrationId],
+        );
+        return { calibrations: res.rows[0].calibrations as number, checks: res.rows[0].checks as number };
+      } finally {
+        await c.query(`reset role`);
+        await c.query(`select set_config('request.jwt.claims', '', false)`);
+      }
+    };
+
+    let calibrationId: string | undefined;
+    try {
+      for (const uid of [MEMBER, OUTSIDER]) {
+        await c.query(`insert into auth.users (id, email) values ($1, $2) on conflict do nothing`, [uid, `${uid}@rls.test.local`]);
+      }
+      await c.query(`insert into memberships (org_id, user_id) values ($1, $2) on conflict do nothing`, [ORG, MEMBER]);
+
+      const prompt = await c.query(`select id from prompts where project_id = $1 limit 1`, [PROJECT]);
+      const promptId = prompt.rows[0].id as string;
+      const cal = await c.query(`insert into calibrations (project_id) values ($1) returning id`, [PROJECT]);
+      calibrationId = cal.rows[0].id as string;
+      await c.query(
+        `insert into calibration_checks (calibration_id, project_id, prompt_id, engine_id)
+         values ($1, $2, $3, 'openai')`,
+        [calibrationId, PROJECT, promptId],
+      );
+
+      const anon = await countCalibrationRowsAs("anon", {}, calibrationId);
+      const outsider = await countCalibrationRowsAs("authenticated", { sub: OUTSIDER, role: "authenticated" }, calibrationId);
+      const member = await countCalibrationRowsAs("authenticated", { sub: MEMBER, role: "authenticated" }, calibrationId);
+
+      expect(anon).toEqual({ calibrations: 0, checks: 0 });
+      expect(outsider).toEqual({ calibrations: 0, checks: 0 });
+      expect(member).toEqual({ calibrations: 1, checks: 1 });
+    } finally {
+      await c.query(`reset role`);
+      await c.query(`select set_config('request.jwt.claims', '', false)`);
+      if (calibrationId) {
+        await c.query(`delete from calibrations where id = $1`, [calibrationId]);
+      }
+      await c.query(`delete from memberships where user_id = any($1::uuid[])`, [[MEMBER, OUTSIDER]]);
+      await c.query(`delete from auth.users where id = any($1::uuid[])`, [[MEMBER, OUTSIDER]]);
+      await c.end();
+    }
+  });
 });
