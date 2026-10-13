@@ -14,4 +14,4 @@ export function StatCard({ label, value, hint }: { label: string; value: string;
   );
 }
 
-export const pct = (v: number) => `${Math.round(v * 100)}%`;
+export { pct } from "@/lib/format/number";
