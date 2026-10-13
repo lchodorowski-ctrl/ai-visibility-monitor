@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { foldText } from "@/lib/extract/normalize";
+import { isConcreteUrl, normalizeTargetUrl } from "@/lib/recommend/target-url";
 
 export interface Evidence {
   prompt_ids: string[];
@@ -27,6 +28,49 @@ export function normalizeTitle(t: string): string {
 
 export function fingerprint(type: string, title: string): string {
   return createHash("sha1").update(`${type}:${normalizeTitle(title)}`).digest("hex");
+}
+
+const sha1 = (s: string) => createHash("sha1").update(s).digest("hex");
+
+/** Parses a concrete target (site path or absolute http(s) URL) or returns null; paths resolve against a dummy origin. */
+function parseTarget(targetUrl: string | null): URL | null {
+  const t = normalizeTargetUrl(targetUrl);
+  if (!t || !isConcreteUrl(t)) return null;
+  try {
+    return new URL(t, "http://path.invalid");
+  } catch {
+    return null;
+  }
+}
+
+/** Lowercase path without trailing slash, query or hash ("/" stays "/"); null when there is no usable target. */
+function normalizedPath(targetUrl: string | null): string | null {
+  const u = parseTarget(targetUrl);
+  if (!u) return null;
+  return u.pathname.toLowerCase().replace(/\/+$/, "") || "/";
+}
+
+/** Lowercase host without "www."; null unless the target is an absolute URL. */
+function normalizedHost(targetUrl: string | null): string | null {
+  const u = parseTarget(targetUrl);
+  if (!u || u.hostname === "path.invalid") return null;
+  return u.hostname.toLowerCase().replace(/^www\./, "") || null;
+}
+
+/**
+ * Dedup key of a recommendation. Titles vary run to run, the target does not, so it is the identity:
+ * content_improve / content_new = target path, offsite = target host (different pages of one directory are one job),
+ * technical / fact_fix and anything without a usable target = title.
+ */
+export function fingerprintFor(item: { type: string; title: string; target_url: string | null }): string {
+  if (item.type === "content_improve" || item.type === "content_new") {
+    const path = normalizedPath(item.target_url);
+    if (path != null) return sha1(`${item.type}:${path}`);
+  } else if (item.type === "offsite") {
+    const host = normalizedHost(item.target_url);
+    if (host != null) return sha1(`offsite:${host}`);
+  }
+  return fingerprint(item.type, item.title);
 }
 
 /**

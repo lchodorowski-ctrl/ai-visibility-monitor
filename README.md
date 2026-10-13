@@ -134,7 +134,7 @@ Przycisk „Odśwież rekomendacje” na `/app/recommendations` liczy je na dany
 2. **Generowanie.** Dla każdego zakwalifikowanego promptu Claude (model z `ANTHROPIC_RECOMMENDER_MODEL`, domyślnie `claude-opus-5-5`) dostaje odpowiedzi silników, cytowane domeny i adresy, konkurentów, kartę faktów marki i listę podstron z mapy strony. Zwraca rekomendacje z oceną wpływu (`impact` 1-5) i wysiłku (`effort` 1-5).
 3. **Zasada konkretności.** Rekomendacja bez konkretnego artefaktu jest odrzucana: `content_new` wymaga zarysu (co najmniej 3 niepuste punkty `suggested_outline`) i proponowanej ścieżki, a `content_improve` i `offsite` wymagają `target_url` (ścieżka `/...` lub adres http/https). Odrzucone pozycje trafiają do logu taska, nie do bazy.
 4. **Reguły techniczne.** Osobno, bez modelu, sprawdzane są `/llms.txt` i `/sitemap.xml` na `site_url`. Rekomendacja `technical` powstaje wyłącznie przy odpowiedzi 404 lub 410; błąd sieci, 403, 429 i 5xx oznaczają „nieznane” i nic nie tworzą.
-5. **Zapis (merge po odcisku).** Rekomendacje są łączone po odcisku (`fingerprint`), więc powtórny run aktualizuje istniejące zamiast je dublować, nie zmienia statusu ustawionego przez człowieka i nie obniża wartości `impact` ani `effort`. Uzasadnienie (`rationale`) widać na stronie szczegółów.
+5. **Zapis (merge po odcisku).** Rekomendacje są łączone po odcisku (`fingerprint`: dla `content_improve` i `content_new` to ścieżka celu, dla `offsite` host celu, dla `technical` i `fact_fix` tytuł), więc powtórny run aktualizuje istniejące zamiast je dublować, nie zmienia statusu ustawionego przez człowieka i nie obniża wartości `impact` ani `effort`. Istniejący tytuł zostaje, chyba że nowa propozycja ma wyższy `impact`. Uzasadnienie (`rationale`) widać na stronie szczegółów.
 
 **Typy** (`type`): `content_new` (nowa treść), `content_improve` (poprawa istniejącej), `offsite` (działanie poza stroną), `technical` (zmiana techniczna), `fact_fix` (korekta faktów).
 **Statusy** (`status`): `todo`, `doing`, `done`, `dismissed`.
@@ -176,6 +176,7 @@ npx tsx --env-file=.env.local scripts/crawl-now.ts [projectId]
 | `scripts/run-now.ts` | ręczne uruchomienie runu (jak przycisk „Uruchom teraz”) |
 | `scripts/reaggregate.ts` | przeliczenie snapshotu dnia bez nowych zapytań do silników |
 | `scripts/backfill-sentiment.ts` | uzupełnienie brakującego sentymentu zapisanych odpowiedzi z własną marką: `[projectId] [--limit N] [--dry-run]` |
+| `scripts/dedupe-recommendations.ts` | scalenie zdublowanych rekomendacji po fingerprincie celu (ścieżka lub host): `[projectId] [--dry-run]` |
 | `scripts/crawl-now.ts` | crawl mapy strony (patrz „Mapa strony”) |
 | `scripts/recommend-now.ts` | generowanie rekomendacji (patrz „Rekomendacje”) |
 | `scripts/check-anthropic.ts` | sprawdzenie klucza Anthropic (5-tokenowe wywołanie, patrz „Znane ograniczenie”) |

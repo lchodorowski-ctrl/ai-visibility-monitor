@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizeTitle, fingerprint, mergeEvidence } from "@/lib/recommend/fingerprint";
+import { normalizeTitle, fingerprint, fingerprintFor, mergeEvidence } from "@/lib/recommend/fingerprint";
 describe("fingerprint", () => {
   it("ten sam tytuł z różną wielkością liter/diakrytykami daje ten sam fingerprint", () => {
     expect(fingerprint("content_new", "Opublikuj stronę: Szkolenia AI dla firm")).toBe(fingerprint("content_new", "opublikuj strone  szkolenia ai dla firm!"));
@@ -46,5 +46,42 @@ describe("mergeEvidence", () => {
     const onceFew = mergeEvidence(few, b);
     expect(mergeEvidence(onceFew, b)).toEqual(onceFew);
     expect(onceFew.sample_quotes).toEqual(["q1", "q5", "q6", "q7"]);
+  });
+});
+
+describe("fingerprintFor", () => {
+  const f = (type: string, title: string, target_url: string | null) => fingerprintFor({ type, title, target_url });
+  it("content_improve: ta sama ścieżka, różne tytuły → ten sam fingerprint", () => {
+    expect(f("content_improve", "Dodać FAQ", "/szkolenia.html")).toBe(f("content_improve", "Tabela porównawcza programów", "/szkolenia.html"));
+  });
+  it("content_improve: wielkość liter, ukośnik końcowy, query, hash i pełny URL nie mają znaczenia", () => {
+    const base = f("content_improve", "a", "/szkolenia.html");
+    expect(f("content_improve", "b", "/Szkolenia.html?utm=1#faq")).toBe(base);
+    expect(f("content_improve", "c", "https://www.polskaszkola.ai/szkolenia.html")).toBe(base);
+    expect(f("content_improve", "d", "/oferta/")).toBe(f("content_improve", "e", "/oferta"));
+  });
+  it("content_improve: inna ścieżka → inny fingerprint; inny typ → inny fingerprint", () => {
+    expect(f("content_improve", "a", "/a")).not.toBe(f("content_improve", "a", "/b"));
+    expect(f("content_improve", "a", "/a")).not.toBe(f("content_new", "a", "/a"));
+  });
+  it("offsite: ten sam host, różne ścieżki → ten sam fingerprint (www ignorowane)", () => {
+    const a = f("offsite", "Wpis w BUR", "https://uslugirozwojowe.parp.gov.pl/");
+    expect(f("offsite", "Inny tytuł", "https://uslugirozwojowe.parp.gov.pl/wyszukiwarka/uslugi/podglad?id=1")).toBe(a);
+    expect(f("offsite", "x", "https://www.myskills.pl/a")).toBe(f("offsite", "y", "https://myskills.pl/b"));
+    expect(f("offsite", "x", "https://a.pl/")).not.toBe(f("offsite", "x", "https://b.pl/"));
+  });
+  it("offsite bez URL-a absolutnego wraca do tytułu", () => {
+    expect(f("offsite", "Wpis w BUR", "/sciezka")).toBe(fingerprint("offsite", "Wpis w BUR"));
+    expect(f("offsite", "Wpis w BUR", null)).toBe(fingerprint("offsite", "Wpis w BUR"));
+  });
+  it("content_new: ścieżka gdy jest, inaczej tytuł", () => {
+    expect(f("content_new", "a", "/poradnik")).toBe(f("content_new", "b", "/poradnik/"));
+    expect(f("content_new", "Poradnik", null)).toBe(fingerprint("content_new", "Poradnik"));
+    expect(f("content_new", "Poradnik", "to nie jest url")).toBe(fingerprint("content_new", "Poradnik"));
+  });
+  it("technical i fact_fix zawsze po tytule, nawet z targetem", () => {
+    expect(f("technical", "Dodaj sitemap", "/sitemap.xml")).toBe(fingerprint("technical", "Dodaj sitemap"));
+    expect(f("fact_fix", "Popraw cenę", "/cennik")).toBe(fingerprint("fact_fix", "Popraw cenę"));
+    expect(f("technical", "A", "/x")).not.toBe(f("technical", "B", "/x"));
   });
 });
