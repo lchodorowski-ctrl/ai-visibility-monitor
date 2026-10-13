@@ -34,6 +34,12 @@ const buttonVariants = cva(
         "icon-lg": "size-9",
       },
     },
+    compoundVariants: [
+      {
+        variant: ["quiet", "danger-quiet"],
+        class: "h-auto gap-1 px-0",
+      },
+    ],
     defaultVariants: {
       variant: "default",
       size: "default",
