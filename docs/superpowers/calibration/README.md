@@ -13,7 +13,7 @@ Cel: sprawdzić, czy wyniki z API (strona `/app/responses` po ostatnim runie) zg
    - Google (wersja PL, wynik z AI Overview, jeśli się pojawia).
 3. Dla każdej pary prompt x interfejs zanotuj: czy Polska Szkoła AI została wymieniona (tak/nie) i na której pozycji w odpowiedzi, o ile tak.
 4. Wykonaj run projektu (przycisk „Uruchom pomiar”) i odczytaj te same prompty w `/app/responses`: czy marka jest wymieniona i na której pozycji.
-5. Porównaj kierunkowo (wymieniona / niewymieniona). Cel: zgodność w co najmniej 4 z 5 promptów na każdy silnik.
+5. Porównaj kierunkowo (wymieniona / niewymieniona). Cel: zgodność ≥ 80% na każdy silnik (8 z 10 pytań).
 6. Rozbieżności opisz (hipoteza: personalizacja, geolokalizacja, inny model, wariancja odpowiedzi, błąd dopasowania aliasów) i zapisz je w pliku dla danego dnia.
 
 Wyniki zapisuj w osobnym pliku `docs/superpowers/calibration/2026-10-<dd>.md` według poniższego szablonu. Gemini nie ma tu publicznego odpowiednika w tabeli, bo jego interfejs webowy (gemini.google.com) nie jest częścią obowiązkowego zestawu; można go dodać jako dodatkową kolumnę.
@@ -44,9 +44,11 @@ Data kalibracji: ____ · Data i ID runu: ____ · Kto zadawał: ____
 | 5 |        | Perplexity |                     |                  |                  |              |                    |       |
 | 5 |        | Google AIO |                     |                  |                  |              |                    |       |
 
-Podsumowanie zgodności (zgodne / 5):
+Szablon pokazuje 5 przykładowych pytań. Dla pytań 6–10 powtórz te same wiersze (3 silniki na pytanie).
 
-| Silnik | Zgodne / 5 | Cel ≥ 4/5 osiągnięty? |
+Podsumowanie zgodności (zgodne / 10):
+
+| Silnik | Zgodne / 10 | Cel ≥ 80% (8/10) osiągnięty? |
 |--------|-----------|------------------------|
 | ChatGPT |          |                        |
 | Perplexity |       |                        |

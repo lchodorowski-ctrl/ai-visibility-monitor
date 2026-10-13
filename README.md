@@ -289,5 +289,5 @@ Kod fazy 0-1 jest kompletny, a testy jednostkowe, lint, `tsc` i build przechodz�
 - `src/lib/db-types.ts` jest tymczasowo pisany ręcznie. Po pierwszym uruchomieniu bazy zastąp go wynikiem `npx supabase gen types typescript --local` i sprawdź `tsc` oraz build.
 - Adaptery silników (OpenAI, Perplexity, Gemini, DataForSEO) i ekstrakcja sentymentu były testowane wyłącznie na mockach. Żaden prawdziwy klucz API nie został użyty.
 - Trigger.dev nie był uruchomiony (ani `dev`, ani `deploy`), więc pełny przebieg `run-project` na realnych taskach nie został sprawdzony.
-- Kalibracja (złoty zestaw): ręczne porównanie 5 promptów z interfejsami chatgpt.com, perplexity.ai i Google. Procedura i szablon są w `docs/superpowers/calibration/README.md`.
+- Kalibracja: ekran w aplikacji (Ustawienia → Kalibracja, `/app/calibration`) nie był jeszcze uruchomiony na produkcji. Pierwszą sesję zrób na produkcji z 10 pytaniami i porównaj wyniki z odpowiedziami ChatGPT, Perplexity i Google AI Overview. Procedura zapasowa i szablon są w `docs/superpowers/calibration/README.md`.
 - Deploy (Supabase, Trigger.dev, Vercel) i test crona na produkcji do zrobienia.
