@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cn } from "cn";
-import { Eyebrow, Meta, Tile } from "@/components/psai";
-import { TYPE_LABEL, STATUS_LABEL, effortLabel, priorityLabel, type RecStatus, type RecType } from "@/lib/recommend/labels";
+import { Dots, Eyebrow, Meta, Tile } from "@/components/psai";
+import { TYPE_LABEL, STATUS_LABEL, priorityLabel, type RecStatus, type RecType } from "@/lib/recommend/labels";
 import type { RecommendationRow } from "@/lib/recommend/queries";
 import { resolveTargetUrl } from "@/lib/recommend/target-url";
 import { StatusForm } from "./StatusForm";
@@ -24,13 +24,17 @@ export function TargetUrl({ url, siteUrl, inverse }: { url: string; siteUrl: str
     : <span className={cls}>{url}</span>;
 }
 
-export function RecommendationMeta({ r, inverse }: { r: RecommendationRow; inverse?: boolean }) {
+/** Priority word plus impact/effort dots; the dots carry their own aria-label, so the visible words are hidden from screen readers. */
+export function RecommendationMeta({ r, inverse, showStatus }: { r: RecommendationRow; inverse?: boolean; showStatus?: boolean }) {
   const status = r.status as RecStatus;
   const statusTone = inverse ? "" : status === "done" ? "text-teal" : status === "dismissed" ? "text-red" : "";
+  const dots = inverse ? "text-bg/70" : undefined;
   return (
     <Meta className={inverse ? "text-bg/70" : undefined}>
-      priorytet {priorityLabel(priorityOf(r))} · wysiłek {effortLabel(r.effort)}
-      {status !== "todo" && STATUS_LABEL[status] && <> · <span className={statusTone}>{STATUS_LABEL[status].toLowerCase()}</span></>}
+      priorytet {priorityLabel(priorityOf(r))}
+      {" · "}<span aria-hidden="true">wpływ</span> <Dots value={r.impact} label="wpływ" className={dots} />
+      {" · "}<span aria-hidden="true">wysiłek</span> <Dots value={r.effort} label="wysiłek" className={dots} />
+      {(showStatus || status !== "todo") && STATUS_LABEL[status] && <> · <span className={statusTone}>{STATUS_LABEL[status].toLowerCase()}</span></>}
     </Meta>
   );
 }

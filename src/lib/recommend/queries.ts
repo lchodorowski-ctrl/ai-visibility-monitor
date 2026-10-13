@@ -28,12 +28,23 @@ export function countByPrompt(rows: { prompt_id: string | null; evidence?: unkno
   return out;
 }
 
-export const listRecommendations = cache(async (supabase: SupabaseClient<Database>, projectId: string, f: RecFilters) => {
+/** All of the project's recommendations (newest priority first, capped at 500); filter in memory with applyFilters. */
+export async function fetchRecommendationRows(supabase: SupabaseClient<Database>, projectId: string): Promise<RecommendationRow[]> {
   const { data, error } = await supabase.from("recommendations").select("*, prompts(text)")
     .eq("project_id", projectId).order("priority", { ascending: false }).order("updated_at", { ascending: false }).limit(500);
   if (error) throw new Error(error.message);
-  return applyFilters((data ?? []) as RecommendationRow[], f);
-});
+  return (data ?? []) as RecommendationRow[];
+}
+
+export const listRecommendations = cache(async (supabase: SupabaseClient<Database>, projectId: string, f: RecFilters) =>
+  applyFilters(await fetchRecommendationRows(supabase, projectId), f));
+
+/** Open recommendations (todo|doing): how many, and when the newest of them last changed (ISO string or null). */
+export function summarizeOpen(rows: { status: string; updated_at: string }[]): { count: number; lastUpdated: string | null } {
+  const open = rows.filter((r) => r.status === "todo" || r.status === "doing");
+  const lastUpdated = open.reduce<string | null>((max, r) => (max === null || Date.parse(r.updated_at) > Date.parse(max) ? r.updated_at : max), null);
+  return { count: open.length, lastUpdated };
+}
 
 export const getRecommendation = cache(async (supabase: SupabaseClient<Database>, projectId: string, id: string) => {
   const { data, error } = await supabase.from("recommendations").select("*, prompts(id, text)")

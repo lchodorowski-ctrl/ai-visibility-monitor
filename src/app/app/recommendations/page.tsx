@@ -8,7 +8,9 @@ import { getCurrentProject } from "@/lib/workspace";
 import { getLastRun } from "@/lib/metrics/queries";
 import { isRunStale } from "@/lib/runs/stale";
 import { isUuid } from "@/lib/validation/uuid";
-import { listRecommendations, type RecFilters } from "@/lib/recommend/queries";
+import { fmtDate } from "@/lib/format/number";
+import { pluralPl } from "@/lib/format/plural";
+import { applyFilters, fetchRecommendationRows, summarizeOpen, type RecFilters, type RecommendationRow } from "@/lib/recommend/queries";
 import { TYPE_LABEL, type RecType } from "@/lib/recommend/labels";
 import { refreshRecommendations } from "./actions";
 import { RecommendationCard, truncate } from "./RecommendationCard";
@@ -74,16 +76,26 @@ async function Filters({ projectId, f }: { projectId: string; f: ReturnType<type
   );
 }
 
-async function List({ projectId, siteUrl, f }: { projectId: string; siteUrl: string; f: ReturnType<typeof parseFilters> }) {
-  const supabase = await createServerSupabase();
+async function List({ rowsPromise, siteUrl, f }: { rowsPromise: Promise<RecommendationRow[]>; siteUrl: string; f: ReturnType<typeof parseFilters> }) {
   const filters: RecFilters = { status: f.status, type: f.type, prompt: f.prompt };
-  const rows = await listRecommendations(supabase, projectId, filters);
+  const rows = applyFilters(await rowsPromise, filters);
   if (rows.length === 0) return <EmptyState title="Brak rekomendacji" description="Uruchom run albo kliknij Odśwież." />;
   const firstInverse = f.status === "open" && !f.type && !f.prompt;
   return (
     <ul className="grid gap-4 md:grid-cols-2">
       {rows.map((r, i) => <li key={r.id} className="min-w-0"><RecommendationCard r={r} siteUrl={siteUrl} inverse={firstInverse && i === 0} /></li>)}
     </ul>
+  );
+}
+
+/** Open count and last change, computed from the same rows the list renders (one query). */
+async function HeroMeta({ rowsPromise }: { rowsPromise: Promise<RecommendationRow[]> }) {
+  const { count, lastUpdated } = summarizeOpen(await rowsPromise);
+  return (
+    <Meta>
+      {pluralPl(count, ["otwarta rekomendacja", "otwarte rekomendacje", "otwartych rekomendacji"])}
+      {" · ostatnia aktualizacja: "}{lastUpdated ? fmtDate(lastUpdated) : "brak"}
+    </Meta>
   );
 }
 
@@ -94,6 +106,8 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
   // site_url is NOT NULL and validated as a URL in Settings, so only a running measurement blocks a refresh
   const lastRun = await getLastRun(project.id);
   const running = lastRun?.status === "running" && !isRunStale(lastRun);
+  // one query feeds both the hero summary and the list; each streams in its own Suspense boundary
+  const rowsPromise = fetchRecommendationRows(await createServerSupabase(), project.id);
   return (
     <div className="space-y-10">
       <div>
@@ -104,11 +118,12 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
               <Button type="submit" variant="quiet" disabled={running}>Odśwież rekomendacje</Button>
             </form>
           } />
-        <p className="mt-6 max-w-2xl text-t1">Z odpowiedzi AI i mapy Waszej strony. Nowe po każdym runie.</p>
+        <div className="mt-4 min-h-4"><Suspense fallback={null}><HeroMeta rowsPromise={rowsPromise} /></Suspense></div>
+        <p className="mt-4 max-w-2xl text-t1">Z odpowiedzi AI i mapy Waszej strony. Nowe po każdym runie.</p>
       </div>
       <Suspense fallback={null}><Filters projectId={project.id} f={f} /></Suspense>
       <Suspense fallback={<div className="grid gap-4 md:grid-cols-2"><TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton /></div>}>
-        <List projectId={project.id} siteUrl={project.site_url} f={f} />
+        <List rowsPromise={rowsPromise} siteUrl={project.site_url} f={f} />
       </Suspense>
     </div>
   );

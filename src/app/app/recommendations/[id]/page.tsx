@@ -8,9 +8,9 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { getCurrentProject } from "@/lib/workspace";
 import { isUuid } from "@/lib/validation/uuid";
 import { getRecommendation } from "@/lib/recommend/queries";
-import { TYPE_LABEL, STATUS_LABEL, effortLabel, priorityLabel, type RecStatus, type RecType } from "@/lib/recommend/labels";
+import { TYPE_LABEL, type RecStatus, type RecType } from "@/lib/recommend/labels";
 import { StatusForm } from "../StatusForm";
-import { TargetUrl, priorityOf } from "../RecommendationCard";
+import { RecommendationMeta, TargetUrl } from "../RecommendationCard";
 
 const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim().length > 0) : []);
 const counted = (v: unknown, key: "domain" | "name"): { label: string; count: number }[] =>
@@ -55,7 +55,7 @@ export default async function RecommendationPage({ params }: { params: Promise<{
       <Tile className="bg-ink text-bg">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <Eyebrow className="text-bg/70">{TYPE_LABEL[r.type as RecType] ?? r.type}</Eyebrow>
-          <Meta className="text-bg/70">priorytet {priorityLabel(priorityOf(r))} · wysiłek {effortLabel(r.effort)} · {(STATUS_LABEL[status] ?? r.status).toLowerCase()}</Meta>
+          <RecommendationMeta r={r} inverse showStatus />
         </div>
         <h1 className="mt-3 text-[clamp(26px,3.4vw,36px)] font-semibold leading-[1.15]">{r.title}</h1>
         {r.target_url && <div className="mt-3"><TargetUrl url={r.target_url} siteUrl={project.site_url} inverse /></div>}
@@ -100,9 +100,12 @@ export default async function RecommendationPage({ params }: { params: Promise<{
                   <Meta className="mb-3 block">Pytania</Meta>
                   <Rows>
                     {validPromptIds.map((pid) => (
-                      <Row key={pid} href={`/app/prompts#${pid}`}>
+                      <Row key={pid}>
                         <span className="min-w-0 flex-1 text-sm">{promptText.get(pid) ?? "Pytanie usunięte"}</span>
-                        <Meta>heatmapa →</Meta>
+                        <span className="flex gap-4 text-sm">
+                          <Link href={`/app/prompts#${pid}`} className="text-t1 underline-offset-4 hover:text-t0 hover:underline">heatmapa →</Link>
+                          <Link href={`/app/responses?prompt=${pid}`} className="text-t1 underline-offset-4 hover:text-t0 hover:underline">odpowiedzi →</Link>
+                        </span>
                       </Row>
                     ))}
                   </Rows>

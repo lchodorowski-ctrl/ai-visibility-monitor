@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { applyFilters, countByPrompt, recommendationPromptIds } from "@/lib/recommend/queries";
+import { applyFilters, countByPrompt, recommendationPromptIds, summarizeOpen } from "@/lib/recommend/queries";
 const r = (id: string, status: string, type: string, prompt_id: string | null, evidence: unknown = {}) => ({ id, status, type, prompt_id, evidence, priority: 5 }) as never;
 const ids = (xs: { id: string }[]) => xs.map((x) => x.id);
 describe("applyFilters", () => {
@@ -31,5 +31,19 @@ describe("countByPrompt", () => {
   it("recommendationPromptIds ignoruje śmieci w evidence", () => {
     expect(recommendationPromptIds({ prompt_id: "p1", evidence: { prompt_ids: ["p1", 7, null, "p2"] } })).toEqual(["p1", "p2"]);
     expect(recommendationPromptIds({ prompt_id: null, evidence: [] })).toEqual([]);
+  });
+});
+
+describe("summarizeOpen", () => {
+  const row = (status: string, updated_at: string) => ({ status, updated_at });
+  it("liczy tylko todo|doing i bierze najnowszą datę zmiany spośród nich", () => {
+    expect(summarizeOpen([
+      row("todo", "2026-10-10T08:00:00Z"), row("doing", "2026-10-12T08:00:00Z"),
+      row("done", "2026-10-13T08:00:00Z"), row("dismissed", "2026-10-14T08:00:00Z"),
+    ])).toEqual({ count: 2, lastUpdated: "2026-10-12T08:00:00Z" });
+  });
+  it("brak otwartych: 0 i null", () => {
+    expect(summarizeOpen([])).toEqual({ count: 0, lastUpdated: null });
+    expect(summarizeOpen([row("done", "2026-10-13T08:00:00Z")])).toEqual({ count: 0, lastUpdated: null });
   });
 });

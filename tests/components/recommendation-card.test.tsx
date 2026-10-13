@@ -25,7 +25,10 @@ describe("RecommendationCard", () => {
     expect(html).toContain("Nowa treść");
     expect(html).toContain("Opublikuj stronę o szkoleniach AI dla firm");
     expect(html).toContain("priorytet wysoki");
-    expect(html).toContain("wysiłek mały");
+    expect(html).toContain('aria-label="wpływ 5 z 5"');
+    expect(html).toContain('aria-label="wysiłek 2 z 5"');
+    expect(html).toContain("●●●●●");
+    expect(html).toContain("●●○○○");
     expect(html).toContain("Pytanie: Jakie są najlepsze szkolenia");
     expect(html).toContain('href="https://example.com/szkolenia-ai"');
     expect(html).toContain('rel="noreferrer"');
@@ -40,11 +43,18 @@ describe("RecommendationCard", () => {
     expect(html).toContain('rel="noreferrer"');
     expect(html).toContain(">/llms.txt<");
     expect(html).toContain("priorytet niski");
-    expect(html).toContain("wysiłek duży");
+    expect(html).toContain('aria-label="wpływ 1 z 5"');
+    expect(html).toContain('aria-label="wysiłek 5 z 5"');
     expect(html).not.toContain("Pytanie:");
   });
   it("wersja odwrócona używa tła ink", () => {
     expect(renderToStaticMarkup(<RecommendationCard r={base} siteUrl={SITE} inverse />)).toContain("bg-ink");
+  });
+  it("słowa wpływ/wysiłek są ukryte przed czytnikiem (etykietę niosą kropki), a nie ma starego „wysiłek mały”", () => {
+    const html = renderToStaticMarkup(<RecommendationCard r={base} siteUrl={SITE} />);
+    expect(html).toContain('<span aria-hidden="true">wpływ</span>');
+    expect(html).toContain('<span aria-hidden="true">wysiłek</span>');
+    expect(html).not.toContain("wysiłek mały");
   });
   it("odrzucona pokazuje status na czerwono", () => {
     expect(renderToStaticMarkup(<RecommendationCard r={{ ...base, status: "dismissed" }} siteUrl={SITE} />)).toContain("text-red");
@@ -72,7 +82,7 @@ describe("resolveTargetUrl", () => {
 describe("StatusForm", () => {
   const labels = (html: string) => [...html.matchAll(/<button[^>]*>([^<]*)<\/button>/g)].map((m) => m[1]);
   it.each([
-    ["todo", ["Zaczynam", "Odrzuć"]],
+    ["todo", ["Zaczynam", "Zrobione", "Odrzuć"]],
     ["doing", ["Zrobione", "Wróć do listy"]],
     ["done", ["Otwórz ponownie"]],
     ["dismissed", ["Przywróć"]],
@@ -83,6 +93,7 @@ describe("StatusForm", () => {
     const html = renderToStaticMarkup(<StatusForm id={base.id} status="todo" />);
     expect(html).toContain(`name="id" value="${base.id}"`);
     expect(html).toContain('name="status" value="doing"');
+    expect(html).toContain('name="status" value="done"');
     expect(html).toContain('name="status" value="dismissed"');
   });
 });
