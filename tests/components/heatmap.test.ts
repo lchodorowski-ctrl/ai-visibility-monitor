@@ -84,13 +84,13 @@ describe("heatmapCellStyle (trzy stany, próg 0,34)", () => {
     expect(mid.className).toContain("text-bg");
     expect(hi.style?.backgroundColor).toBe("color-mix(in srgb, var(--color-ink) 58%, transparent)");
   });
-  it("dobrze (≥67%): teal, krycie 35% przy 67% do 100% przy 100%, tekst biały od 55%", () => {
+  it("dobrze (≥67%): teal, krycie 35% przy 67% do 100% przy 100%, ciemny tekst do 99%, biały dopiero przy 100%", () => {
     const s67 = heatmapCellStyle(0.67, T), s83 = heatmapCellStyle(0.83, T), s100 = heatmapCellStyle(1, T);
     expect(s67.tone).toBe("good"); expect(s67.label).toBe("67%");
     expect(s67.style?.backgroundColor).toBe("color-mix(in srgb, var(--color-teal) 35%, transparent)");
     expect(s67.className).toContain("text-t0");
     expect(s83.style?.backgroundColor).toBe("color-mix(in srgb, var(--color-teal) 67%, transparent)");
-    expect(s83.className).toContain("text-bg");
+    expect(s83.className).toContain("text-t0"); expect(s83.className).not.toContain("text-bg");
     expect(s100.style?.backgroundColor).toBe("color-mix(in srgb, var(--color-teal) 100%, transparent)");
     expect(s100.className).toContain("text-bg");
   });
@@ -110,6 +110,11 @@ describe("heatmapCellStyle (trzy stany, próg 0,34)", () => {
 });
 
 describe("promptVisibility", () => {
+  it("łączny wiersz ma pierwszeństwo przed średnią z silników", () => {
+    const cells = [{ prompt_id: "p1", visibility_rate: 1 }, { prompt_id: "p1", visibility_rate: 0 }];
+    expect(promptVisibility(cells, new Map([["p1", 0.8]])).get("p1")).toBe(0.8);
+    expect(promptVisibility(cells, new Map()).get("p1")).toBe(0.5);
+  });
   it("uśrednia silniki dla pytania; pytanie bez komórek nie ma wpisu", () => {
     const m = promptVisibility([
       { prompt_id: "p1", visibility_rate: 1 }, { prompt_id: "p1", visibility_rate: 0.5 }, { prompt_id: "p2", visibility_rate: 0 },
@@ -119,6 +124,11 @@ describe("promptVisibility", () => {
 });
 
 describe("Heatmap", () => {
+  it("próg 0 ukrywa pozycję „bardzo źle” w legendzie", () => {
+    const { rows, engines } = buildHeatmapRows([{ engine_id: "openai", prompt_id: "p1", visibility_rate: 0.2 }], prompts);
+    const html = renderToStaticMarkup(createElement(Heatmap, { rows, engines, threshold: 0 }));
+    expect(html).toContain("dobrze ≥ 67%"); expect(html).not.toContain("bardzo źle &lt;");
+  });
   it("renderuje legendę z progiem i etykietę stanu w aria-label komórki", () => {
     const { rows, engines } = buildHeatmapRows([{ engine_id: "openai", prompt_id: "p1", visibility_rate: 0.2 }], prompts);
     const html = renderToStaticMarkup(createElement(Heatmap, { rows, engines, threshold: 0.34 }));

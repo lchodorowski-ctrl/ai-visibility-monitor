@@ -30,19 +30,28 @@ export const getTrend = cache(async (projectId: string, days = 90) => {
   return shapeOverview(rows, []).trend;
 });
 
-/** Prompt x engine cells of the latest measurement; cached per request so the heatmap and the prompt list share one query. */
-export const getLatestCells = cache(async (projectId: string): Promise<{ engine_id: string; prompt_id: string; visibility_rate: number }[]> => {
+/**
+ * Latest measurement per prompt: prompt x engine cells plus each prompt's overall rate (the engine_id = null row, weighted by response counts).
+ * Cached per request so the heatmap and the prompt list dots share one pair of queries.
+ */
+export const getLatestCells = cache(async (projectId: string): Promise<{ cells: { engine_id: string; prompt_id: string; visibility_rate: number }[]; overall: Map<string, number> }> => {
   const supabase = await createServerSupabase();
   const { data: latestRow, error: latestError } = await supabase.from("daily_metrics").select("date")
     .eq("project_id", projectId).not("prompt_id", "is", null).not("engine_id", "is", null)
     .order("date", { ascending: false }).limit(1).maybeSingle();
   if (latestError) throw new Error(`Nie udało się pobrać ostatniego pomiaru pytań: ${latestError.message}`);
-  if (!latestRow) return [];
+  if (!latestRow) return { cells: [], overall: new Map() };
   const { data, error } = await supabase.from("daily_metrics").select("engine_id, prompt_id, visibility_rate")
-    .eq("project_id", projectId).eq("date", latestRow.date)
-    .not("prompt_id", "is", null).not("engine_id", "is", null);
+    .eq("project_id", projectId).eq("date", latestRow.date).not("prompt_id", "is", null);
   if (error) throw new Error(`Nie udało się pobrać heatmapy: ${error.message}`);
-  return (data ?? []).flatMap((c) => (c.engine_id && c.prompt_id ? [{ engine_id: c.engine_id, prompt_id: c.prompt_id, visibility_rate: Number(c.visibility_rate) }] : []));
+  const cells: { engine_id: string; prompt_id: string; visibility_rate: number }[] = [];
+  const overall = new Map<string, number>();
+  for (const c of data ?? []) {
+    if (!c.prompt_id) continue;
+    if (c.engine_id) cells.push({ engine_id: c.engine_id, prompt_id: c.prompt_id, visibility_rate: Number(c.visibility_rate) });
+    else overall.set(c.prompt_id, Number(c.visibility_rate));
+  }
+  return { cells, overall };
 });
 
 export const getLastRun = cache(async (projectId: string): Promise<Tables<"runs"> | null> => {

@@ -22,7 +22,7 @@ describe("komponenty PSAI", () => {
   it("ToneDot ma kolor tokenu i etykietę stanu", () => {
     const h = (t: "good" | "weak" | "bad") => renderToStaticMarkup(<ToneDot tone={t} />);
     expect(h("good")).toContain("bg-teal"); expect(h("good")).toContain('aria-label="dobrze"');
-    expect(h("weak")).toContain("bg-s3"); expect(h("weak")).toContain('aria-label="słabo"');
+    expect(h("weak")).toContain("bg-ink/40"); expect(h("weak")).toContain('aria-label="słabo"');
     expect(h("bad")).toContain("bg-red"); expect(h("bad")).toContain('aria-label="bardzo źle"');
     expect(h("bad")).toContain("h-2 w-2 shrink-0 rounded-full");
   });

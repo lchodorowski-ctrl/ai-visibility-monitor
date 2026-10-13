@@ -77,7 +77,7 @@ Statusy runu (`runs.status`):
 
 ## Kolory widoczności
 
-Widoczność (heatmapa pytań, kafle i silniki w Przeglądzie, kropki przy pytaniach) ma trzy stany: **dobrze** (teal) od 67%, **bardzo źle** (czerwony) poniżej progu niskiej widoczności i **słabo** (neutralny szary) pomiędzy. Granica 67% jest stałą w kodzie (`GOOD_VISIBILITY` w `src/lib/metrics/tone.ts`), a dolny próg (domyślnie 34%) ustawisz w Ustawieniach jako „Próg niskiej widoczności”; ten sam próg wybiera prompty do rekomendacji. Stan liczymy z zaokrąglonego procentu, więc kolor zawsze zgadza się z liczbą na ekranie. Kropka przy pytaniu pokazuje średnią z silników w ostatnim pomiarze; bez danych kropki nie ma.
+Widoczność (heatmapa pytań, kafle i silniki w Przeglądzie, kropki przy pytaniach) ma trzy stany: **dobrze** (teal) od 67%, **bardzo źle** (czerwony) poniżej progu niskiej widoczności i **słabo** (neutralny szary) pomiędzy. Granica 67% jest stałą w kodzie (`GOOD_VISIBILITY` w `src/lib/metrics/tone.ts`), a dolny próg (domyślnie 34%) ustawisz w Ustawieniach jako „Próg niskiej widoczności”; ten sam próg wybiera prompty do rekomendacji. Stan liczymy z zaokrąglonego procentu, więc kolor zawsze zgadza się z liczbą na ekranie. Kropka przy pytaniu pokazuje łączną widoczność pytania w ostatnim pomiarze (jak wiersz ogólny w Przeglądzie); bez danych kropki nie ma.
 
 ## Szybkość: dev vs prod
 

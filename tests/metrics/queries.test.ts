@@ -73,19 +73,25 @@ describe("queries", () => {
     await expect(getMentionCounts("p5", "run-err2")).rejects.toThrow("page2 fail");
   });
 
-  it("getLatestCells pobiera najnowszą datę, potem komórki tej daty; zamienia liczby i rzuca na błędzie", async () => {
-    respond = (name) => ({ data: name === "daily_metrics" ? [{ date: "2026-10-12", engine_id: "openai", prompt_id: "q1", visibility_rate: "0.5" }] : [], error: null });
+  it("getLatestCells dzieli wiersze na komórki silników i łączny wiersz pytania; liczby jako Number; rzuca na błędzie", async () => {
+    respond = (name) => ({ data: name === "daily_metrics" ? [
+      { date: "2026-10-12", engine_id: "openai", prompt_id: "q1", visibility_rate: "0.5" },
+      { date: "2026-10-12", engine_id: null, prompt_id: "q1", visibility_rate: "0.8" },
+    ] : [], error: null });
     const { getLatestCells } = await import("@/lib/metrics/queries");
-    expect(await getLatestCells("c1")).toEqual([{ engine_id: "openai", prompt_id: "q1", visibility_rate: 0.5 }]);
+    const r = await getLatestCells("c1");
+    expect(r.cells).toEqual([{ engine_id: "openai", prompt_id: "q1", visibility_rate: 0.5 }]);
+    expect(r.overall).toEqual(new Map([["q1", 0.8]]));
     expect(calls).toContain("daily_metrics.eq(date,2026-10-12)");
     respond = () => ({ data: null, error: { message: "cells down" } });
     await expect(getLatestCells("c2")).rejects.toThrow("cells down");
   });
 
-  it("getLatestCells bez pomiarów zwraca pustą listę", async () => {
+  it("getLatestCells bez pomiarów zwraca puste dane", async () => {
     respond = () => ({ data: [], error: null });
     const { getLatestCells } = await import("@/lib/metrics/queries");
-    expect(await getLatestCells("c3")).toEqual([]);
+    const r = await getLatestCells("c3");
+    expect(r.cells).toEqual([]); expect(r.overall.size).toBe(0);
   });
 
   it("każda funkcja rzuca, gdy Supabase zwraca błąd", async () => {

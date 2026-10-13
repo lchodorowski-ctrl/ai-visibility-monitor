@@ -18,15 +18,16 @@ export function buildHeatmapRows(
   return { rows, engines };
 }
 
-/** Ogólna widoczność pytania: średnia z silników, które je zmierzyły w ostatnim pomiarze (brak danych = brak wpisu). */
-export function promptVisibility(cells: { prompt_id: string; visibility_rate: number }[]): Map<string, number> {
+/** Ogólna widoczność pytania: łączny wiersz z daily_metrics (ważony liczbą odpowiedzi, jak w Przeglądzie); gdy go brak, średnia z silników. */
+export function promptVisibility(cells: { prompt_id: string; visibility_rate: number }[], overall?: Map<string, number>): Map<string, number> {
   const acc = new Map<string, { sum: number; n: number }>();
   for (const c of cells) {
     const a = acc.get(c.prompt_id) ?? { sum: 0, n: 0 };
     a.sum += c.visibility_rate; a.n += 1;
     acc.set(c.prompt_id, a);
   }
-  return new Map([...acc].map(([id, a]) => [id, a.sum / a.n]));
+  const mean = new Map([...acc].map(([id, a]) => [id, a.sum / a.n]));
+  return new Map([...mean, ...(overall ?? [])]);
 }
 
 const mixOf = (token: "teal" | "red", pctValue: number) => `color-mix(in srgb, var(--color-${token}) ${pctValue}%, transparent)`;
@@ -42,7 +43,8 @@ export function heatmapCellStyle(v: number | null, threshold: number): { classNa
   const tone = visibilityTone(v, threshold);
   if (tone === "good") {
     const mix = Math.round(35 + ((p - 67) / 33) * 65); // 35% przy 67%, 100% przy 100%
-    return { className: `${base} ${mix >= 55 ? "text-bg" : "text-t0"}`, style: { backgroundColor: mixOf("teal", mix) }, label, tone };
+    // Biały tekst na tealu spełnia AA dopiero przy pełnym kryciu (5,3:1); poniżej zostaje ciemny.
+    return { className: `${base} ${mix >= 100 ? "text-bg" : "text-t0"}`, style: { backgroundColor: mixOf("teal", mix) }, label, tone };
   }
   if (tone === "bad") {
     const top = Math.round(threshold * 100) - 1; // ostatni procent poniżej progu
@@ -62,7 +64,7 @@ function Legend({ threshold }: { threshold: number }) {
     <ul className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-[11px] text-t2" aria-label="Legenda kolorów">
       <li className={item}><span aria-hidden="true" className="inline-block h-3 w-3 rounded-sm bg-teal" />dobrze ≥ {Math.round(GOOD_VISIBILITY * 100)}%</li>
       <li className={item}><span aria-hidden="true" className="inline-block h-3 w-3 rounded-sm bg-ink/40" />słabo</li>
-      <li className={item}><span aria-hidden="true" className="inline-block h-3 w-3 rounded-sm bg-red" />bardzo źle &lt; {Math.round(threshold * 100)}%</li>
+      {Math.round(threshold * 100) > 0 && <li className={item}><span aria-hidden="true" className="inline-block h-3 w-3 rounded-sm bg-red" />bardzo źle &lt; {Math.round(threshold * 100)}%</li>}
     </ul>
   );
 }

@@ -21,6 +21,6 @@ export function toneTextClass(t: VisibilityTone): "text-teal" | "text-t0" | "tex
   return t === "good" ? "text-teal" : t === "bad" ? "text-red" : "text-t0";
 }
 
-export function toneDotClass(t: VisibilityTone): "bg-teal" | "bg-s3" | "bg-red" {
-  return t === "good" ? "bg-teal" : t === "bad" ? "bg-red" : "bg-s3";
+export function toneDotClass(t: VisibilityTone): "bg-teal" | "bg-ink/40" | "bg-red" {
+  return t === "good" ? "bg-teal" : t === "bad" ? "bg-red" : "bg-ink/40";
 }

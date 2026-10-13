@@ -20,8 +20,8 @@ import { addTopic, addPrompt, togglePromptActive, togglePromptKey, deletePrompt 
 /** Heatmap of the latest measurement; streams in on its own so the prompt list renders first. */
 async function HeatmapSection({ projectId, activePrompts, threshold }: { projectId: string; activePrompts: { id: string; text: string }[]; threshold: number }) {
   const supabase = await createServerSupabase();
-  const [cellRows, recCounts] = await Promise.all([getLatestCells(projectId), countRecommendationsByPrompt(supabase, projectId)]);
-  const heatmap = buildHeatmapRows(cellRows, activePrompts);
+  const [{ cells }, recCounts] = await Promise.all([getLatestCells(projectId), countRecommendationsByPrompt(supabase, projectId)]);
+  const heatmap = buildHeatmapRows(cells, activePrompts);
   return heatmap.engines.length === 0
     ? <EmptyState title="Brak pomiarów" description="Uruchom pierwszy pomiar na stronie Przegląd."
         action={<Link href="/app" className={buttonVariants()}>Przejdź do przeglądu</Link>} />
@@ -29,7 +29,10 @@ async function HeatmapSection({ projectId, activePrompts, threshold }: { project
 }
 
 /** Status dot of one prompt in the list; reads the same per-request cached cells as the heatmap, so it adds no query and streams in after the list. */
-const getPromptRates = cache(async (projectId: string) => promptVisibility(await getLatestCells(projectId)));
+const getPromptRates = cache(async (projectId: string) => {
+  const { cells, overall } = await getLatestCells(projectId);
+  return promptVisibility(cells, overall);
+});
 
 async function PromptDot({ projectId, promptId, threshold }: { projectId: string; promptId: string; threshold: number }) {
   const rate = (await getPromptRates(projectId)).get(promptId);

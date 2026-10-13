@@ -37,7 +37,7 @@ describe("etykiety i klasy tonu", () => {
     expect(toneTextClass("weak")).toBe("text-t0");
     expect(toneTextClass("bad")).toBe("text-red");
     expect(toneDotClass("good")).toBe("bg-teal");
-    expect(toneDotClass("weak")).toBe("bg-s3");
+    expect(toneDotClass("weak")).toBe("bg-ink/40");
     expect(toneDotClass("bad")).toBe("bg-red");
   });
 });
