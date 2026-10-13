@@ -15,6 +15,10 @@ describe("extractPage", () => {
     expect(p.excerpt.length).toBe(600);
     expect(p.excerpt).not.toContain("x()");
   });
+  it("apostrof wewnątrz description w cudzysłowie nie ucina wartości (oba porządki atrybutów)", () => {
+    expect(extractPage(`<head><meta name="description" content="It's about X"></head>`).description).toBe("It's about X");
+    expect(extractPage(`<head><meta content="It's about X" name="description"></head>`).description).toBe("It's about X");
+  });
   it("puste wejście → null/\"\"", () => {
     expect(extractPage("")).toEqual({ title: null, h1: null, description: null, excerpt: "" });
   });

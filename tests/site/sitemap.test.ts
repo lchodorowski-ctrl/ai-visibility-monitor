@@ -10,6 +10,20 @@ describe("parseSitemap", () => {
     expect(parseSitemap(xml)).toEqual({ urls: [], sitemaps: ["https://x.pl/a.xml"] });
   });
 });
+describe("parseSitemap — warianty XML", () => {
+  it("CDATA w <loc>", () => {
+    const xml = `<urlset><url><loc><![CDATA[https://a.pl/x.html]]></loc></url></urlset>`;
+    expect(parseSitemap(xml).urls).toEqual(["https://a.pl/x.html"]);
+  });
+  it("tagi z prefiksem przestrzeni nazw", () => {
+    const xml = `<sm:urlset xmlns:sm="http://www.sitemaps.org/schemas/sitemap/0.9"><sm:url><sm:loc>https://a.pl/y.html</sm:loc></sm:url></sm:urlset>`;
+    expect(parseSitemap(xml).urls).toEqual(["https://a.pl/y.html"]);
+  });
+  it("dekoduje &amp; w query", () => {
+    const xml = `<urlset><url><loc>https://a.pl/p?a=1&amp;b=2</loc></url></urlset>`;
+    expect(parseSitemap(xml).urls).toEqual(["https://a.pl/p?a=1&b=2"]);
+  });
+});
 describe("rewriteHost", () => {
   it("podmienia host na host site_url, zachowuje ścieżkę i query", () => {
     expect(rewriteHost("https://polskaszkola.ai/szkolenia.html?x=1", "https://polskaszkolaai.netlify.app")).toBe("https://polskaszkolaai.netlify.app/szkolenia.html?x=1");

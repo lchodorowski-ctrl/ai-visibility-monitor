@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db-types";
-import { parseSitemap, rewriteHost } from "./sitemap";
+import { parseSitemap, tryRewriteHost } from "./sitemap";
 import { extractPage } from "./extract";
 import { isAllowedByRobots } from "./robots";
 
@@ -19,14 +19,21 @@ async function getText(fetchImpl: typeof fetch, url: string, timeoutMs: number):
 export async function discoverUrls(siteUrl: string, fetchImpl: typeof fetch = fetch, timeoutMs = 15000): Promise<string[]> {
   const base = siteUrl.replace(/\/+$/, "");
   const seen = new Set<string>(); const out: string[] = [];
-  const queue = [`${base}/sitemap.xml`]; const visitedMaps = new Set<string>();
+  const rootMap = `${base}/sitemap.xml`;
+  const queue = [rootMap]; const visitedMaps = new Set<string>();
   while (queue.length && out.length < MAX_PAGES) {
     const mapUrl = queue.shift()!; if (visitedMaps.has(mapUrl)) continue; visitedMaps.add(mapUrl);
     const { status, body } = await getText(fetchImpl, mapUrl, timeoutMs);
-    if (status !== 200 || !body) continue;
+    const ok = status >= 200 && status < 300;
+    // błąd głównej sitemapy ma przerwać zadanie, a nie po cichu wyzerować mapę strony
+    if (!ok && mapUrl === rootMap) throw new Error(`sitemap: ${status} ${mapUrl}`);
+    if (!ok || !body) continue;
     const { urls, sitemaps } = parseSitemap(body);
-    for (const s of sitemaps) queue.push(rewriteHost(s, base));
-    for (const u of urls) { const r = rewriteHost(u, base); if (!seen.has(r)) { seen.add(r); out.push(r); if (out.length >= MAX_PAGES) break; } }
+    for (const s of sitemaps) { const r = tryRewriteHost(s, base); if (r) queue.push(r); }
+    for (const u of urls) {
+      const r = tryRewriteHost(u, base); // nieprawidłowy <loc> pomijamy
+      if (r && !seen.has(r)) { seen.add(r); out.push(r); if (out.length >= MAX_PAGES) break; }
+    }
   }
   return out;
 }
@@ -50,13 +57,13 @@ export async function crawlSite(siteUrl: string, opts: { fetchImpl?: typeof fetc
 }
 
 export async function persistSitePages(admin: SupabaseClient<Database>, projectId: string, pages: CrawledPage[]): Promise<{ upserted: number; retired: number }> {
-  if (pages.length) {
-    const { error } = await admin.from("site_pages").upsert(
-      pages.map((p) => ({ project_id: projectId, url: p.url, path: p.path, title: p.title, h1: p.h1, description: p.description, excerpt: p.excerpt, status: p.status, fetched_at: new Date().toISOString() })),
-      { onConflict: "project_id,url" },
-    );
-    if (error) throw new Error(`site_pages upsert: ${error.message}`);
-  }
+  // pusty wynik crawla nie znaczy, że strony zniknęły — nie wygaszamy istniejących wierszy
+  if (pages.length === 0) return { upserted: 0, retired: 0 };
+  const { error: upsertError } = await admin.from("site_pages").upsert(
+    pages.map((p) => ({ project_id: projectId, url: p.url, path: p.path, title: p.title, h1: p.h1, description: p.description, excerpt: p.excerpt, status: p.status, fetched_at: new Date().toISOString() })),
+    { onConflict: "project_id,url" },
+  );
+  if (upsertError) throw new Error(`site_pages upsert: ${upsertError.message}`);
   const { data: stale, error: staleError } = await admin.from("site_pages").select("id, url").eq("project_id", projectId);
   if (staleError) throw new Error(staleError.message);
   const current = new Set(pages.map((p) => p.url));

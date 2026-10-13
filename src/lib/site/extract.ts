@@ -6,8 +6,8 @@ export function extractPage(html: string): { title: string | null; h1: string | 
   if (!html) return { title: null, h1: null, description: null, excerpt: "" };
   const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1];
   const h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1];
-  const description = html.match(/<meta[^>]+name=["']description["'][^>]*content=["']([^"']*)["']/i)?.[1]
-    ?? html.match(/<meta[^>]+content=["']([^"']*)["'][^>]*name=["']description["']/i)?.[1];
+  const description = html.match(/<meta[^>]+name=["']description["'][^>]*content=(["'])(.*?)\1/i)?.[2]
+    ?? html.match(/<meta[^>]+content=(["'])(.*?)\1[^>]*name=["']description["']/i)?.[2];
   const main = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i)?.[1] ?? html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] ?? html;
   const excerpt = stripTags(dropBlocks(main)).slice(0, 600);
   return { title: title ? stripTags(title) : null, h1: h1 ? stripTags(h1) : null, description: description ? decode(description).trim() : null, excerpt };

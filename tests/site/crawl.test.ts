@@ -24,7 +24,25 @@ describe("discoverUrls", () => {
     });
     expect(await discoverUrls(SITE, f)).toEqual([`${SITE}/a.html`]);
   });
-  it("brak sitemapy → []", async () => { expect(await discoverUrls(SITE, fakeFetch({}))).toEqual([]); });
+  it("główna sitemapa nie-2xx (404/5xx) → błąd, nie pusta lista", async () => {
+    await expect(discoverUrls(SITE, fakeFetch({}))).rejects.toThrow(`sitemap: 404 ${SITE}/sitemap.xml`);
+    await expect(discoverUrls(SITE, fakeFetch({ [`${SITE}/sitemap.xml`]: { status: 503, body: "" } }))).rejects.toThrow("sitemap: 503");
+  });
+  it("błąd sieci przy głównej sitemapie → błąd", async () => {
+    const f = vi.fn(async () => { throw new Error("timeout"); }) as unknown as typeof fetch;
+    await expect(discoverUrls(SITE, f)).rejects.toThrow("sitemap: 0");
+  });
+  it("błąd podrzędnej sitemapy jest pomijany", async () => {
+    const f = fakeFetch({
+      [`${SITE}/sitemap.xml`]: { body: `<sitemapindex><sitemap><loc>https://polskaszkola.ai/s1.xml</loc></sitemap><sitemap><loc>https://polskaszkola.ai/s2.xml</loc></sitemap></sitemapindex>` },
+      [`${SITE}/s2.xml`]: { body: `<urlset><url><loc>https://polskaszkola.ai/b.html</loc></url></urlset>` },
+    });
+    expect(await discoverUrls(SITE, f)).toEqual([`${SITE}/b.html`]);
+  });
+  it("nieprawidłowy <loc> wśród dobrych jest pomijany", async () => {
+    const f = fakeFetch({ [`${SITE}/sitemap.xml`]: { body: `<urlset><url><loc>https://polskaszkola.ai/ok.html</loc></url><url><loc>/wzgledny.html</loc></url><url><loc>garbage</loc></url><url><loc>https://polskaszkola.ai/ok2.html</loc></url></urlset>` } });
+    expect(await discoverUrls(SITE, f)).toEqual([`${SITE}/ok.html`, `${SITE}/ok2.html`]);
+  });
 });
 describe("crawlSite", () => {
   it("pobiera strony z sitemapy, respektuje robots, zapisuje status", async () => {
