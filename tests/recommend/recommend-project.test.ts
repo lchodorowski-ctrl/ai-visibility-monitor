@@ -63,7 +63,7 @@ const rec = (title: string): GeneratedRecommendation => ({
   type: "offsite", title, summary: "s".repeat(30), action_steps: ["a", "b"], target_url: "https://parp.gov.pl/x",
   suggested_outline: null, impact: 4, effort: 2, rationale_pl: "r".repeat(20),
 });
-const ok = (cost = 0.1) => vi.fn(async (input: { prompt: { id: string } }) => ({ accepted: [rec(`Rekomendacja dla ${input.prompt.id}`)], rejected: [], usage: { input_tokens: 1, output_tokens: 1 }, costUsd: cost }));
+const ok = (cost = 0.1) => vi.fn(async (input: { prompt: { id: string }; excerpts: unknown[] }) => ({ accepted: [rec(`Rekomendacja dla ${input.prompt.id}`)], rejected: [], usage: { input_tokens: 1, output_tokens: 1 }, costUsd: cost }));
 const noRules = vi.fn(async () => [] as GeneratedRecommendation[]);
 const freshCrawl = () => new Date().toISOString();
 
