@@ -183,35 +183,63 @@ npx tsx --env-file=.env.local scripts/crawl-now.ts [projectId]
 | `scripts/measure-ttfb.ts` | pomiar TTFB ekranów (patrz „Szybkość: dev vs prod”) |
 | `scripts/try-engine.ts` | pojedyncze zapytanie do silnika, `npm run try:engine` |
 
-## Deploy
+## Wdrożenie produkcyjne
 
-**Supabase (hostowany projekt)**
+Produkcja składa się z trzech usług: Supabase (baza i logowanie), Trigger.dev (taski mierzące silniki) i Vercel (aplikacja + cron). Wszystkie wartości wpisujesz do **jednego** pliku `.env.prod.local` (ignorowany przez git); skrypty same rozsyłają je do Trigger.dev i Vercela, więc nic nie wklejasz ręcznie w panelach. Kolejność ma znaczenie.
+
+Identyfikatory tego wdrożenia: Supabase `gfnzjjakugwusxnzpdbz`, Trigger.dev `proj_sitwivdlindrogesffbq`, projekt Vercel `ai-visibility-monitor`.
+
+**1. Supabase (baza)**
 
 ```bash
-npx supabase link --project-ref <ref>
+npx supabase login
+npx supabase link --project-ref gfnzjjakugwusxnzpdbz
 npx supabase db push
 ```
 
-Następnie załaduj seed (zawartość `supabase/seed.sql` w SQL Editorze), dodaj użytkownika w Authentication i przypisz go do organizacji zapytaniem `insert into memberships ...` jak w sekcji lokalnej. Zregeneruj typy: `npx supabase gen types typescript --project-id <ref> > src/lib/db-types.ts`.
+Następnie w panelu Supabase dodaj użytkownika (Authentication → Users → Add user, e-mail i hasło) i uruchom `supabase/prod-bootstrap.sql` w SQL Editorze. Plik jest idempotentny (można go puścić ponownie), zakłada seed organizacji i projektu PSAI oraz członkostwo użytkownika wskazanego e-mailem (podmień e-mail w pliku, jeśli to inne konto). **Użytkownik musi istnieć w Authentication PRZED uruchomieniem skryptu, a członkostwo MUSI być dodane przed pierwszym logowaniem**, inaczej `ensureWorkspace` utworzy osobną, pustą organizację. Typy bazy zregenerujesz po zmianach schematu: `npx supabase gen types typescript --project-id gfnzjjakugwusxnzpdbz > src/lib/db-types.ts`.
 
-**Trigger.dev**
+**2. Plik `.env.prod.local`**
 
 ```bash
-npx trigger.dev@latest deploy
+cp .env.prod.example .env.prod.local
 ```
 
-W ustawieniach projektu Trigger.dev (środowisko prod) ustaw zmienne używane przez taski: `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, klucze i modele silników (`OPENAI_*`, `PERPLEXITY_*`, `GEMINI_*`, `DATAFORSEO_*`) oraz `ANTHROPIC_*`.
+Uzupełnij puste wartości. Komentarze w pliku mówią, skąd każdą wziąć (Supabase → Project Settings → API, Trigger.dev → API keys → **Prod** (`tr_prod_...`), panele OpenAI, Perplexity, Google AI Studio, DataForSEO, Anthropic). `CRON_SECRET` wygeneruj np. `openssl rand -hex 32`. Adres Supabase i ID projektu Trigger.dev są już wpisane. Plik nie trafi do repozytorium (`.gitignore`), a `.env.prod.example` to szablon bez sekretów.
 
-**Vercel**
+**3. Trigger.dev (taski)**
 
-1. Zaimportuj repozytorium i ustaw wszystkie zmienne z `.env.example` (prod).
-2. `vercel.json` rejestruje cron `0 5 * * 1` (poniedziałki, 05:00 UTC) na `/api/cron/weekly`. Vercel wywołuje endpoint z nagłówkiem `Authorization: Bearer $CRON_SECRET`, więc `CRON_SECRET` musi być ustawiony w projekcie. Bez niego endpoint zwraca 401.
-3. Endpoint uruchamia `run-project` (`source: "cron"`) dla projektów z `schedule = 'weekly'`, z kluczem idempotencji `<projectId>-<tydzień ISO>`; ponowne wywołanie w tym samym tygodniu nie uruchomi runu drugi raz. Odpowiedź: `{ "triggered": <n>, "failed": [] }`, a przy częściowej awarii status 207.
-4. Ręczny test:
+```bash
+npx trigger.dev@latest login
+npx trigger.dev@latest deploy --project-ref proj_sitwivdlindrogesffbq
+```
+
+Rozszerzenie `syncEnvVars` w `trigger.config.ts` przy deployu czyta `.env.prod.local` i wysyła do środowiska **prod** tylko zmienne tasków: `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, klucze i modele silników (`OPENAI_*`, `PERPLEXITY_*`, `GEMINI_*`, `DATAFORSEO_*`) oraz `ANTHROPIC_*`. Klucze są wysyłane jako sekretne. Bez pliku deploy przejdzie, ale wypisze ostrzeżenie i zmienne nie zostaną ustawione. Zmiana wartości w pliku wymaga ponownego deployu.
+
+**4. Vercel (aplikacja i cron)**
+
+```bash
+npx vercel login
+npx vercel link          # wybierz istniejący projekt ai-visibility-monitor
+bash scripts/push-env-vercel.sh
+npx vercel --prod        # albo push na main (integracja z GitHubem)
+```
+
+`scripts/push-env-vercel.sh` wysyła zmienne aplikacji (`NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_ROLE_KEY`, `TRIGGER_SECRET_KEY`, `TRIGGER_PROJECT_REF`, `CRON_SECRET`, `ANTHROPIC_*`) do środowiska Production, nadpisując istniejące; puste wartości pomija z ostrzeżeniem i nie wypisuje żadnych wartości. Zmienne obowiązują od następnego wdrożenia, więc skrypt uruchom przed `vercel --prod`.
+
+`vercel.json` rejestruje cron `0 5 * * 1` (poniedziałki, 05:00 UTC) na `/api/cron/weekly`. Vercel wywołuje endpoint z nagłówkiem `Authorization: Bearer $CRON_SECRET`; bez `CRON_SECRET` w projekcie endpoint zwraca 401. Endpoint uruchamia `run-project` (`source: "cron"`) dla projektów z `schedule = 'weekly'`, z kluczem idempotencji `<projectId>-<tydzień ISO>`; ponowne wywołanie w tym samym tygodniu nie uruchomi runu drugi raz. Odpowiedź: `{ "triggered": <n>, "failed": [] }`, a przy częściowej awarii status 207.
+
+**5. Test na produkcji**
+
+1. Wejdź na adres `*.vercel.app` projektu i zaloguj się kontem dodanym w kroku 1.
+2. Kliknij „Uruchom pomiar”, potem sprawdź run w panelu Trigger.dev (środowisko Prod): powinien przejść bez błędów konfiguracji (brak klucza = błąd w logu taska).
+3. Test crona (ten sam sekret co w `.env.prod.local`):
 
    ```bash
    curl -H "Authorization: Bearer $CRON_SECRET" https://<domena>/api/cron/weekly
    ```
+
+   Oczekiwana odpowiedź: `{ "triggered": <n>, "failed": [] }`.
 
 ## Struktura katalogów
 
