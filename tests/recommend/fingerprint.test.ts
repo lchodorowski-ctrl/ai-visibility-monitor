@@ -21,12 +21,12 @@ describe("fingerprint", () => {
 describe("mergeEvidence", () => {
   const a = { prompt_ids: ["p1"], visibility_by_engine: { openai: 0 }, cited_domains: [{ domain: "parp.gov.pl", count: 2 }], cited_urls: ["u1"], competitors_mentioned: [{ name: "EY", count: 1 }], sample_quotes: ["q1", "q2", "q3", "q4"] };
   const b = { prompt_ids: ["p1", "p2"], visibility_by_engine: { gemini: 0.2 }, cited_domains: [{ domain: "parp.gov.pl", count: 1 }, { domain: "ey.pl", count: 1 }], cited_urls: ["u1", "u2"], competitors_mentioned: [{ name: "EY", count: 2 }], sample_quotes: ["q5", "q6", "q7"] };
-  it("łączy prompt_ids, sumuje domeny i konkurentów, limituje cytaty", () => {
+  it("łączy prompt_ids, bierze maksimum liczników domen i konkurentów, limituje cytaty", () => {
     const m = mergeEvidence(a, b);
     expect(m.prompt_ids).toEqual(["p1", "p2"]);
-    expect(m.cited_domains).toEqual([{ domain: "parp.gov.pl", count: 3 }, { domain: "ey.pl", count: 1 }]);
+    expect(m.cited_domains).toEqual([{ domain: "parp.gov.pl", count: 2 }, { domain: "ey.pl", count: 1 }]);
     expect(m.cited_urls).toEqual(["u1", "u2"]);
-    expect(m.competitors_mentioned).toEqual([{ name: "EY", count: 3 }]);
+    expect(m.competitors_mentioned).toEqual([{ name: "EY", count: 2 }]);
     expect(m.sample_quotes).toHaveLength(6);
     expect(m.visibility_by_engine).toEqual({ openai: 0, gemini: 0.2 });
   });
@@ -38,5 +38,13 @@ describe("mergeEvidence", () => {
     expect(m.cited_urls).toHaveLength(20);
     expect(m.visibility_by_engine.openai).toBe(0.5);
     expect(JSON.stringify([many, more])).toBe(snapshot);
+  });
+  it("jest idempotentne: ponowne scalenie tych samych dowodów nic nie zmienia", () => {
+    const once = mergeEvidence(a, b);
+    expect(mergeEvidence(once, b)).toEqual(once);
+    const few = { ...a, sample_quotes: ["q1"] };
+    const onceFew = mergeEvidence(few, b);
+    expect(mergeEvidence(onceFew, b)).toEqual(onceFew);
+    expect(onceFew.sample_quotes).toEqual(["q1", "q5", "q6", "q7"]);
   });
 });

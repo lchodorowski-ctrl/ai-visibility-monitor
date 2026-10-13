@@ -29,23 +29,27 @@ export function fingerprint(type: string, title: string): string {
   return createHash("sha1").update(`${type}:${normalizeTitle(title)}`).digest("hex");
 }
 
-function sumCounts<K extends string, T extends { count: number } & Record<K, string>>(key: K, a: T[], b: T[]): T[] {
+/**
+ * Union of keys with the MAX count per key. Max (not sum) keeps the merge idempotent:
+ * re-running the same day (retry, manual refresh) must not inflate the counts.
+ */
+function maxCounts<K extends string, T extends { count: number } & Record<K, string>>(key: K, a: T[], b: T[]): T[] {
   const m = new Map<string, T>();
   for (const x of [...a, ...b]) {
     const prev = m.get(x[key]);
-    m.set(x[key], prev ? { ...prev, count: prev.count + x.count } : { ...x });
+    m.set(x[key], prev ? { ...prev, count: Math.max(prev.count, x.count) } : { ...x });
   }
   return [...m.values()];
 }
 
-/** Merges two evidence blobs describing the same recommendation (e.g. from two prompts). */
+/** Merges two evidence blobs describing the same recommendation (e.g. from two prompts); idempotent: merge(merge(a, b), b) = merge(a, b). */
 export function mergeEvidence(a: Evidence, b: Evidence): Evidence {
   return {
     prompt_ids: [...new Set([...a.prompt_ids, ...b.prompt_ids])],
     visibility_by_engine: { ...a.visibility_by_engine, ...b.visibility_by_engine },
-    cited_domains: sumCounts("domain", a.cited_domains, b.cited_domains),
+    cited_domains: maxCounts("domain", a.cited_domains, b.cited_domains),
     cited_urls: [...new Set([...a.cited_urls, ...b.cited_urls])].slice(0, MAX_URLS),
-    competitors_mentioned: sumCounts("name", a.competitors_mentioned, b.competitors_mentioned),
-    sample_quotes: [...a.sample_quotes, ...b.sample_quotes].slice(0, MAX_QUOTES),
+    competitors_mentioned: maxCounts("name", a.competitors_mentioned, b.competitors_mentioned),
+    sample_quotes: [...new Set([...a.sample_quotes, ...b.sample_quotes])].slice(0, MAX_QUOTES),
   };
 }
