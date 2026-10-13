@@ -17,7 +17,7 @@ describe("generateRecommendations", () => {
     const args = parse.mock.calls[0][0];
     expect(args.model).toBe("claude-opus-5-5");
     expect(args.output_config.effort).toBe("high");
-    expect(args.max_tokens).toBe(8000);
+    expect(args.max_tokens).toBe(16000);
   });
   it("odrzuca content_new bez zarysu i offsite bez URL", async () => {
     parse.mockResolvedValue({ parsed_output: { recommendations: [{ ...base, suggested_outline: null }, { ...base, type: "offsite", title: "Zgłoś się do rankingu", target_url: null }] }, usage: { input_tokens: 1, output_tokens: 1 } });
@@ -75,5 +75,42 @@ describe("generateRecommendations", () => {
     await expect(generateRecommendations(input)).rejects.toThrow(/max_tokens/);
     parse.mockResolvedValue({ parsed_output: null, usage: { input_tokens: 1, output_tokens: 1 }, stop_reason: "refusal" });
     await expect(generateRecommendations(input)).rejects.toThrow(/refusal/);
+  });
+  it("błąd po odpowiedzi modelu niesie zużycie i koszt (płatne wywołanie)", async () => {
+    const { generateRecommendations, GenerationError } = await import("@/lib/recommend/generate");
+    parse.mockResolvedValue({ parsed_output: null, usage: { input_tokens: 1000, output_tokens: 16000 }, stop_reason: "max_tokens" });
+    const err = await generateRecommendations(input).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(GenerationError);
+    expect((err as InstanceType<typeof GenerationError>).usage).toEqual({ input_tokens: 1000, output_tokens: 16000 });
+    expect((err as InstanceType<typeof GenerationError>).costUsd).toBeCloseTo(0.004 + 0.32);
+  });
+  it("odrzuca target_url zaczynający się od // (inny host)", async () => {
+    const { validateConcreteness } = await import("@/lib/recommend/generate");
+    expect(validateConcreteness({ ...base, target_url: "//evil.example/x" } as never)).toMatch(/ścieżką/);
+    expect(validateConcreteness({ ...base, type: "content_improve", target_url: "//x.pl" } as never)).toMatch(/ścieżką/);
+    expect(validateConcreteness({ ...base, target_url: "/szkolenia" } as never)).toBeNull();
+  });
+  it("sama domena w target_url jest uzupełniana do https:// i przyjmowana", async () => {
+    const { validateConcreteness, normalizeTargetUrl, generateRecommendations } = await import("@/lib/recommend/generate");
+    expect(normalizeTargetUrl("parp.gov.pl")).toBe("https://parp.gov.pl");
+    expect(normalizeTargetUrl(" Forum.Example.com/watek/1 ")).toBe("https://Forum.Example.com/watek/1");
+    expect(normalizeTargetUrl("/faq")).toBe("/faq");
+    expect(normalizeTargetUrl("TBD")).toBe("TBD");
+    expect(normalizeTargetUrl(null)).toBeNull();
+    expect(validateConcreteness({ ...base, type: "offsite", target_url: "parp.gov.pl/ranking", suggested_outline: null } as never)).toBeNull();
+    const offsite = { ...base, type: "offsite", title: "Zgłoś się do rankingu PARP", target_url: "parp.gov.pl/ranking", suggested_outline: null };
+    parse.mockResolvedValue({ parsed_output: { recommendations: [offsite] }, usage: { input_tokens: 1, output_tokens: 1 }, stop_reason: "end_turn" });
+    const r = await generateRecommendations(input);
+    expect(r.accepted).toHaveLength(1);
+    expect(r.accepted[0].target_url).toBe("https://parp.gov.pl/ranking");
+  });
+  it("prompt systemowy wymaga pełnego adresu https:// dla offsite", async () => {
+    parse.mockResolvedValue({ parsed_output: { recommendations: [] }, usage: { input_tokens: 1, output_tokens: 1 } });
+    const { generateRecommendations } = await import("@/lib/recommend/generate");
+    await generateRecommendations(input);
+    const system = String(parse.mock.calls[0][0].system[0].text);
+    const offsiteLine = system.split("\n").find((l) => l.startsWith("- offsite:")) ?? "";
+    expect(offsiteLine).toContain("https://");
+    expect(offsiteLine).not.toMatch(/lub domena/);
   });
 });

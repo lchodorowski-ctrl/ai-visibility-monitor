@@ -33,7 +33,7 @@ Zasady:
 - Po polsku, konkretnie, bez pustych superlatywów. Każda rekomendacja wskazuje jeden artefakt do zrobienia.
 - content_new: nowa podstrona — podaj tytuł, 3–8 punktów zarysu (suggested_outline) i proponowaną ścieżkę w target_url (np. /szkolenia-ai-dla-firm). Nie proponuj strony, która już istnieje na liście podstron — wtedy użyj content_improve z jej ścieżką.
 - content_improve: istniejąca podstrona (target_url = jej ścieżka z listy) i co konkretnie dodać (liczby, FAQ, porównanie, daty, autor).
-- offsite: konkretne miejsce, w którym asystenci cytują konkurencję, a nie markę (target_url = jeden z cytowanych URL-i lub domena) i jak się tam znaleźć.
+- offsite: konkretne miejsce, w którym asystenci cytują konkurencję, a nie markę (target_url = pełny adres zaczynający się od https://, najlepiej jeden z cytowanych URL-i — nie sama domena) i jak się tam znaleźć.
 - technical: zmiana techniczna strony (np. llms.txt, dane strukturalne) — tylko jeśli dowody na to wskazują.
 - fact_fix: asystent podaje nieprawdę o marce — wskaż, gdzie opublikować poprawne fakty.
 - Nie wymyślaj źródeł ani liczb; odwołuj się do dowodów z wejścia. Nie powtarzaj rekomendacji z listy „istniejące”.
@@ -41,12 +41,22 @@ Zasady:
 - impact 1–5 (jak bardzo zwiększy widoczność przy tym pytaniu), effort 1–5 (ile pracy).`;
 
 const URL_REASON = "target_url musi być ścieżką (/…) lub adresem http(s)";
+// "//host/x" is protocol-relative (another host), not a site path.
 const isConcreteUrl = (u: string | null): boolean => {
   const t = u?.trim() ?? "";
-  return t.startsWith("/") || /^https?:\/\/\S+/i.test(t);
+  return (t.startsWith("/") && !t.startsWith("//")) || /^https?:\/\/\S+/i.test(t);
 };
 
-export function validateConcreteness(r: GeneratedRecommendation): string | null {
+const BARE_DOMAIN = /^[a-z0-9.-]+\.[a-z]{2,}(\/.*)?$/i;
+/** Trims target_url and turns a bare domain ("parp.gov.pl/kurs") into a full https URL; other values are returned trimmed. */
+export function normalizeTargetUrl(u: string | null): string | null {
+  if (u == null) return null;
+  const t = u.trim();
+  return BARE_DOMAIN.test(t) ? `https://${t}` : t;
+}
+
+export function validateConcreteness(raw: GeneratedRecommendation): string | null {
+  const r = { ...raw, target_url: normalizeTargetUrl(raw.target_url) };
   if (r.type === "content_new") {
     const points = (r.suggested_outline ?? []).filter((p) => p.trim().length > 0);
     if (points.length < 3) return "content_new bez zarysu (suggested_outline ≥ 3 niepuste punkty)";
@@ -77,6 +87,18 @@ function renderInput(i: RecommendationInput): string {
   return sections.join("\n\n");
 }
 
+/** Thrown when the model answered (and was billed) but the answer is unusable; carries the spend so the caller can account for it. */
+export class GenerationError extends Error {
+  readonly usage: { input_tokens: number; output_tokens: number };
+  readonly costUsd: number;
+  constructor(message: string, usage: { input_tokens: number; output_tokens: number }, costUsd: number) {
+    super(message);
+    this.name = "GenerationError";
+    this.usage = usage;
+    this.costUsd = costUsd;
+  }
+}
+
 export async function generateRecommendations(
   input: RecommendationInput,
   deps: { client?: Anthropic } = {},
@@ -91,13 +113,22 @@ export async function generateRecommendations(
   const model = process.env.ANTHROPIC_RECOMMENDER_MODEL ?? "claude-opus-5-5";
   const res = await client.messages.parse({
     model,
-    max_tokens: 8000,
+    // thinking tokens count toward max_tokens; a max_tokens stop throws away the whole (paid) answer
+    max_tokens: 16000,
     output_config: { effort: "high", format: zodOutputFormat(OutputSchema) },
     system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: renderInput(input) }],
   });
+  // cost first: a refused or truncated answer is still billed
+  const usage = { input_tokens: res.usage?.input_tokens ?? 0, output_tokens: res.usage?.output_tokens ?? 0 };
+  const price = MODEL_PRICES[model];
+  if (!price) console.warn(`generateRecommendations: brak cennika dla ${model}, koszt = 0`);
+  const costUsd = price ? (usage.input_tokens / 1e6) * price.input + (usage.output_tokens / 1e6) * price.output : 0;
   if (res.parsed_output == null || res.stop_reason === "refusal" || res.stop_reason === "max_tokens") {
-    throw new Error(`generateRecommendations: ${res.stop_reason === "refusal" || res.stop_reason === "max_tokens" ? res.stop_reason : "brak parsed_output"}`);
+    throw new GenerationError(
+      `generateRecommendations: ${res.stop_reason === "refusal" || res.stop_reason === "max_tokens" ? res.stop_reason : "brak parsed_output"}`,
+      usage, costUsd,
+    );
   }
   const items = res.parsed_output.recommendations;
   const accepted: GeneratedRecommendation[] = [];
@@ -105,11 +136,7 @@ export async function generateRecommendations(
   for (const r of items) {
     const why = validateConcreteness(r);
     if (why) rejected.push({ title: r.title, reason: why });
-    else accepted.push(r);
+    else accepted.push({ ...r, target_url: normalizeTargetUrl(r.target_url) });
   }
-  const usage = { input_tokens: res.usage?.input_tokens ?? 0, output_tokens: res.usage?.output_tokens ?? 0 };
-  const price = MODEL_PRICES[model];
-  if (!price) console.warn(`generateRecommendations: brak cennika dla ${model}, koszt = 0`);
-  const costUsd = price ? (usage.input_tokens / 1e6) * price.input + (usage.output_tokens / 1e6) * price.output : 0;
   return { accepted, rejected, usage, costUsd };
 }
