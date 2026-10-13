@@ -144,7 +144,7 @@ Przycisk „Odśwież rekomendacje” na `/app/recommendations` liczy je na dany
 
 **Błędy.** Task nie ponawia prób (ponowienie kupiłoby wszystkie wywołania jeszcze raz). Błąd jednego pytania jest logowany, a pozostałe idą dalej; jeśli padną wszystkie wywołania modelu, run taska kończy się błędem.
 
-**Znane ograniczenie.** Jeśli klucz Anthropic nie jest przypisany do workspace'u, żywe generowanie rekomendacji wymaga `ANTHROPIC_WORKSPACE_ID`. Bez niego wywołanie kończy się błędem, a prompt jest liczony jako nieudany. To obecnie blokuje pierwsze żywe uruchomienie.
+**Znane ograniczenie.** Jeśli klucz Anthropic nie jest przypisany do workspace'u, żywe generowanie rekomendacji wymaga `ANTHROPIC_WORKSPACE_ID`. Bez niego wywołanie kończy się błędem, a prompt jest liczony jako nieudany. To obecnie blokuje pierwsze żywe uruchomienie. Po ustawieniu `ANTHROPIC_WORKSPACE_ID` sprawdź klucz: `npx tsx --env-file=.env.local scripts/check-anthropic.ts` (oczekiwany wynik: `OK: klucz działa`).
 
 Zmienne i ustawienia związane z rekomendacjami:
 
@@ -177,6 +177,7 @@ npx tsx --env-file=.env.local scripts/crawl-now.ts [projectId]
 | `scripts/reaggregate.ts` | przeliczenie snapshotu dnia bez nowych zapytań do silników |
 | `scripts/crawl-now.ts` | crawl mapy strony (patrz „Mapa strony”) |
 | `scripts/recommend-now.ts` | generowanie rekomendacji (patrz „Rekomendacje”) |
+| `scripts/check-anthropic.ts` | sprawdzenie klucza Anthropic (5-tokenowe wywołanie, patrz „Znane ograniczenie”) |
 | `scripts/measure-ttfb.ts` | pomiar TTFB ekranów (patrz „Szybkość: dev vs prod”) |
 | `scripts/try-engine.ts` | pojedyncze zapytanie do silnika, `npm run try:engine` |
 
