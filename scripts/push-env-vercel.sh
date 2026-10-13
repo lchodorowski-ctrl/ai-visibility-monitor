@@ -42,7 +42,7 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-if [[ ! -f ".vercel/project.json" ]]; then
+if [[ ! -f ".vercel/project.json" && ! -f ".vercel/repo.json" ]]; then
   echo "Błąd: katalog nie jest połączony z projektem Vercel. Uruchom najpierw: npx vercel login oraz npx vercel link" >&2
   exit 1
 fi
