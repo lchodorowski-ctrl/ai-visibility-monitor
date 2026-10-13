@@ -45,3 +45,13 @@ Stan: 15 zadań wykonanych, recenzja całej gałęzi + fala poprawek, tag `v0.2.
 - Heatmapa poza `Suspense`; strona promptów robi dwa dodatkowe zapytania sekwencyjnie.
 - Copy: „run” vs „pomiar”; `pluralPl` w RunStatus; hard-coded podpowiedzi PSAI/Netlify w Ustawieniach i eyebrowach (multi-tenant).
 - recommend-project nie sprawdza budżetu miesięcznego przed wydaniem; scalona rekomendacja zachowuje pierwszy prompt_id (szczegóły pokazują jedno pytanie); crawler podąża za przekierowaniami na inne hosty (SSRF przy zaufanych użytkownikach).
+
+## Kalibracja (2026-10-13) — odłożone po recenzji
+- Komunikaty błędów akcji kalibracji są w produkcji ukrywane przez Next (ekran błędu pokazuje ogólne „Spróbuj ponownie za chwilę”); docelowo akcje zwracają stan zamiast rzucać.
+- Ponowne użycie otwartej sesji to „sprawdź, potem wstaw” — dwa naprawdę równoczesne żądania mogą utworzyć dwie sesje; docelowo częściowy indeks unikalny `(project_id, run_id) where status = 'open'`.
+- Wiersze tworzone także dla silników wyłączonych w projekcie (zawsze „brak danych”).
+- „Zakończ kalibrację” bez potwierdzenia i bez możliwości ponownego otwarcia.
+- Dłuższe instrukcje na ekranie sesji w małym monospace (`Meta`) zamiast tekstu treści.
+- Przycisk w trakcie wysyłania pokazuje tylko „…” (czytnik ekranu traci nazwę na chwilę).
+- `calibration_checks.project_id` bez ograniczenia wiążącego go z projektem sesji (zapis i tak z serwera + RLS).
+- Drobne testy: brak testu niemutowania w `selectPrompts`, przypadki brzegowe `normalizeDomain`, gałąź błędu kasowania kompensacyjnego.
