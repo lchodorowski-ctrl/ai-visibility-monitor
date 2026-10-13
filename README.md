@@ -22,7 +22,7 @@ cp .env.example .env.local
 
 Do codziennej pracy uruchamiaj `npm run start:prod` (zbudowana wersja, ekrany otwierają się od razu). `npm run dev` tylko przy zmianach w kodzie — pierwsze wejście na każdy ekran kompiluje go i trwa kilka sekund.
 
-1. Uzupełnij `.env.local`. Wartości `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` i `SUPABASE_SERVICE_ROLE_KEY` weź z `npx supabase status`. Klucze silników, Anthropic i Trigger.dev (`TRIGGER_SECRET_KEY`, `TRIGGER_PROJECT_REF`) pochodzą z paneli odpowiednich usług. `CRON_SECRET` ustaw na dowolny losowy ciąg.
+1. Uzupełnij `.env.local`. Wartości `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` i `SUPABASE_SERVICE_ROLE_KEY` weź z `npx supabase status`. Klucze silników, Anthropic i Trigger.dev (`TRIGGER_SECRET_KEY`, `TRIGGER_PROJECT_REF`) pochodzą z paneli odpowiednich usług. Jeśli klucz Anthropic nie jest przypisany do workspace'u, ustaw też `ANTHROPIC_WORKSPACE_ID` (wysyłany jako nagłówek `anthropic-workspace-id`). `CRON_SECRET` ustaw na dowolny losowy ciąg.
 2. W Supabase Studio (`http://127.0.0.1:64323`, Authentication → Users) dodaj użytkownika z e-mailem i hasłem.
 3. Przypisz go do organizacji z seedu (w SQL Editorze), podstawiając `id` użytkownika z `auth.users`:
 

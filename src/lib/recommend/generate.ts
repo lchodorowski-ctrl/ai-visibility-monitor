@@ -1,7 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import type { RecommendationInput } from "./input";
+import { createAnthropic } from "@/lib/anthropic";
 
 export const RecommendationSchema = z.object({
   type: z.enum(["content_new", "content_improve", "offsite", "technical", "fact_fix"]),
@@ -86,7 +87,7 @@ export async function generateRecommendations(
   costUsd: number;
 }> {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error("Brak ANTHROPIC_API_KEY");
-  const client = deps.client ?? new Anthropic();
+  const client = deps.client ?? createAnthropic();
   const model = process.env.ANTHROPIC_RECOMMENDER_MODEL ?? "claude-opus-5-5";
   const res = await client.messages.parse({
     model,

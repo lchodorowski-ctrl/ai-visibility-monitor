@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { createAnthropic } from "@/lib/anthropic";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
@@ -22,7 +22,7 @@ export async function generatePromptProposals(input: {
   brandName: string; facts: Record<string, unknown>; topics: string[]; seedPhrases: string[]; personas: string[]; count: number;
 }): Promise<PromptProposal[]> {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error("Brak ANTHROPIC_API_KEY");
-  const client = new Anthropic();
+  const client = createAnthropic();
   const res = await client.messages.parse({
     model: process.env.ANTHROPIC_GENERATOR_MODEL ?? "claude-opus-5-5",
     max_tokens: 16000,

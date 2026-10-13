@@ -1,4 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
+import { createAnthropic } from "@/lib/anthropic";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
@@ -24,7 +25,7 @@ export async function analyzeSentiment(
   aliases: string[],
 ): Promise<SentimentResult | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
-  client ??= new Anthropic();
+  client ??= createAnthropic();
   const model = process.env.ANTHROPIC_SENTIMENT_MODEL ?? "claude-haiku-5-5";
   try {
     const res = await client.messages.parse({
