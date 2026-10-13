@@ -67,7 +67,7 @@ export const runProject = task({
       if (decision.kind === "budget_exceeded") {
         const { error } = await admin.from("runs").update({
           status: "budget_exceeded", finished_at: new Date().toISOString(),
-          error: `Budżet ${budget} USD: wydano ${spent.toFixed(2)}, run kosztowałby ~${estimate.toFixed(2)}`,
+          error: `Budżet ${budget} USD: wydano ${spent.toFixed(2)}, pomiar kosztowałby ~${estimate.toFixed(2)}`,
         }).eq("id", runId);
         if (error) throw new Error(error.message);
         return { runId, status: "budget_exceeded" as const };

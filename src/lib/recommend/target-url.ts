@@ -15,6 +15,8 @@ const ABSOLUTE = /^https?:\/\/\S+/i;
 /** A site path ("/…", but not protocol-relative "//host" or its "/\host" browser alias) or an absolute http(s) URL. */
 export function isConcreteUrl(u: string | null): boolean {
   const t = u?.trim() ?? "";
+  // URL parsers strip tabs and newlines, so "/\t/host" would become "//host"
+  if (/[\t\r\n]/.test(t)) return false;
   return (t.startsWith("/") && !/^\/[\\/]/.test(t)) || ABSOLUTE.test(t);
 }
 

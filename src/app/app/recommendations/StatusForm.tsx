@@ -5,7 +5,7 @@ import type { RecStatus } from "@/lib/recommend/labels";
 type Next = { label: string; status: RecStatus; variant?: "quiet" | "danger-quiet" };
 
 const NEXT: Record<RecStatus, Next[]> = {
-  todo: [{ label: "Zaczynam", status: "doing" }, { label: "Zrobione", status: "done" }, { label: "Odrzuć", status: "dismissed", variant: "danger-quiet" }],
+  todo: [{ label: "Zaczynam", status: "doing" }, { label: "Zrobione", status: "done", variant: "quiet" }, { label: "Odrzuć", status: "dismissed", variant: "danger-quiet" }],
   doing: [{ label: "Zrobione", status: "done" }, { label: "Wróć do listy", status: "todo", variant: "quiet" }],
   done: [{ label: "Otwórz ponownie", status: "todo", variant: "quiet" }],
   dismissed: [{ label: "Przywróć", status: "todo", variant: "quiet" }],

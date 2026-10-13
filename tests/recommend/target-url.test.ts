@@ -26,7 +26,7 @@ describe("isConcreteUrl", () => {
     expect(isConcreteUrl("/szkolenia")).toBe(true);
     expect(isConcreteUrl("https://parp.gov.pl/kurs")).toBe(true);
   });
-  it.each(["//evil.example/x", "/\\evil.example/x", "/\\\\evil.example", "TBD", "sitemap.xml", "", null])("odrzuca %j", (v) => {
+  it.each(["//evil.example/x", "/\\evil.example/x", "/\\\\evil.example", "/\t/evil.example", "/\n/evil.example", "/\r/evil.example", "TBD", "sitemap.xml", "", null])("odrzuca %j", (v) => {
     expect(isConcreteUrl(v)).toBe(false);
   });
 });
@@ -34,6 +34,7 @@ describe("isConcreteUrl", () => {
 describe("resolveTargetUrl", () => {
   it("nie rozwiązuje /\\host ani nazw plików do zewnętrznego hosta", () => {
     expect(resolveTargetUrl("/\\evil.example/x", SITE)).toBeNull();
+    expect(resolveTargetUrl("/\t/evil.example/x", SITE)).toBeNull();
     expect(resolveTargetUrl("sitemap.xml", SITE)).toBeNull();
     expect(resolveTargetUrl("parp.gov.pl", SITE)).toBe("https://parp.gov.pl");
   });

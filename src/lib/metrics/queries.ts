@@ -34,7 +34,7 @@ export const getLastRun = cache(async (projectId: string): Promise<Tables<"runs"
   const supabase = await createServerSupabase();
   const { data, error } = await supabase
     .from("runs").select("*").eq("project_id", projectId).order("started_at", { ascending: false }).limit(1).maybeSingle();
-  if (error) throw new Error(`Nie udało się pobrać ostatniego runu: ${error.message}`);
+  if (error) throw new Error(`Nie udało się pobrać ostatniego pomiaru: ${error.message}`);
   return data ?? null;
 });
 
