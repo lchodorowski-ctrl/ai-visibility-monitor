@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { getCurrentProject } from "@/lib/workspace";
-import { getLastRun } from "@/lib/metrics/queries";
+import { getLastRun, getRunProgress } from "@/lib/metrics/queries";
 import { isRunStale } from "@/lib/runs/stale";
 import { PageHero, TileSkeleton, TileInverse } from "@/components/psai";
 import { Button } from "@/components/ui/button";
@@ -13,12 +13,13 @@ export default async function OverviewPage() {
   const threshold = Number(project.low_visibility_threshold);
   const lastRun = await getLastRun(project.id);
   const running = lastRun?.status === "running" && !isRunStale(lastRun);
+  const progress = lastRun && running ? await getRunProgress(lastRun) : undefined;
   return (
     <div className="space-y-20">
       <div>
         <PageHero eyebrow="Polska Szkoła AI · Przegląd" title="Widoczność w AI"
           actions={<form action={runNow}><Button type="submit" disabled={running}>{running ? "Pomiar w toku…" : "Uruchom pomiar"}</Button></form>} />
-        <div className="mt-6"><RunStatus run={lastRun} /></div>
+        <div className="mt-6"><RunStatus run={lastRun} progress={progress} /></div>
       </div>
       {!lastRun && (
         <TileInverse eyebrow="Pierwszy krok" title={`Uruchom pierwszy pomiar i sprawdź, czy asystenci AI polecają markę ${project.brand_name}.`}

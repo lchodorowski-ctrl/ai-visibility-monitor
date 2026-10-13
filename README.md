@@ -75,6 +75,10 @@ Statusy runu (`runs.status`):
 | `budget_exceeded` | szacunek runu przekroczyłby miesięczny budżet; nic nie zostało wysłane do silników |
 | `empty` | brak aktywnych promptów lub włączonych silników |
 
+### Pasek postępu
+
+Podczas pomiaru w statusie „w toku” na Przeglądzie widać pasek postępu. Kolumna `runs.stage` ma cztery etapy: `queries` (zapytania do silników), `aggregating` (agregacja wyników), `recommending` (zlecone generowanie rekomendacji) i `done`. W etapie zapytań postęp to liczba zapisanych odpowiedzi (`responses` z danym `run_id`) podzielona przez `queries_total`, liczona na żądanie jednym zapytaniem `count`, bez zapisów po każdym zapytaniu. Komponent `RunProgress` odpytuje co 5 s endpoint `GET /api/runs/[id]/progress` (`{ status, stage, done, total, percent }`) i po zakończeniu odświeża stronę. W etapach agregacji i rekomendacji pasek jest nieokreślony, z podpisem „Agregacja wyników…” lub „Generowanie rekomendacji…”.
+
 ## Kolory widoczności
 
 Widoczność (heatmapa pytań, kafle i silniki w Przeglądzie, kropki przy pytaniach) ma trzy stany: **dobrze** (teal) od 67%, **bardzo źle** (czerwony) poniżej progu niskiej widoczności i **słabo** (neutralny szary) pomiędzy. Granica 67% jest stałą w kodzie (`GOOD_VISIBILITY` w `src/lib/metrics/tone.ts`), a dolny próg (domyślnie 34%) ustawisz w Ustawieniach jako „Próg niskiej widoczności”; ten sam próg wybiera prompty do rekomendacji. Stan liczymy z zaokrąglonego procentu, więc kolor zawsze zgadza się z liczbą na ekranie. Kropka przy pytaniu pokazuje łączną widoczność pytania w ostatnim pomiarze (jak wiersz ogólny w Przeglądzie); bez danych kropki nie ma.

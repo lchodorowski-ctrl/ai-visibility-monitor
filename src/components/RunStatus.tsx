@@ -3,13 +3,15 @@ import { isRunStale } from "@/lib/runs/stale";
 import { fmtDate } from "@/lib/format/number";
 import { pluralPl } from "@/lib/format/plural";
 import { Meta } from "@/components/psai";
+import { RunProgress } from "@/components/RunProgress";
+import type { RunProgress as Progress } from "@/lib/runs/progress";
 import { cn } from "@/lib/utils";
 
 const LABEL: Record<string, string> = {
   running: "w toku", done: "zakończony", failed: "nieudany", budget_exceeded: "budżet wyczerpany", empty: "brak promptów/silników",
 };
 
-export function RunStatus({ run }: { run: Tables<"runs"> | null }) {
+export function RunStatus({ run, progress }: { run: Tables<"runs"> | null; progress?: Progress }) {
   if (!run) return <Meta>Jeszcze nie było żadnego pomiaru.</Meta>;
   const stale = isRunStale(run);
   const failed = run.status === "failed";
@@ -23,6 +25,7 @@ export function RunStatus({ run }: { run: Tables<"runs"> | null }) {
         {" · "}{pluralPl(run.queries_failed, ["błąd", "błędy", "błędów"])}
         {" · "}{Number(run.cost_usd).toFixed(2)} USD
       </Meta>
+      {run.status === "running" && !stale && progress && <RunProgress key={run.id} runId={run.id} initial={progress} />}
       {run.error && <Meta className="block normal-case tracking-normal text-red">{run.error}</Meta>}
     </div>
   );
