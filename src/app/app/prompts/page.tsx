@@ -1,10 +1,11 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PageHero, SectionHead, Tile, Rows, Row, Meta, EmptyState } from "@/components/psai";
+import { PageHero, SectionHead, Tile, Rows, Row, Meta, EmptyState, TileSkeleton } from "@/components/psai";
 import { pluralPl } from "@/lib/format/plural";
 import { INTENTS } from "@/lib/prompts/intents";
 import { Heatmap, buildHeatmapRows } from "@/components/Heatmap";
@@ -14,31 +15,42 @@ import { countRecommendationsByPrompt } from "@/lib/recommend/queries";
 import { addTopic, addPrompt, togglePromptActive, togglePromptKey, deletePrompt } from "./actions";
 
 
+/** Heatmap of the latest measurement; streams in on its own so the prompt list renders first. */
+async function HeatmapSection({ projectId, activePrompts }: { projectId: string; activePrompts: { id: string; text: string }[] }) {
+  const supabase = await createServerSupabase();
+  const loadCells = async () => {
+    const { data: latestRow, error: latestError } = await supabase.from("daily_metrics").select("date")
+      .eq("project_id", projectId).not("prompt_id", "is", null).not("engine_id", "is", null)
+      .order("date", { ascending: false }).limit(1).maybeSingle();
+    if (latestError) throw new Error(latestError.message);
+    if (!latestRow) return [];
+    const { data, error } = await supabase.from("daily_metrics").select("engine_id, prompt_id, visibility_rate")
+      .eq("project_id", projectId).eq("date", latestRow.date)
+      .not("prompt_id", "is", null).not("engine_id", "is", null);
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  };
+  const [cellRows, recCounts] = await Promise.all([loadCells(), countRecommendationsByPrompt(supabase, projectId)]);
+  const heatmap = buildHeatmapRows(
+    cellRows.flatMap((c) => (c.engine_id && c.prompt_id ? [{ engine_id: c.engine_id, prompt_id: c.prompt_id, visibility_rate: c.visibility_rate }] : [])),
+    activePrompts,
+  );
+  return heatmap.engines.length === 0
+    ? <EmptyState title="Brak pomiarów" description="Uruchom pierwszy pomiar na stronie Przegląd."
+        action={<Link href="/app" className={buttonVariants()}>Przejdź do przeglądu</Link>} />
+    : <Tile><Heatmap rows={heatmap.rows} engines={heatmap.engines} counts={recCounts} /></Tile>;
+}
+
 export default async function PromptsPage() {
   const project = await getCurrentProject();
   const supabase = await createServerSupabase();
-  const [{ data: topics, error: topicsError }, { data: prompts, error: promptsError }, recCounts] = await Promise.all([
+  const [{ data: topics, error: topicsError }, { data: prompts, error: promptsError }] = await Promise.all([
     supabase.from("topics").select("*").eq("project_id", project.id).order("name"),
     supabase.from("prompts").select("*").eq("project_id", project.id).order("created_at"),
-    countRecommendationsByPrompt(supabase, project.id),
   ]);
   if (topicsError) throw new Error(topicsError.message);
   if (promptsError) throw new Error(promptsError.message);
-
-  const { data: latestRow, error: latestError } = await supabase.from("daily_metrics").select("date")
-    .eq("project_id", project.id).not("prompt_id", "is", null).not("engine_id", "is", null)
-    .order("date", { ascending: false }).limit(1).maybeSingle();
-  if (latestError) throw new Error(latestError.message);
-  const { data: cellRows, error: cellsError } = latestRow
-    ? await supabase.from("daily_metrics").select("engine_id, prompt_id, visibility_rate")
-      .eq("project_id", project.id).eq("date", latestRow.date)
-      .not("prompt_id", "is", null).not("engine_id", "is", null)
-    : { data: [], error: null };
-  if (cellsError) throw new Error(cellsError.message);
-  const heatmap = buildHeatmapRows(
-    (cellRows ?? []).flatMap((c) => (c.engine_id && c.prompt_id ? [{ engine_id: c.engine_id, prompt_id: c.prompt_id, visibility_rate: c.visibility_rate }] : [])),
-    (prompts ?? []).filter((p) => p.active).map((p) => ({ id: p.id, text: p.text })),
-  );
+  const activePrompts = (prompts ?? []).filter((p) => p.active).map((p) => ({ id: p.id, text: p.text }));
   const topicName = new Map((topics ?? []).map((t) => [t.id, t.name]));
   const topicItems = [{ value: "", label: "(bez tematu)" }, ...(topics ?? []).map((t) => ({ value: t.id, label: t.name }))];
   const intentItems = Object.entries(INTENTS).map(([value, label]) => ({ value, label }));
@@ -50,10 +62,9 @@ export default async function PromptsPage() {
 
       <section>
         <SectionHead title="Heatmapa ostatniego pomiaru" />
-        {heatmap.engines.length === 0
-          ? <EmptyState title="Brak pomiarów" description="Uruchom pierwszy pomiar na stronie Przegląd."
-              action={<Link href="/app" className={buttonVariants()}>Przejdź do przeglądu</Link>} />
-          : <Tile><Heatmap rows={heatmap.rows} engines={heatmap.engines} counts={recCounts} /></Tile>}
+        <Suspense fallback={<TileSkeleton lines={6} />}>
+          <HeatmapSection projectId={project.id} activePrompts={activePrompts} />
+        </Suspense>
       </section>
 
       <section>

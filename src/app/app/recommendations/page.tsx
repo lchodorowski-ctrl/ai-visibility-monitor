@@ -79,7 +79,7 @@ async function Filters({ projectId, f }: { projectId: string; f: ReturnType<type
 async function List({ rowsPromise, siteUrl, f }: { rowsPromise: Promise<RecommendationRow[]>; siteUrl: string; f: ReturnType<typeof parseFilters> }) {
   const filters: RecFilters = { status: f.status, type: f.type, prompt: f.prompt };
   const rows = applyFilters(await rowsPromise, filters);
-  if (rows.length === 0) return <EmptyState title="Brak rekomendacji" description="Uruchom run albo kliknij Odśwież." />;
+  if (rows.length === 0) return <EmptyState title="Brak rekomendacji" description="Uruchom pomiar albo kliknij Odśwież." />;
   const firstInverse = f.status === "open" && !f.type && !f.prompt;
   return (
     <ul className="grid gap-4 md:grid-cols-2">
@@ -119,7 +119,7 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
             </form>
           } />
         <div className="mt-4 min-h-4"><Suspense fallback={null}><HeroMeta rowsPromise={rowsPromise} /></Suspense></div>
-        <p className="mt-4 max-w-2xl text-t1">Z odpowiedzi AI i mapy Waszej strony. Nowe po każdym runie.</p>
+        <p className="mt-4 max-w-2xl text-t1">Z odpowiedzi AI i mapy Waszej strony. Nowe po każdym pomiarze.</p>
       </div>
       <Suspense fallback={null}><Filters projectId={project.id} f={f} /></Suspense>
       <Suspense fallback={<div className="grid gap-4 md:grid-cols-2"><TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton /></div>}>

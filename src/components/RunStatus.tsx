@@ -1,6 +1,7 @@
 import type { Tables } from "@/lib/db-types";
 import { isRunStale } from "@/lib/runs/stale";
 import { fmtDate } from "@/lib/format/number";
+import { pluralPl } from "@/lib/format/plural";
 import { Meta } from "@/components/psai";
 import { cn } from "@/lib/utils";
 
@@ -16,10 +17,10 @@ export function RunStatus({ run }: { run: Tables<"runs"> | null }) {
   return (
     <div className="space-y-1">
       <Meta className="block">
-        Ostatni run: <span className={cn(failed ? "text-red" : "text-t0")}>{status}</span>
+        Ostatni pomiar: <span className={cn(failed ? "text-red" : "text-t0")}>{status}</span>
         {" · "}{fmtDate(run.started_at)}
-        {" · "}{run.queries_total} zapytań
-        {" · "}{run.queries_failed} błędów
+        {" · "}{pluralPl(run.queries_total, ["zapytanie", "zapytania", "zapytań"])}
+        {" · "}{pluralPl(run.queries_failed, ["błąd", "błędy", "błędów"])}
         {" · "}{Number(run.cost_usd).toFixed(2)} USD
       </Meta>
       {run.error && <Meta className="block normal-case tracking-normal text-red">{run.error}</Meta>}
