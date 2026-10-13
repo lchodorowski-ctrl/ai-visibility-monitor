@@ -19,7 +19,7 @@ export async function updateProjectSettings(formData: FormData) {
       await tasks.trigger<typeof crawlSiteTask>(
         "crawl-site",
         { projectId: project.id },
-        { idempotencyKey: `crawl-site:${project.id}:${parsed.site_url}:${Date.now()}`, idempotencyKeyTTL: "1m" },
+        { idempotencyKey: `crawl-site:${project.id}:${Math.floor(Date.now() / 60000)}`, idempotencyKeyTTL: "1m" },
       );
     } catch (e) {
       console.error("crawl-site trigger failed after site_url change", e instanceof Error ? e.message : e);
