@@ -1,0 +1,96 @@
+import Anthropic from "@anthropic-ai/sdk";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { z } from "zod";
+import type { RecommendationInput } from "./input";
+
+export const RecommendationSchema = z.object({
+  type: z.enum(["content_new", "content_improve", "offsite", "technical", "fact_fix"]),
+  title: z.string().min(8).max(120),
+  summary: z.string().min(20).max(600),
+  action_steps: z.array(z.string().min(5)).min(2).max(7),
+  target_url: z.string().nullable(), // content_improve/offsite: wymagane (walidacja poza schematem)
+  suggested_outline: z.array(z.string()).nullable(), // content_new: wymagane, 3–8 punktów
+  impact: z.number().int().min(1).max(5),
+  effort: z.number().int().min(1).max(5),
+  rationale_pl: z.string().min(20),
+});
+export type GeneratedRecommendation = z.infer<typeof RecommendationSchema>;
+
+const OutputSchema = z.object({ recommendations: z.array(RecommendationSchema).max(3) });
+
+// USD za 1 mln tokenów.
+const MODEL_PRICES: Record<string, { input: number; output: number }> = {
+  "claude-opus-5-5": { input: 4, output: 20 },
+  "claude-sonnet-5-5": { input: 2, output: 10 },
+  "claude-haiku-5-5": { input: 0.1, output: 0.5 },
+};
+
+const SYSTEM = `Jesteś konsultantem widoczności marki w asystentach AI (ChatGPT, Perplexity, Gemini, Google AI Overviews) dla polskiej firmy szkoleniowej.
+Dostajesz jedno pytanie użytkownika, w którym marka jest niewidoczna lub mało widoczna, oraz dowody: kto i co jest cytowane, którzy konkurenci są wymieniani, jakie podstrony ma marka.
+Zwróć 1–3 rekomendacje, które realnie zwiększą szansę, że asystent wymieni lub zacytuje markę przy tym pytaniu.
+Zasady:
+- Po polsku, konkretnie, bez pustych superlatywów. Każda rekomendacja wskazuje jeden artefakt do zrobienia.
+- content_new: nowa podstrona — podaj tytuł, 3–8 punktów zarysu (suggested_outline) i proponowaną ścieżkę w target_url (np. /szkolenia-ai-dla-firm). Nie proponuj strony, która już istnieje na liście podstron — wtedy użyj content_improve z jej ścieżką.
+- content_improve: istniejąca podstrona (target_url = jej ścieżka z listy) i co konkretnie dodać (liczby, FAQ, porównanie, daty, autor).
+- offsite: konkretne miejsce, w którym asystenci cytują konkurencję, a nie markę (target_url = jeden z cytowanych URL-i lub domena) i jak się tam znaleźć.
+- technical: zmiana techniczna strony (np. llms.txt, dane strukturalne) — tylko jeśli dowody na to wskazują.
+- fact_fix: asystent podaje nieprawdę o marce — wskaż, gdzie opublikować poprawne fakty.
+- Nie wymyślaj źródeł ani liczb; odwołuj się do dowodów z wejścia. Nie powtarzaj rekomendacji z listy „istniejące”.
+- impact 1–5 (jak bardzo zwiększy widoczność przy tym pytaniu), effort 1–5 (ile pracy).`;
+
+export function validateConcreteness(r: GeneratedRecommendation): string | null {
+  if (r.type === "content_new" && (!r.suggested_outline || r.suggested_outline.length < 3)) return "content_new bez zarysu (suggested_outline ≥ 3 punkty)";
+  if (r.type === "content_new" && !r.target_url) return "content_new bez proponowanej ścieżki (target_url)";
+  if ((r.type === "content_improve" || r.type === "offsite") && !r.target_url) return `${r.type} bez target_url`;
+  return null;
+}
+
+function renderInput(i: RecommendationInput): string {
+  const lines = [
+    `Pytanie: ${i.prompt.text} (intencja: ${i.prompt.intent}${i.prompt.topic ? `, temat: ${i.prompt.topic}` : ""})`,
+    `Widoczność marki: ogółem ${i.visibility.overall == null ? "brak danych" : Math.round(i.visibility.overall * 100) + "%"}; per silnik: ${Object.entries(i.visibility.byEngine).map(([e, v]) => `${e} ${Math.round(v * 100)}%`).join(", ") || "brak"}`,
+    `Marka: ${i.brand.name} (aliasy: ${i.brand.aliases.join(", ") || "brak"}; domeny: ${i.brand.domains.join(", ")}; strona: ${i.brand.siteUrl})`,
+    `Karta faktów: ${JSON.stringify(i.brand.facts)}`,
+    `Cytowane domeny: ${i.citedDomains.map((d) => `${d.domain} (${d.count})`).join(", ") || "brak"}`,
+    `Cytowane URL-e: ${i.citedUrls.join("\n  ") || "brak"}`,
+    `Wymieniani konkurenci: ${i.competitorsMentioned.map((c) => `${c.name} (${c.count})`).join(", ") || "brak"}`,
+    `Fragmenty odpowiedzi:\n${i.excerpts.map((e) => `[${e.engineId}] ${e.text}`).join("\n---\n") || "brak"}`,
+    `Podstrony marki (${i.sitePages.length}):\n${i.sitePages.map((p) => `${p.path} — ${p.title ?? ""}${p.description ? ` — ${p.description}` : ""}`).join("\n") || "brak"}`,
+    `Istniejące rekomendacje dla tego pytania: ${i.existing.map((e) => `[${e.type}] ${e.title}`).join("; ") || "brak"}`,
+  ];
+  return lines.join("\n\n");
+}
+
+export async function generateRecommendations(
+  input: RecommendationInput,
+  deps: { client?: Anthropic } = {},
+): Promise<{
+  accepted: GeneratedRecommendation[];
+  rejected: { title: string; reason: string }[];
+  usage: { input_tokens: number; output_tokens: number };
+  costUsd: number;
+}> {
+  if (!process.env.ANTHROPIC_API_KEY) throw new Error("Brak ANTHROPIC_API_KEY");
+  const client = deps.client ?? new Anthropic();
+  const model = process.env.ANTHROPIC_RECOMMENDER_MODEL ?? "claude-opus-5-5";
+  const res = await client.messages.parse({
+    model,
+    max_tokens: 8000,
+    output_config: { effort: "high", format: zodOutputFormat(OutputSchema) },
+    system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
+    messages: [{ role: "user", content: renderInput(input) }],
+  });
+  const items = res.parsed_output?.recommendations ?? [];
+  const accepted: GeneratedRecommendation[] = [];
+  const rejected: { title: string; reason: string }[] = [];
+  for (const r of items) {
+    const why = validateConcreteness(r);
+    if (why) rejected.push({ title: r.title, reason: why });
+    else accepted.push(r);
+  }
+  const usage = { input_tokens: res.usage?.input_tokens ?? 0, output_tokens: res.usage?.output_tokens ?? 0 };
+  const price = MODEL_PRICES[model];
+  if (!price) console.warn(`generateRecommendations: brak cennika dla ${model}, koszt = 0`);
+  const costUsd = price ? (usage.input_tokens / 1e6) * price.input + (usage.output_tokens / 1e6) * price.output : 0;
+  return { accepted, rejected, usage, costUsd };
+}
