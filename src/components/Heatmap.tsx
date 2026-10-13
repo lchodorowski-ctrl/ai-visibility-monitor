@@ -17,15 +17,18 @@ export function buildHeatmapRows(
   return { rows, engines };
 }
 
-// Monochromatyczna skala: kolor w tym stylu znaczy tylko błąd (red) lub sukces (teal), więc widoczność = krycie czerni.
+// Monochromatyczna skala: kolor w tym stylu znaczy tylko błąd (red) lub sukces (teal), więc widoczność = krycie tuszu (ink).
 export function heatmapCellStyle(v: number | null): { className: string; style?: React.CSSProperties; label: string } {
   const base = "grid h-12 place-items-center rounded-lg font-mono text-xs tabular-nums";
   if (v === null) return { className: `${base} bg-s2 text-t2`, label: "—" };
-  const label = `${Math.round(v * 100)}%`;
-  if (v === 0) return { className: `${base} border border-line-2 bg-bg text-t1`, label };
-  if (v >= 0.67) return { className: `${base} bg-ink text-bg`, label };
-  const alpha = Number((0.12 + v * 0.7).toFixed(2));
-  return { className: `${base} ${v >= 0.45 ? "text-bg" : "text-t0"}`, style: { backgroundColor: `rgb(29 29 31 / ${alpha})` }, label };
+  // Kubełek liczymy z zaokrąglonego procentu, żeby kolor zawsze zgadzał się z etykietą (2/3 = "67%" = pełna czerń).
+  const p = Math.round(v * 100);
+  const label = `${p}%`;
+  if (p === 0) return { className: `${base} border border-line-2 bg-bg text-t1`, label };
+  if (p >= 67) return { className: `${base} bg-ink text-bg`, label };
+  // color-mix na tokenie ink, żeby skala podążała za motywem (jasny/ciemny).
+  const mix = Math.round((0.12 + v * 0.7) * 100);
+  return { className: `${base} ${p >= 45 ? "text-bg" : "text-t0"}`, style: { backgroundColor: `color-mix(in srgb, var(--color-ink) ${mix}%, transparent)` }, label };
 }
 
 export function Heatmap({ rows, engines, counts }: { rows: HeatmapRow[]; engines: string[]; counts?: Record<string, number> }) {

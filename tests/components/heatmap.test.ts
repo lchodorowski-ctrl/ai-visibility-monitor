@@ -61,13 +61,21 @@ describe("heatmapCellStyle (monochromatyczna)", () => {
   });
   it("1–66%: krycie czerni rośnie z wartością, tekst biały od 45%", () => {
     const low = heatmapCellStyle(0.1), mid = heatmapCellStyle(0.5);
-    expect(low.style?.backgroundColor).toBe("rgb(29 29 31 / 0.19)");
+    expect(low.style?.backgroundColor).toBe("color-mix(in srgb, var(--color-ink) 19%, transparent)");
     expect(low.className).toContain("text-t0");
-    expect(mid.style?.backgroundColor).toBe("rgb(29 29 31 / 0.47)");
+    expect(mid.style?.backgroundColor).toBe("color-mix(in srgb, var(--color-ink) 47%, transparent)");
     expect(mid.className).toContain("text-bg");
   });
   it("≥67%: pełna czerń", () => {
     const s = heatmapCellStyle(0.67);
     expect(s.className).toContain("bg-ink"); expect(s.className).toContain("text-bg"); expect(s.label).toBe("67%");
+  });
+  it("kubełek zgadza się z etykietą: 2/3 to 67% i pełna czerń", () => {
+    const s = heatmapCellStyle(0.6667);
+    expect(s.label).toBe("67%"); expect(s.className).toContain("bg-ink"); expect(s.style).toBeUndefined();
+  });
+  it("poniżej 0,5% etykieta 0% i komórka zerowa", () => {
+    const s = heatmapCellStyle(0.004);
+    expect(s.label).toBe("0%"); expect(s.className).toContain("border-line-2"); expect(s.style).toBeUndefined();
   });
 });
