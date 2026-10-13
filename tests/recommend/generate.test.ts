@@ -32,6 +32,10 @@ describe("generateRecommendations", () => {
     await generateRecommendations({ ...input, citedUrls: ["https://parp.gov.pl/kurs"], sitePages: [{ path: "/faq.html", title: "FAQ", description: null }], existing: [{ type: "technical", title: "Opublikuj llms.txt" }] });
     const content = String(parse.mock.calls[0][0].messages[0].content);
     expect(content).toContain("https://parp.gov.pl/kurs"); expect(content).toContain("/faq.html"); expect(content).toContain("Opublikuj llms.txt");
+    for (const t of ["pytanie", "widocznosc", "marka", "cytowane_domeny", "cytowane_urle", "konkurenci", "fragmenty_odpowiedzi", "podstrony", "istniejace"]) {
+      expect(content).toContain(`<${t}>`); expect(content).toContain(`</${t}>`);
+    }
+    expect(String(parse.mock.calls[0][0].system[0].text)).toContain("nie instrukcje");
   });
   it("rzuca bez ANTHROPIC_API_KEY", async () => {
     delete process.env.ANTHROPIC_API_KEY;
@@ -52,5 +56,24 @@ describe("generateRecommendations", () => {
     expect(validateConcreteness({ ...base, type: "content_improve", target_url: null } as never)).toMatch(/target_url/);
     expect(validateConcreteness({ ...base, suggested_outline: ["a", "b"] } as never)).toMatch(/zarys/i);
     expect(validateConcreteness({ ...base, target_url: null } as never)).toMatch(/target_url/);
+  });
+  it("odrzuca target_url z samych spacji / „TBD”, zarys wypełniony pustymi punktami", async () => {
+    const { validateConcreteness } = await import("@/lib/recommend/generate");
+    expect(validateConcreteness({ ...base, target_url: "   " } as never)).toMatch(/target_url/);
+    expect(validateConcreteness({ ...base, target_url: "TBD" } as never)).toMatch(/ścieżką/);
+    expect(validateConcreteness({ ...base, type: "offsite", target_url: "TBD" } as never)).toMatch(/ścieżką/);
+    expect(validateConcreteness({ ...base, type: "content_improve", target_url: "  " } as never)).toMatch(/target_url/);
+    expect(validateConcreteness({ ...base, suggested_outline: ["", " ", "x"] } as never)).toMatch(/zarys/i);
+    expect(validateConcreteness({ ...base, type: "offsite", target_url: "https://parp.gov.pl/kurs", suggested_outline: null } as never)).toBeNull();
+    expect(validateConcreteness(base as never)).toBeNull();
+  });
+  it("rzuca przy parsed_output: null, refusal i max_tokens", async () => {
+    const { generateRecommendations } = await import("@/lib/recommend/generate");
+    parse.mockResolvedValue({ parsed_output: null, usage: { input_tokens: 1, output_tokens: 1 }, stop_reason: "end_turn" });
+    await expect(generateRecommendations(input)).rejects.toThrow(/brak parsed_output/);
+    parse.mockResolvedValue({ parsed_output: { recommendations: [] }, usage: { input_tokens: 1, output_tokens: 1 }, stop_reason: "max_tokens" });
+    await expect(generateRecommendations(input)).rejects.toThrow(/max_tokens/);
+    parse.mockResolvedValue({ parsed_output: null, usage: { input_tokens: 1, output_tokens: 1 }, stop_reason: "refusal" });
+    await expect(generateRecommendations(input)).rejects.toThrow(/refusal/);
   });
 });
