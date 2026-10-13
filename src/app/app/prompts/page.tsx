@@ -10,15 +10,17 @@ import { INTENTS } from "@/lib/prompts/intents";
 import { Heatmap, buildHeatmapRows } from "@/components/Heatmap";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getCurrentProject } from "@/lib/workspace";
+import { countRecommendationsByPrompt } from "@/lib/recommend/queries";
 import { addTopic, addPrompt, togglePromptActive, togglePromptKey, deletePrompt } from "./actions";
 
 
 export default async function PromptsPage() {
   const project = await getCurrentProject();
   const supabase = await createServerSupabase();
-  const [{ data: topics, error: topicsError }, { data: prompts, error: promptsError }] = await Promise.all([
+  const [{ data: topics, error: topicsError }, { data: prompts, error: promptsError }, recCounts] = await Promise.all([
     supabase.from("topics").select("*").eq("project_id", project.id).order("name"),
     supabase.from("prompts").select("*").eq("project_id", project.id).order("created_at"),
+    countRecommendationsByPrompt(supabase, project.id),
   ]);
   if (topicsError) throw new Error(topicsError.message);
   if (promptsError) throw new Error(promptsError.message);
@@ -51,7 +53,7 @@ export default async function PromptsPage() {
         {heatmap.engines.length === 0
           ? <EmptyState title="Brak pomiarów" description="Uruchom pierwszy pomiar na stronie Przegląd."
               action={<Link href="/app" className={buttonVariants()}>Przejdź do przeglądu</Link>} />
-          : <Tile><Heatmap rows={heatmap.rows} engines={heatmap.engines} /></Tile>}
+          : <Tile><Heatmap rows={heatmap.rows} engines={heatmap.engines} counts={recCounts} /></Tile>}
       </section>
 
       <section>

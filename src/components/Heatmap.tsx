@@ -44,7 +44,7 @@ export function Heatmap({ rows, engines, counts }: { rows: HeatmapRow[]; engines
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.promptId}>
+            <tr key={r.promptId} id={r.promptId}>
               <td className="pr-6 text-sm leading-snug">{r.promptText}</td>
               {engines.map((e) => {
                 const v = r.cells.find((c) => c.engineId === e)?.visibilityRate ?? null;

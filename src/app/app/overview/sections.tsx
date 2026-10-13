@@ -1,3 +1,7 @@
+import Link from "next/link";
+import { createServerSupabase } from "@/lib/supabase/server";
+import { getTopRecommendation } from "@/lib/recommend/queries";
+import { RecommendationCard } from "@/app/app/recommendations/RecommendationCard";
 import { ENGINE_LABELS } from "@/lib/engines/registry";
 import type { EngineId } from "@/lib/engines/types";
 import { getLatestMetrics, getTrend, getLastRun, getMentionCounts } from "@/lib/metrics/queries";
@@ -69,8 +73,16 @@ export async function MentionsSection({ projectId, brandName }: { projectId: str
   );
 }
 
-// Task 14 wypełnia tę sekcję kaflem odwróconym z najważniejszą rekomendacją.
 export async function TopRecommendationSlot({ projectId }: { projectId: string }) {
-  void projectId;
-  return null;
+  const supabase = await createServerSupabase();
+  const top = await getTopRecommendation(supabase, projectId);
+  return (
+    <section>
+      <SectionHead title="Najważniejsza rekomendacja"
+        actions={<Link href="/app/recommendations" className="text-sm text-t1 underline-offset-4 hover:text-t0 hover:underline">Wszystkie rekomendacje →</Link>} />
+      {top
+        ? <RecommendationCard r={top} inverse />
+        : <EmptyState title="Brak otwartych rekomendacji" description="Nowe pojawią się po następnym pomiarze albo po kliknięciu Odśwież na stronie Rekomendacje." />}
+    </section>
+  );
 }
