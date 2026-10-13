@@ -189,14 +189,14 @@ isOneToOne: false
                   ]
                 },"projects": {
                   Row: {
-                    "brand_aliases": (string)[],"brand_name": string,"country": string,"created_at": string,"domains": (string)[],"facts": NonNullable<Json>,"id": string,"locale": string,"monthly_budget_usd": number,"name": string,"org_id": string,"schedule": string
+                    "brand_aliases": (string)[],"brand_name": string,"country": string,"created_at": string,"domains": (string)[],"facts": NonNullable<Json>,"id": string,"locale": string,"low_visibility_threshold": number,"monthly_budget_usd": number,"name": string,"org_id": string,"schedule": string,"site_url": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "brand_aliases"?: (string)[],"brand_name": string,"country"?: string,"created_at"?: string,"domains"?: (string)[],"facts"?: NonNullable<Json>,"id"?: string,"locale"?: string,"monthly_budget_usd"?: number,"name": string,"org_id": string,"schedule"?: string
+                    "brand_aliases"?: (string)[],"brand_name": string,"country"?: string,"created_at"?: string,"domains"?: (string)[],"facts"?: NonNullable<Json>,"id"?: string,"locale"?: string,"low_visibility_threshold"?: number,"monthly_budget_usd"?: number,"name": string,"org_id": string,"schedule"?: string,"site_url"?: string
                   }
                   Update: {
-                    "brand_aliases"?: (string)[],"brand_name"?: string,"country"?: string,"created_at"?: string,"domains"?: (string)[],"facts"?: NonNullable<Json>,"id"?: string,"locale"?: string,"monthly_budget_usd"?: number,"name"?: string,"org_id"?: string,"schedule"?: string
+                    "brand_aliases"?: (string)[],"brand_name"?: string,"country"?: string,"created_at"?: string,"domains"?: (string)[],"facts"?: NonNullable<Json>,"id"?: string,"locale"?: string,"low_visibility_threshold"?: number,"monthly_budget_usd"?: number,"name"?: string,"org_id"?: string,"schedule"?: string,"site_url"?: string
                   }
                   Relationships: [
                     {
@@ -230,6 +230,38 @@ isOneToOne: false
       columns: ["topic_id"]
 isOneToOne: false
       referencedRelation: "topics"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"recommendations": {
+                  Row: {
+                    "action_steps": NonNullable<Json>,"created_at": string,"effort": number,"evidence": NonNullable<Json>,"fingerprint": string,"id": string,"impact": number,"priority": number | null,"project_id": string,"prompt_id": string | null,"run_id": string | null,"status": string,"suggested_outline": Json | null,"summary": string,"target_url": string | null,"title": string,"type": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "action_steps"?: NonNullable<Json>,"created_at"?: string,"effort": number,"evidence"?: NonNullable<Json>,"fingerprint": string,"id"?: string,"impact": number,"priority"?: never,"project_id": string,"prompt_id"?: string | null,"run_id"?: string | null,"status"?: string,"suggested_outline"?: Json | null,"summary": string,"target_url"?: string | null,"title": string,"type": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "action_steps"?: NonNullable<Json>,"created_at"?: string,"effort"?: number,"evidence"?: NonNullable<Json>,"fingerprint"?: string,"id"?: string,"impact"?: number,"priority"?: never,"project_id"?: string,"prompt_id"?: string | null,"run_id"?: string | null,"status"?: string,"suggested_outline"?: Json | null,"summary"?: string,"target_url"?: string | null,"title"?: string,"type"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "recommendations_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "recommendations_prompt_id_fkey"
+      columns: ["prompt_id"]
+isOneToOne: false
+      referencedRelation: "prompts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "recommendations_run_id_fkey"
+      columns: ["run_id"]
+isOneToOne: false
+      referencedRelation: "runs"
       referencedColumns: ["id"]
     }
                   ]
@@ -267,18 +299,38 @@ isOneToOne: false
                   ]
                 },"runs": {
                   Row: {
-                    "cost_usd": number,"error": string | null,"finished_at": string | null,"id": string,"project_id": string,"queries_failed": number,"queries_total": number,"started_at": string,"status": string,"trigger_source": string
+                    "cost_usd": number,"error": string | null,"finished_at": string | null,"id": string,"project_id": string,"queries_failed": number,"queries_total": number,"recommendations_cost_usd": number,"started_at": string,"status": string,"trigger_source": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "cost_usd"?: number,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"project_id": string,"queries_failed"?: number,"queries_total"?: number,"started_at"?: string,"status"?: string,"trigger_source"?: string
+                    "cost_usd"?: number,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"project_id": string,"queries_failed"?: number,"queries_total"?: number,"recommendations_cost_usd"?: number,"started_at"?: string,"status"?: string,"trigger_source"?: string
                   }
                   Update: {
-                    "cost_usd"?: number,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"project_id"?: string,"queries_failed"?: number,"queries_total"?: number,"started_at"?: string,"status"?: string,"trigger_source"?: string
+                    "cost_usd"?: number,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"project_id"?: string,"queries_failed"?: number,"queries_total"?: number,"recommendations_cost_usd"?: number,"started_at"?: string,"status"?: string,"trigger_source"?: string
                   }
                   Relationships: [
                     {
       foreignKeyName: "runs_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"site_pages": {
+                  Row: {
+                    "description": string | null,"excerpt": string | null,"fetched_at": string,"h1": string | null,"id": string,"path": string,"project_id": string,"status": number,"title": string | null,"url": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "description"?: string | null,"excerpt"?: string | null,"fetched_at"?: string,"h1"?: string | null,"id"?: string,"path": string,"project_id": string,"status"?: number,"title"?: string | null,"url": string
+                  }
+                  Update: {
+                    "description"?: string | null,"excerpt"?: string | null,"fetched_at"?: string,"h1"?: string | null,"id"?: string,"path"?: string,"project_id"?: string,"status"?: number,"title"?: string | null,"url"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "site_pages_project_id_fkey"
       columns: ["project_id"]
 isOneToOne: false
       referencedRelation: "projects"

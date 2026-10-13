@@ -1,11 +1,12 @@
 insert into organizations (id, name) values ('11111111-1111-1111-1111-111111111111', 'Polska Szkoła AI');
 
-insert into projects (id, org_id, name, brand_name, brand_aliases, domains, facts)
+insert into projects (id, org_id, name, brand_name, brand_aliases, domains, facts, site_url)
 values ('22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111',
   'Polska Szkoła AI', 'Polska Szkoła AI',
   array['PSAI','polskaszkola.ai','Polska Szkola AI'],
   array['polskaszkola.ai'],
-  '{"oferta":"szkolenia i kursy AI dla firm i osób prywatnych","strona":"https://polskaszkola.ai"}'::jsonb);
+  '{"oferta":"szkolenia i kursy AI dla firm i osób prywatnych","strona":"https://polskaszkola.ai"}'::jsonb,
+  'https://polskaszkolaai.netlify.app');
 
 insert into project_engines (project_id, engine_id) values
   ('22222222-2222-2222-2222-222222222222','openai'),
