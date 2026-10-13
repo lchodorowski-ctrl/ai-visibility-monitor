@@ -1,18 +1,17 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PageHero, SectionHead, Tile, Rows, Row, Meta, EmptyState } from "@/components/psai";
+import { pluralPl } from "@/lib/format/plural";
+import { INTENTS } from "@/lib/prompts/intents";
 import { Heatmap, buildHeatmapRows } from "@/components/Heatmap";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getCurrentProject } from "@/lib/workspace";
 import { addTopic, addPrompt, togglePromptActive, togglePromptKey, deletePrompt } from "./actions";
 
-const INTENTS = { informational: "informacyjna", comparison: "porównawcza", transactional: "zakupowa", brand: "brandowa" } as const;
 
 export default async function PromptsPage() {
   const project = await getCurrentProject();
@@ -36,105 +35,91 @@ export default async function PromptsPage() {
   if (cellsError) throw new Error(cellsError.message);
   const heatmap = buildHeatmapRows(
     (cellRows ?? []).flatMap((c) => (c.engine_id && c.prompt_id ? [{ engine_id: c.engine_id, prompt_id: c.prompt_id, visibility_rate: c.visibility_rate }] : [])),
-    (prompts ?? []).map((p) => ({ id: p.id, text: p.text })),
+    (prompts ?? []).filter((p) => p.active).map((p) => ({ id: p.id, text: p.text })),
   );
   const topicName = new Map((topics ?? []).map((t) => [t.id, t.name]));
   const topicItems = [{ value: "", label: "(bez tematu)" }, ...(topics ?? []).map((t) => ({ value: t.id, label: t.name }))];
   const intentItems = Object.entries(INTENTS).map(([value, label]) => ({ value, label }));
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Prompty ({prompts?.length ?? 0})</h1>
-        <Link href="/app/prompts/generate" className={buttonVariants()}>Generuj propozycje</Link>
-      </div>
+    <div className="space-y-20">
+      <PageHero eyebrow="Polska Szkoła AI · Prompty" title={pluralPl(prompts?.length ?? 0, ["pytanie", "pytania", "pytań"])}
+        actions={<Link href="/app/prompts/generate" className={buttonVariants()}>Generuj propozycje</Link>} />
 
-      <Card>
-        <CardHeader><CardTitle>Heatmapa (ostatni pomiar)</CardTitle></CardHeader>
-        <CardContent>
-          {heatmap.rows.length === 0
-            ? <p className="text-sm text-muted-foreground">Brak pomiarów — uruchom pierwszy run na stronie Przegląd.</p>
-            : <Heatmap rows={heatmap.rows} engines={heatmap.engines} />}
-        </CardContent>
-      </Card>
+      <section>
+        <SectionHead title="Heatmapa ostatniego pomiaru" />
+        {heatmap.engines.length === 0
+          ? <EmptyState title="Brak pomiarów" description="Uruchom pierwszy pomiar na stronie Przegląd."
+              action={<Link href="/app" className={buttonVariants()}>Przejdź do przeglądu</Link>} />
+          : <Tile><Heatmap rows={heatmap.rows} engines={heatmap.engines} /></Tile>}
+      </section>
 
-      <form action={addPrompt} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 text-sm">
-        <Input name="text" required placeholder="Nowe pytanie…" aria-label="Nowe pytanie" />
-        <Select name="topic_id" defaultValue="" items={topicItems}>
-          <SelectTrigger aria-label="Temat" className="min-w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {topicItems.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select name="intent" defaultValue="informational" items={intentItems}>
-          <SelectTrigger aria-label="Intencja" className="min-w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {intentItems.map((i) => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Label className="flex items-center gap-1"><Checkbox name="is_key" /> kluczowy</Label>
-        <Button type="submit">Dodaj</Button>
-      </form>
-
-      <Card>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Pytanie</TableHead>
-                <TableHead>Temat</TableHead>
-                <TableHead>Intencja</TableHead>
-                <TableHead>Kluczowy</TableHead>
-                <TableHead>Aktywny</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+      <section>
+        <SectionHead title="Lista pytań" meta={<Meta>{pluralPl(prompts?.length ?? 0, ["pytanie", "pytania", "pytań"])}</Meta>} />
+        <Tile className="mb-6">
+          <form action={addPrompt} className="grid items-center gap-3 md:grid-cols-[1fr_auto_auto_auto_auto]">
+            <Input name="text" required placeholder="Nowe pytanie…" aria-label="Nowe pytanie" />
+            <Select name="topic_id" defaultValue="" items={topicItems}>
+              <SelectTrigger aria-label="Temat" className="w-full md:min-w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {topicItems.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select name="intent" defaultValue="informational" items={intentItems}>
+              <SelectTrigger aria-label="Intencja" className="w-full md:min-w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {intentItems.map((i) => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Label className="flex items-center gap-2 text-sm"><Checkbox name="is_key" /> kluczowy</Label>
+            <Button type="submit">Dodaj</Button>
+          </form>
+        </Tile>
+        {(prompts ?? []).length === 0
+          ? <EmptyState title="Brak pytań" description="Dodaj pierwsze pytanie powyżej albo wygeneruj propozycje." />
+          : <Rows>
               {(prompts ?? []).map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="whitespace-normal">{p.text}</TableCell>
-                  <TableCell>{p.topic_id ? topicName.get(p.topic_id) : "—"}</TableCell>
-                  <TableCell>{INTENTS[p.intent as keyof typeof INTENTS]}</TableCell>
-                  <TableCell>
+                <Row key={p.id} className="gap-y-3">
+                  <span className="min-w-0 flex-1 basis-64 text-[15px] leading-snug">{p.text}</span>
+                  <Meta>{p.topic_id ? topicName.get(p.topic_id) : "bez tematu"} · {INTENTS[p.intent as keyof typeof INTENTS]}</Meta>
+                  <div className="flex items-center gap-5 text-sm">
                     <form action={togglePromptKey}>
                       <input type="hidden" name="id" value={p.id} />
                       <input type="hidden" name="is_key" value={String(!p.is_key)} />
-                      <Button type="submit" variant="ghost" size="sm">{p.is_key ? "★ 3 próbki" : "☆"}</Button>
+                      <Button type="submit" variant="quiet">{p.is_key ? "★" : "☆"} {pluralPl(p.is_key ? 3 : 1, ["próbka", "próbki", "próbek"])}</Button>
                     </form>
-                  </TableCell>
-                  <TableCell>
                     <form action={togglePromptActive}>
                       <input type="hidden" name="id" value={p.id} />
                       <input type="hidden" name="active" value={String(!p.active)} />
-                      <Button type="submit" variant="ghost" size="sm" className={p.active ? "text-green-700" : "text-muted-foreground"}>{p.active ? "tak" : "nie"}</Button>
+                      <Button type="submit" variant="quiet" className={p.active ? "text-teal" : "text-t2"}>{p.active ? "aktywny" : "wyłączony"}</Button>
                     </form>
-                  </TableCell>
-                  <TableCell className="text-right">
                     <form action={deletePrompt}>
                       <input type="hidden" name="id" value={p.id} />
-                      <Button type="submit" variant="destructive" size="sm">Usuń</Button>
+                      <Button type="submit" variant="danger-quiet">Usuń</Button>
                     </form>
-                  </TableCell>
-                </TableRow>
+                  </div>
+                </Row>
               ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            </Rows>}
+      </section>
 
       <section>
-        <h2 className="font-semibold">Tematy</h2>
-        <ul className="mt-2 flex flex-wrap gap-2 text-sm">
-          {(topics ?? []).map((t) => <li key={t.id}><Badge variant="secondary">{t.name}</Badge></li>)}
-        </ul>
-        <form action={addTopic} className="mt-2 flex gap-2 text-sm">
-          <Input name="name" required placeholder="Nowy temat" aria-label="Nowy temat" className="max-w-xs" />
-          <Button type="submit" variant="outline">Dodaj temat</Button>
-        </form>
+        <SectionHead title="Tematy" meta={<Meta>{pluralPl(topics?.length ?? 0, ["temat", "tematy", "tematów"])}</Meta>} />
+        <Tile>
+          {(topics ?? []).length > 0 && (
+            <ul className="mb-6 flex flex-wrap gap-2">
+              {(topics ?? []).map((t) => <li key={t.id}><span className="rounded-lg bg-s2 px-3 py-1 text-sm">{t.name}</span></li>)}
+            </ul>
+          )}
+          <form action={addTopic} className="flex flex-wrap gap-3">
+            <Input name="name" required placeholder="Nowy temat" aria-label="Nowy temat" className="max-w-xs" />
+            <Button type="submit">Dodaj temat</Button>
+          </form>
+        </Tile>
       </section>
     </div>
   );
