@@ -175,6 +175,7 @@ npx tsx --env-file=.env.local scripts/crawl-now.ts [projectId]
 |--------|----------|
 | `scripts/run-now.ts` | ręczne uruchomienie runu (jak przycisk „Uruchom teraz”) |
 | `scripts/reaggregate.ts` | przeliczenie snapshotu dnia bez nowych zapytań do silników |
+| `scripts/backfill-sentiment.ts` | uzupełnienie brakującego sentymentu zapisanych odpowiedzi z własną marką: `[projectId] [--limit N] [--dry-run]` |
 | `scripts/crawl-now.ts` | crawl mapy strony (patrz „Mapa strony”) |
 | `scripts/recommend-now.ts` | generowanie rekomendacji (patrz „Rekomendacje”) |
 | `scripts/check-anthropic.ts` | sprawdzenie klucza Anthropic (5-tokenowe wywołanie, patrz „Znane ograniczenie”) |
