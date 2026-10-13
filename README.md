@@ -128,6 +128,8 @@ npx tsx --env-file=.env.local scripts/recommend-now.ts [projectId] [YYYY-MM-DD]
 
 **Przepływ:** run, agregacja (`daily_metrics`), `recommend-project`.
 
+Przycisk „Odśwież rekomendacje” na `/app/recommendations` liczy je na danych z ostatniego dnia z `daily_metrics`. Jest wyłączony, gdy trwa pomiar (po pomiarze rekomendacje i tak się przeliczą), a ponowne kliknięcie w ciągu 10 minut nie zleca drugiego, płatnego przebiegu (klucz idempotencji Trigger.dev).
+
 1. **Kwalifikacja promptów** (`qualifyPrompts`). Do analizy trafia prompt z łączną widocznością poniżej progu `low_visibility_threshold` (domyślnie 0,34) albo z widocznością 0% w co najmniej dwóch silnikach, które faktycznie odpowiedziały. Prompty bez ważnych odpowiedzi są pomijane (brak danych to nie zero). Prompt o intencji `brand` kwalifikuje się tylko poniżej progu. Jedno uruchomienie analizuje najwyżej 20 pytań (każde to płatne wywołanie modelu): najpierw kluczowe (`is_key`), potem te z najniższą widocznością; liczba pominiętych trafia do logu taska.
 2. **Generowanie.** Dla każdego zakwalifikowanego promptu Claude (model z `ANTHROPIC_RECOMMENDER_MODEL`, domyślnie `claude-opus-5-5`) dostaje odpowiedzi silników, cytowane domeny i adresy, konkurentów, kartę faktów marki i listę podstron z mapy strony. Zwraca rekomendacje z oceną wpływu (`impact` 1-5) i wysiłku (`effort` 1-5).
 3. **Zasada konkretności.** Rekomendacja bez konkretnego artefaktu jest odrzucana: `content_new` wymaga zarysu (co najmniej 3 niepuste punkty `suggested_outline`) i proponowanej ścieżki, a `content_improve` i `offsite` wymagają `target_url` (ścieżka `/...` lub adres http/https). Odrzucone pozycje trafiają do logu taska, nie do bazy.

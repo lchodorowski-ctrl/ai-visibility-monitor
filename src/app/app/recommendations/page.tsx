@@ -5,6 +5,8 @@ import { PageHero, EmptyState, Meta, TileSkeleton } from "@/components/psai";
 import { Button } from "@/components/ui/button";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getCurrentProject } from "@/lib/workspace";
+import { getLastRun } from "@/lib/metrics/queries";
+import { isRunStale } from "@/lib/runs/stale";
 import { isUuid } from "@/lib/validation/uuid";
 import { listRecommendations, type RecFilters } from "@/lib/recommend/queries";
 import { TYPE_LABEL, type RecType } from "@/lib/recommend/labels";
@@ -72,7 +74,7 @@ async function Filters({ projectId, f }: { projectId: string; f: ReturnType<type
   );
 }
 
-async function List({ projectId, f }: { projectId: string; f: ReturnType<typeof parseFilters> }) {
+async function List({ projectId, siteUrl, f }: { projectId: string; siteUrl: string; f: ReturnType<typeof parseFilters> }) {
   const supabase = await createServerSupabase();
   const filters: RecFilters = { status: f.status, type: f.type, prompt: f.prompt };
   const rows = await listRecommendations(supabase, projectId, filters);
@@ -80,7 +82,7 @@ async function List({ projectId, f }: { projectId: string; f: ReturnType<typeof 
   const firstInverse = f.status === "open" && !f.type && !f.prompt;
   return (
     <ul className="grid gap-4 md:grid-cols-2">
-      {rows.map((r, i) => <li key={r.id} className="min-w-0"><RecommendationCard r={r} inverse={firstInverse && i === 0} /></li>)}
+      {rows.map((r, i) => <li key={r.id} className="min-w-0"><RecommendationCard r={r} siteUrl={siteUrl} inverse={firstInverse && i === 0} /></li>)}
     </ul>
   );
 }
@@ -89,22 +91,24 @@ export default async function RecommendationsPage({ searchParams }: { searchPara
   const sp = await searchParams;
   const f = parseFilters(sp);
   const project = await getCurrentProject();
-  const hasSite = project.site_url.trim().length > 0;
+  // site_url is NOT NULL and validated as a URL in Settings, so only a running measurement blocks a refresh
+  const lastRun = await getLastRun(project.id);
+  const running = lastRun?.status === "running" && !isRunStale(lastRun);
   return (
     <div className="space-y-10">
       <div>
         <PageHero eyebrow="Rekomendacje" title="Co zrobić, żeby asystenci nas polecali"
           actions={
             <form action={refreshRecommendations} className="flex flex-wrap items-center gap-3">
-              {!hasSite && <Meta>Ustaw adres strony w Ustawieniach</Meta>}
-              <Button type="submit" variant="quiet" disabled={!hasSite}>Odśwież rekomendacje</Button>
+              {running && <Meta>Pomiar w toku</Meta>}
+              <Button type="submit" variant="quiet" disabled={running}>Odśwież rekomendacje</Button>
             </form>
           } />
         <p className="mt-6 max-w-2xl text-t1">Z odpowiedzi AI i mapy Waszej strony. Nowe po każdym runie.</p>
       </div>
       <Suspense fallback={null}><Filters projectId={project.id} f={f} /></Suspense>
       <Suspense fallback={<div className="grid gap-4 md:grid-cols-2"><TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton /></div>}>
-        <List projectId={project.id} f={f} />
+        <List projectId={project.id} siteUrl={project.site_url} f={f} />
       </Suspense>
     </div>
   );
