@@ -16,6 +16,10 @@ Cel: sprawdzić, czy wyniki z API (strona `/app/responses` po ostatnim runie) zg
 
 Wyniki zapisuj w osobnym pliku `docs/superpowers/calibration/2026-10-<dd>.md` według poniższego szablonu. Gemini nie ma tu publicznego odpowiednika w tabeli, bo jego interfejs webowy (gemini.google.com) nie jest częścią obowiązkowego zestawu; można go dodać jako dodatkową kolumnę.
 
+## Kalibracja rekomendacji
+
+Rekomendacje (`/app/recommendations`) też kalibrujemy, nie tylko wyniki widoczności. Dla każdej rekomendacji typu `offsite` oraz dla źródeł, które model wskazuje w uzasadnieniu i dowodach (cytowane domeny i adresy), sprawdź ręcznie, czy te źródła naprawdę są cytowane przez asystentów przy danym pytaniu: zadaj prompt w ChatGPT i Perplexity (jak w procedurze powyżej) i porównaj listę źródeł z `evidence` rekomendacji. Zanotuj w pliku dnia, ile wskazanych źródeł faktycznie się pojawiło (cel: większość), oraz rekomendacje odwołujące się do domen, których asystenci nie cytują; to sygnał, że generator zbyt swobodnie interpretuje dowody.
+
 ## Szablon tabeli
 
 Data kalibracji: ____ · Data i ID runu: ____ · Kto zadawał: ____
