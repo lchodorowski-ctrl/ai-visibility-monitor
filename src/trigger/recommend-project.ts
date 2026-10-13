@@ -62,7 +62,7 @@ async function addRecommendationCost(admin: Admin, projectId: string, runId: str
   if (upErr) throw new Error(upErr.message);
 }
 
-export async function runRecommendProject(
+async function generateForProject(
   { projectId, runId, date }: RecommendProjectPayload,
   deps: RecommendProjectDeps = {},
 ) {
@@ -159,6 +159,32 @@ export async function runRecommendProject(
     throw new Error(`recommend-project: wszystkie wywołania modelu nie powiodły się (${failed}/${qualified.length})`);
   }
   return { prompts: qualified.length, skipped: skipped.length, accepted, rejected, failed, technical, costUsd };
+}
+
+/**
+ * Runs the generation and, when the task belongs to a measurement, always closes its progress stage
+ * (`done`) — also when it is skipped or throws — so the Overview progress bar never hangs on "recommending".
+ */
+export async function runRecommendProject(payload: RecommendProjectPayload, deps: RecommendProjectDeps = {}) {
+  let failure: { err: unknown } | null = null;
+  try {
+    return await generateForProject(payload, deps);
+  } catch (err) {
+    failure = { err };
+    throw err;
+  } finally {
+    if (payload.runId) {
+      try {
+        const admin = deps.admin ?? createAdminSupabase();
+        const { error } = await admin.from("runs").update({ stage: "done" }).eq("id", payload.runId).eq("project_id", payload.projectId);
+        if (error) throw new Error(error.message);
+      } catch (err) {
+        // the original failure (if any) wins; a stage write that fails on its own is surfaced
+        if (!failure) throw err;
+        console.error(`recommend-project: nie udało się zamknąć etapu runu ${payload.runId}:`, message(err));
+      }
+    }
+  }
 }
 
 export const recommendProject = task({

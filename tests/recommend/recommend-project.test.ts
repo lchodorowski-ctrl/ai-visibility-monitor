@@ -10,6 +10,8 @@ type Filter = [string, ...unknown[]];
 interface Call { table: string; op: "select" | "update" | "insert"; cols?: string; payload?: unknown; filters: Filter[] }
 
 const PROJECT = "proj-1";
+const isStageWrite = (c: Call) => c.table === "runs" && c.op === "update" && JSON.stringify(c.payload) === JSON.stringify({ stage: "done" });
+const stageWrites = (calls: Call[]) => calls.filter(isStageWrite);
 const has = (c: Call, ...f: unknown[]) => c.filters.some((x) => JSON.stringify(x) === JSON.stringify(f));
 
 /** Chainable PostgREST stand-in: every call is recorded, the result comes from `handler`. */
@@ -79,12 +81,36 @@ describe("runRecommendProject", () => {
     vi.restoreAllMocks();
   });
 
-  it("bez ANTHROPIC_API_KEY pomija i nie dotyka bazy", async () => {
+  it("bez ANTHROPIC_API_KEY pomija i poza zamknięciem etapu runu nie dotyka bazy", async () => {
     delete process.env.ANTHROPIC_API_KEY;
     const { client, calls } = world({ prompts: [{ id: "p1", overall: 0 }] });
     const generate = ok();
     expect(await runRecommendProject({ projectId: PROJECT, runId: "run-1", date: "2026-10-13" }, { admin: client, generate, rules: noRules })).toEqual({ skipped: true });
-    expect(calls).toEqual([]); expect(generate).not.toHaveBeenCalled();
+    expect(calls.filter((c) => !isStageWrite(c))).toEqual([]); expect(generate).not.toHaveBeenCalled();
+    expect(stageWrites(calls)).toHaveLength(1);
+    expect(has(stageWrites(calls)[0], "eq", "id", "run-1")).toBe(true);
+    expect(has(stageWrites(calls)[0], "eq", "project_id", PROJECT)).toBe(true);
+  });
+
+  it("bez runId (ręczne odświeżenie) nie ustawia etapu", async () => {
+    delete process.env.ANTHROPIC_API_KEY;
+    const { client, calls } = world({ prompts: [{ id: "p1", overall: 0 }] });
+    await runRecommendProject({ projectId: PROJECT, runId: null, date: "2026-10-13" }, { admin: client, generate: ok(), rules: noRules });
+    expect(calls).toEqual([]);
+  });
+
+  it("po udanym przebiegu ustawia etap done jako ostatni zapis", async () => {
+    const { client, calls } = world({ prompts: [{ id: "p1", overall: 0 }], sitePagesFetchedAt: freshCrawl(), runCost: 0.4 });
+    await runRecommendProject({ projectId: PROJECT, runId: "run-1", date: "2026-10-13" }, { admin: client, generate: ok(0.1), rules: noRules, crawl: vi.fn() });
+    expect(stageWrites(calls)).toHaveLength(1);
+    expect(calls[calls.length - 1]).toBe(stageWrites(calls)[0]);
+  });
+
+  it("zamyka etap także wtedy, gdy przebieg rzuca, i nie gubi pierwotnego błędu", async () => {
+    const { client, calls } = world({ prompts: [{ id: "p1", overall: 0 }], sitePagesFetchedAt: freshCrawl() });
+    const rules = vi.fn(async () => { throw new Error("rules boom"); });
+    await expect(runRecommendProject({ projectId: PROJECT, runId: "run-1", date: "2026-10-13" }, { admin: client, generate: ok(0), rules, crawl: vi.fn() })).rejects.toThrow("rules boom");
+    expect(stageWrites(calls)).toHaveLength(1);
   });
 
   it("bez runów z tego dnia nie pyta o odpowiedzi, a generuje na pustych dowodach", async () => {
@@ -133,8 +159,9 @@ describe("runRecommendProject", () => {
     const generate = vi.fn(async () => { throw new GenerationError("generateRecommendations: refusal", { input_tokens: 1, output_tokens: 1 }, 0.25); });
     await expect(runRecommendProject({ projectId: PROJECT, runId: "run-1", date: "2026-10-13" }, { admin: client, generate, rules: noRules, crawl: vi.fn() }))
       .rejects.toThrow("recommend-project: wszystkie wywołania modelu nie powiodły się (2/2)");
-    const upd = calls.find((c) => c.table === "runs" && c.op === "update")!;
+    const upd = calls.find((c) => c.table === "runs" && c.op === "update" && !isStageWrite(c))!;
     expect((upd.payload as { recommendations_cost_usd: number }).recommendations_cost_usd).toBeCloseTo(1.5);
+    expect(stageWrites(calls)).toHaveLength(1);
   });
 
   it(`ogranicza liczbę pytań do ${MAX_PROMPTS_PER_RUN}: najpierw kluczowe, potem najniższa widoczność`, async () => {
@@ -154,7 +181,7 @@ describe("runRecommendProject", () => {
   it("z runId dodaje koszt do kosztu runu (+=), nie nadpisuje", async () => {
     const { client, calls } = world({ prompts: [{ id: "p1", overall: 0 }], sitePagesFetchedAt: freshCrawl(), runCost: 0.4 });
     await runRecommendProject({ projectId: PROJECT, runId: "run-1", date: "2026-10-13" }, { admin: client, generate: ok(0.1), rules: noRules, crawl: vi.fn() });
-    const upd = calls.filter((c) => c.table === "runs" && c.op === "update");
+    const upd = calls.filter((c) => c.table === "runs" && c.op === "update" && !isStageWrite(c));
     expect(upd).toHaveLength(1);
     expect((upd[0].payload as { recommendations_cost_usd: number }).recommendations_cost_usd).toBeCloseTo(0.5);
     expect(has(upd[0], "eq", "id", "run-1")).toBe(true);
@@ -169,6 +196,7 @@ describe("runRecommendProject", () => {
     expect(has(lookup, "order", "started_at", { ascending: false })).toBe(true);
     expect(has(lookup, "limit", 1)).toBe(true);
     const upd = calls.find((c) => c.table === "runs" && c.op === "update")!;
+    expect(stageWrites(calls)).toHaveLength(0);
     expect(has(upd, "eq", "id", "run-latest")).toBe(true);
     expect((upd.payload as { recommendations_cost_usd: number }).recommendations_cost_usd).toBeCloseTo(0.3);
   });

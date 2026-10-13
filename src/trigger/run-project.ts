@@ -60,13 +60,13 @@ export const runProject = task({
       const budget = Number(project.monthly_budget_usd);
       const decision = decideRun(jobs.length, spent, estimate, budget);
       if (decision.kind === "empty") {
-        const { error } = await admin.from("runs").update({ status: "empty", finished_at: new Date().toISOString(), error: "Brak aktywnych promptów lub silników" }).eq("id", runId);
+        const { error } = await admin.from("runs").update({ status: "empty", stage: "done", finished_at: new Date().toISOString(), error: "Brak aktywnych promptów lub silników" }).eq("id", runId);
         if (error) throw new Error(error.message);
         return { runId, status: "empty" as const };
       }
       if (decision.kind === "budget_exceeded") {
         const { error } = await admin.from("runs").update({
-          status: "budget_exceeded", finished_at: new Date().toISOString(),
+          status: "budget_exceeded", stage: "done", finished_at: new Date().toISOString(),
           error: `Budżet ${budget} USD: wydano ${spent.toFixed(2)}, pomiar kosztowałby ~${estimate.toFixed(2)}`,
         }).eq("id", runId);
         if (error) throw new Error(error.message);
@@ -86,29 +86,38 @@ export const runProject = task({
       // wszystkie zapytania nieudane: nie agregujemy (nie zapisujemy zer), zamykamy run jako failed
       if (failed === jobs.length) {
         const { error: allFailedError } = await admin.from("runs").update({
-          status: "failed", finished_at: new Date().toISOString(), cost_usd: cost, queries_failed: failed,
+          status: "failed", stage: "done", finished_at: new Date().toISOString(), cost_usd: cost, queries_failed: failed,
           error: "Wszystkie zapytania nie powiodły się",
         }).eq("id", runId);
         if (allFailedError) throw new Error(allFailedError.message);
         return { runId, status: "failed" as const, cost, failed, total: jobs.length };
       }
 
+      const { error: aggStageError } = await admin.from("runs").update({ stage: "aggregating" }).eq("id", runId);
+      if (aggStageError) throw new Error(aggStageError.message);
       const agg = await aggregateProject.triggerAndWait({ projectId, runId, date });
       const aggregationError = agg.ok ? null : `agregacja nie powiodła się: ${String(agg.error)}`;
 
       // rekomendacje liczą się w tle (trigger, nie triggerAndWait) — run kończy się od razu;
       // nieudane zlecenie rekomendacji nie psuje udanego pomiaru (logujemy i idziemy dalej)
+      let recommendTriggered = false;
       if (!aggregationError) {
         try {
+          // etap ustawiamy przed zleceniem: recommend-project może skończyć (stage "done") zanim wrócimy z trigger()
+          const { error: recStageError } = await admin.from("runs").update({ stage: "recommending" }).eq("id", runId);
+          if (recStageError) throw new Error(recStageError.message);
           await recommendProject.trigger({ projectId, runId, date });
+          recommendTriggered = true;
         } catch (err) {
           console.error(`run-project: nie udało się zlecić recommend-project dla runu ${runId}:`, err instanceof Error ? err.message : String(err));
         }
       }
 
       const status = aggregationError ? ("failed" as const) : ("done" as const);
+      // zlecone rekomendacje same zamkną etap (recommend-project ustawia "done"), więc go tu nie nadpisujemy;
+      // bez nich (agregacja nieudana albo zlecenie nie przeszło) zamykamy etap tutaj
       const { error: finishError } = await admin.from("runs").update({
-        status, finished_at: new Date().toISOString(), cost_usd: cost, queries_failed: failed,
+        status, ...(recommendTriggered ? {} : { stage: "done" as const }), finished_at: new Date().toISOString(), cost_usd: cost, queries_failed: failed,
         ...(aggregationError ? { error: aggregationError } : {}),
       }).eq("id", runId);
       if (finishError) throw new Error(finishError.message);
@@ -116,7 +125,7 @@ export const runProject = task({
       return { runId, status, cost, failed, total: jobs.length };
     } catch (err) {
       const { error: closeError } = await admin.from("runs").update({
-        status: "failed", error: err instanceof Error ? err.message : String(err),
+        status: "failed", stage: "done", error: err instanceof Error ? err.message : String(err),
         finished_at: new Date().toISOString(), cost_usd: cost,
       }).eq("id", runId);
       if (closeError) console.error(`run-project: nie udało się oznaczyć runu ${runId} jako failed: ${closeError.message}`);

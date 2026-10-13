@@ -299,14 +299,14 @@ isOneToOne: false
                   ]
                 },"runs": {
                   Row: {
-                    "cost_usd": number,"error": string | null,"finished_at": string | null,"id": string,"project_id": string,"queries_failed": number,"queries_total": number,"recommendations_cost_usd": number,"started_at": string,"status": string,"trigger_source": string
+                    "cost_usd": number,"error": string | null,"finished_at": string | null,"id": string,"project_id": string,"queries_failed": number,"queries_total": number,"recommendations_cost_usd": number,"stage": string,"started_at": string,"status": string,"trigger_source": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "cost_usd"?: number,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"project_id": string,"queries_failed"?: number,"queries_total"?: number,"recommendations_cost_usd"?: number,"started_at"?: string,"status"?: string,"trigger_source"?: string
+                    "cost_usd"?: number,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"project_id": string,"queries_failed"?: number,"queries_total"?: number,"recommendations_cost_usd"?: number,"stage"?: string,"started_at"?: string,"status"?: string,"trigger_source"?: string
                   }
                   Update: {
-                    "cost_usd"?: number,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"project_id"?: string,"queries_failed"?: number,"queries_total"?: number,"recommendations_cost_usd"?: number,"started_at"?: string,"status"?: string,"trigger_source"?: string
+                    "cost_usd"?: number,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"project_id"?: string,"queries_failed"?: number,"queries_total"?: number,"recommendations_cost_usd"?: number,"stage"?: string,"started_at"?: string,"status"?: string,"trigger_source"?: string
                   }
                   Relationships: [
                     {
