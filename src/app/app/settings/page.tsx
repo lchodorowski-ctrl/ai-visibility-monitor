@@ -1,4 +1,5 @@
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -126,6 +127,16 @@ export default async function SettingsPage() {
             );
           })}
         </Rows>
+      </section>
+
+      <section>
+        <SectionHead title="Kalibracja" />
+        <Tile>
+          <p className="mb-5 text-t1">Raz w miesiącu porównaj wyniki aplikacji z tym, co widać w publicznych czatach.</p>
+          <div>
+            <Link href="/app/calibration" className={buttonVariants({ variant: "outline" })}>Otwórz kalibrację</Link>
+          </div>
+        </Tile>
       </section>
     </div>
   );
