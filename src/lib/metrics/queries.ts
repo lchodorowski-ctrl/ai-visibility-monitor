@@ -4,6 +4,7 @@ import type { Database, Tables } from "@/lib/db-types";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { MetricRow } from "./aggregate";
 import { shapeOverview } from "./overview";
+import { toRunProgress } from "@/lib/runs/progress";
 
 function daysAgoIso(days: number): string {
   const d = new Date(); d.setUTCDate(d.getUTCDate() - days);
@@ -95,3 +96,11 @@ export async function getOverview(_supabase: SupabaseClient<Database>, projectId
   const competitors = lastRun ? await getMentionCounts(projectId, lastRun.id) : [];
   return { latest, byEngine, trend, competitors, lastRun };
 }
+
+/** Responses written so far for a run (one count query; no per-query writes during a run). */
+export const getRunProgress = cache(async (run: Pick<Tables<"runs">, "id" | "status" | "stage" | "queries_total">) => {
+  const supabase = await createServerSupabase();
+  const { count, error } = await supabase.from("responses").select("id", { count: "exact", head: true }).eq("run_id", run.id);
+  if (error) throw new Error(`Nie udało się pobrać postępu pomiaru: ${error.message}`);
+  return toRunProgress(run, count ?? 0);
+});
