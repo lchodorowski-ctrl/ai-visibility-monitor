@@ -66,6 +66,7 @@ export default async function SettingsPage() {
                 <Label htmlFor="site_url">Adres strony do analizy</Label>
                 <Input id="site_url" name="site_url" type="url" required defaultValue={project.site_url} placeholder="https://" />
                 <Meta>Dziś wersja robocza na Netlify; po przepięciu domeny wpisz https://www.polskaszkola.ai</Meta>
+                <Meta>Po zmianie adresu mapa strony odświeża się automatycznie.</Meta>
               </div>
               <div className="grid content-start gap-2">
                 <Label htmlFor="low_visibility_threshold">Próg niskiej widoczności (0–1)</Label>

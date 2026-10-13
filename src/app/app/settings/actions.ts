@@ -2,7 +2,10 @@
 import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getCurrentProject } from "@/lib/workspace";
+import { tasks } from "@trigger.dev/sdk";
+import type { crawlSiteTask } from "@/trigger/crawl-site";
 import { ProjectSettingsSchema, CompetitorSchema } from "@/lib/validation/settings";
+import { siteUrlChanged } from "@/lib/site/url-changed";
 
 export async function updateProjectSettings(formData: FormData) {
   const project = await getCurrentProject();
@@ -10,6 +13,18 @@ export async function updateProjectSettings(formData: FormData) {
   const supabase = await createServerSupabase();
   const { error } = await supabase.from("projects").update(parsed).eq("id", project.id);
   if (error) throw new Error(error.message);
+  if (siteUrlChanged(project.site_url, parsed.site_url)) {
+    // a failed trigger must never fail the settings save; the next recommendation run recrawls a stale map anyway
+    try {
+      await tasks.trigger<typeof crawlSiteTask>(
+        "crawl-site",
+        { projectId: project.id },
+        { idempotencyKey: `crawl-site:${project.id}:${parsed.site_url}`, idempotencyKeyTTL: "10m" },
+      );
+    } catch (e) {
+      console.error("crawl-site trigger failed after site_url change", e instanceof Error ? e.message : e);
+    }
+  }
   revalidatePath("/app/settings");
 }
 

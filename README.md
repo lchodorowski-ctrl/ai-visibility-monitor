@@ -167,7 +167,7 @@ npx tsx --env-file=.env.local scripts/crawl-now.ts [projectId]
 - Crawler przedstawia się jako `PSAI-VisibilityBot/1.0`, respektuje `robots.txt` i pobiera 4 strony równolegle.
 - Host adresów z sitemapy jest podmieniany na `site_url`, więc mapa z produkcji da się przeczytać ze stagingu.
 - Dla każdej strony zapisywane są ścieżka, status HTTP, tytuł, H1, opis i fragment treści. Strony, które zniknęły z sitemapy, dostają status 410. Pusty wynik crawla nie wygasza istniejących wierszy.
-- `recommend-project` sam crawluje stronę (bez osobnego taska), gdy mapa jest pusta albo najnowszy wpis ma ponad 7 dni. Błąd crawla jest logowany i nie blokuje rekomendacji. Po zmianie `site_url` lub dużej zmianie treści uruchom crawl skryptem od razu.
+- `recommend-project` sam crawluje stronę (bez osobnego taska), gdy mapa jest pusta albo najnowszy wpis ma ponad 7 dni. Błąd crawla jest logowany i nie blokuje rekomendacji. Zmiana `site_url` w Ustawieniach uruchamia crawl automatycznie (błąd uruchomienia nie blokuje zapisu); po dużej zmianie treści uruchom crawl skryptem od razu.
 
 ## Skrypty
 
