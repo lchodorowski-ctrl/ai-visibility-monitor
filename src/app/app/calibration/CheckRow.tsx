@@ -73,7 +73,7 @@ export function CheckRow({ check, calibrationId, readOnly }: { check: Calibratio
         </span>
       </div>
       <fieldset disabled={readOnly} className="flex flex-wrap gap-x-5 gap-y-2">
-        <legend className="sr-only">Czy marka została wymieniona</legend>
+        <legend className="sr-only">{`Czy marka została wymieniona: ${CALIBRATION_ENGINE_LABEL[check.engineId]}`}</legend>
         {OPTIONS.map((o) => (
           <label key={o.value} className="inline-flex min-h-8 items-center gap-2 text-sm">
             <input

@@ -41,6 +41,7 @@ export function ResultsSection({ view, brandAliases }: { view: CalibrationView; 
   const apiOnly = view.checks.filter((c) => c.result === "api_only");
   const manualOnly = view.checks.filter((c) => c.result === "manual_only");
   const discrepancies = apiOnly.length + manualOnly.length;
+  const noData = view.checks.filter((c) => c.api === "no_data" && c.manualMentioned !== null);
   const coverage = view.checks
     .filter((c) => c.manualUrls.length > 0)
     .reduce((acc, c) => {
@@ -103,6 +104,17 @@ export function ResultsSection({ view, brandAliases }: { view: CalibrationView; 
                 })}
               </Group>
             )}
+          </div>
+        )}
+        {noData.length > 0 && (
+          <div className="mt-8">
+            <Group title="Brak danych z API">
+              {noData.map((c) => (
+                <DiscrepancyRow key={c.id} check={c}>
+                  <Meta>silnik nie dał poprawnej odpowiedzi w tym pomiarze — wiersz nie liczy się do zgodności</Meta>
+                </DiscrepancyRow>
+              ))}
+            </Group>
           </div>
         )}
       </section>

@@ -38,6 +38,7 @@ export default async function CalibrationListPage() {
             <Row key={c.id} href={`/app/calibration/${c.id}`} className="justify-between gap-y-2">
               <span className="text-[15px] font-medium">{fmtDate(c.created_at)}</span>
               <Meta>{c.status === "open" ? "otwarta" : "zakończona"}</Meta>
+              <Meta>{c.run_started_at ? `pomiar z ${fmtDate(c.run_started_at)}` : "pomiar usunięty"}</Meta>
               <span className="text-sm text-t1">
                 {c.agreement.map((a, i) => (
                   <Fragment key={a.engineId}>

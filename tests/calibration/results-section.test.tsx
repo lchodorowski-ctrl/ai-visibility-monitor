@@ -39,7 +39,7 @@ describe("ResultsSection", () => {
     const html = render();
     expect(html).toContain("ChatGPT");
     expect(html).toContain("1 z 2");
-    expect(html).toContain("text-red");
+    expect(html).toMatch(/text-red[^>]*>1 z 2</);
     expect(html).toContain("50%");
   });
 
@@ -71,6 +71,20 @@ describe("ResultsSection", () => {
     const html = render({ ...view, checks: [view.checks[0]] });
     expect(html).toContain("Brak rozbieżności");
     expect(html).toContain("nic nie sprawdzono");
+  });
+
+  it("pokazuje osobno wiersze bez danych z API (tylko gdy wpisano wynik ręczny)", () => {
+    const noData: CalibrationView = { ...view, checks: [
+      ...view.checks,
+      check({ id: "c5", promptText: "Pytanie bez danych API", result: "skipped", manualMentioned: true, api: "no_data", engineId: "google_ai_overview" }),
+      check({ id: "c6", promptText: "Pytanie bez danych i bez wpisu", result: "skipped", manualMentioned: null, api: "no_data", engineId: "perplexity" }),
+    ] };
+    const html = render(noData);
+    expect(html).toContain("Brak danych z API");
+    expect(html).toContain("Pytanie bez danych API");
+    expect(html).toContain("wiersz nie liczy się do zgodności");
+    expect(html).not.toContain("Pytanie bez danych i bez wpisu");
+    expect(render()).not.toContain("Brak danych z API");
   });
 
   it("podsumowuje pokrycie cytowań albo informuje o braku adresów", () => {
