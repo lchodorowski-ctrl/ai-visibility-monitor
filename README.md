@@ -75,6 +75,10 @@ Statusy runu (`runs.status`):
 | `budget_exceeded` | szacunek runu przekroczyłby miesięczny budżet; nic nie zostało wysłane do silników |
 | `empty` | brak aktywnych promptów lub włączonych silników |
 
+## Kolory widoczności
+
+Widoczność (heatmapa pytań, kafle i silniki w Przeglądzie, kropki przy pytaniach) ma trzy stany: **dobrze** (teal) od 67%, **bardzo źle** (czerwony) poniżej progu niskiej widoczności i **słabo** (neutralny szary) pomiędzy. Granica 67% jest stałą w kodzie (`GOOD_VISIBILITY` w `src/lib/metrics/tone.ts`), a dolny próg (domyślnie 34%) ustawisz w Ustawieniach jako „Próg niskiej widoczności”; ten sam próg wybiera prompty do rekomendacji. Stan liczymy z zaokrąglonego procentu, więc kolor zawsze zgadza się z liczbą na ekranie. Kropka przy pytaniu pokazuje średnią z silników w ostatnim pomiarze; bez danych kropki nie ma.
+
 ## Szybkość: dev vs prod
 
 `npm run start:prod` to `next build && next start -p 3000`. Tak sprawdzaj szybkość: `npm run dev` kompiluje każdy ekran przy pierwszym wejściu (kilka sekund), więc jego czasy nie mówią nic o produkcji.

@@ -10,6 +10,7 @@ import { StatsSection, TrendSection, EnginesSection, MentionsSection, TopRecomme
 
 export default async function OverviewPage() {
   const project = await getCurrentProject();
+  const threshold = Number(project.low_visibility_threshold);
   const lastRun = await getLastRun(project.id);
   const running = lastRun?.status === "running" && !isRunStale(lastRun);
   return (
@@ -24,12 +25,12 @@ export default async function OverviewPage() {
           action={<form action={runNow}><Button type="submit" className="bg-bg text-ink hover:bg-bg/90">Uruchom pomiar</Button></form>} />
       )}
       <Suspense fallback={<div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4"><TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton /></div>}>
-        <StatsSection projectId={project.id} />
+        <StatsSection projectId={project.id} threshold={threshold} />
       </Suspense>
       <Suspense fallback={null}><TopRecommendationSlot projectId={project.id} siteUrl={project.site_url} /></Suspense>
       <Suspense fallback={<TileSkeleton lines={6} />}><TrendSection projectId={project.id} /></Suspense>
       <Suspense fallback={<div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4"><TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton /></div>}>
-        <EnginesSection projectId={project.id} />
+        <EnginesSection projectId={project.id} threshold={threshold} />
       </Suspense>
       <Suspense fallback={<TileSkeleton lines={5} />}><MentionsSection projectId={project.id} brandName={project.brand_name} /></Suspense>
     </div>

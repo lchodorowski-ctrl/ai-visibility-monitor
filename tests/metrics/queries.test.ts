@@ -73,6 +73,21 @@ describe("queries", () => {
     await expect(getMentionCounts("p5", "run-err2")).rejects.toThrow("page2 fail");
   });
 
+  it("getLatestCells pobiera najnowszą datę, potem komórki tej daty; zamienia liczby i rzuca na błędzie", async () => {
+    respond = (name) => ({ data: name === "daily_metrics" ? [{ date: "2026-10-12", engine_id: "openai", prompt_id: "q1", visibility_rate: "0.5" }] : [], error: null });
+    const { getLatestCells } = await import("@/lib/metrics/queries");
+    expect(await getLatestCells("c1")).toEqual([{ engine_id: "openai", prompt_id: "q1", visibility_rate: 0.5 }]);
+    expect(calls).toContain("daily_metrics.eq(date,2026-10-12)");
+    respond = () => ({ data: null, error: { message: "cells down" } });
+    await expect(getLatestCells("c2")).rejects.toThrow("cells down");
+  });
+
+  it("getLatestCells bez pomiarów zwraca pustą listę", async () => {
+    respond = () => ({ data: [], error: null });
+    const { getLatestCells } = await import("@/lib/metrics/queries");
+    expect(await getLatestCells("c3")).toEqual([]);
+  });
+
   it("każda funkcja rzuca, gdy Supabase zwraca błąd", async () => {
     respond = () => ({ data: null, error: { message: "db down" } });
     const q = await import("@/lib/metrics/queries");

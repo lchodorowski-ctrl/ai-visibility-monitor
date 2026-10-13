@@ -30,6 +30,21 @@ export const getTrend = cache(async (projectId: string, days = 90) => {
   return shapeOverview(rows, []).trend;
 });
 
+/** Prompt x engine cells of the latest measurement; cached per request so the heatmap and the prompt list share one query. */
+export const getLatestCells = cache(async (projectId: string): Promise<{ engine_id: string; prompt_id: string; visibility_rate: number }[]> => {
+  const supabase = await createServerSupabase();
+  const { data: latestRow, error: latestError } = await supabase.from("daily_metrics").select("date")
+    .eq("project_id", projectId).not("prompt_id", "is", null).not("engine_id", "is", null)
+    .order("date", { ascending: false }).limit(1).maybeSingle();
+  if (latestError) throw new Error(`Nie udało się pobrać ostatniego pomiaru pytań: ${latestError.message}`);
+  if (!latestRow) return [];
+  const { data, error } = await supabase.from("daily_metrics").select("engine_id, prompt_id, visibility_rate")
+    .eq("project_id", projectId).eq("date", latestRow.date)
+    .not("prompt_id", "is", null).not("engine_id", "is", null);
+  if (error) throw new Error(`Nie udało się pobrać heatmapy: ${error.message}`);
+  return (data ?? []).flatMap((c) => (c.engine_id && c.prompt_id ? [{ engine_id: c.engine_id, prompt_id: c.prompt_id, visibility_rate: Number(c.visibility_rate) }] : []));
+});
+
 export const getLastRun = cache(async (projectId: string): Promise<Tables<"runs"> | null> => {
   const supabase = await createServerSupabase();
   const { data, error } = await supabase

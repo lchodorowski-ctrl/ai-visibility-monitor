@@ -24,7 +24,7 @@ describe("RecommendationCard", () => {
     const html = renderToStaticMarkup(<RecommendationCard r={base} siteUrl={SITE} />);
     expect(html).toContain("Nowa treść");
     expect(html).toContain("Opublikuj stronę o szkoleniach AI dla firm");
-    expect(html).toContain("priorytet wysoki");
+    expect(html).toContain('priorytet <span class="text-red">wysoki</span>');
     expect(html).toContain('aria-label="wpływ 5 z 5"');
     expect(html).toContain('aria-label="wysiłek 2 z 5"');
     expect(html).toContain("●●●●●");
@@ -42,7 +42,7 @@ describe("RecommendationCard", () => {
     expect(html).toContain('target="_blank"');
     expect(html).toContain('rel="noreferrer"');
     expect(html).toContain(">/llms.txt<");
-    expect(html).toContain("priorytet niski");
+    expect(html).toContain("priorytet <span>niski</span>");
     expect(html).toContain('aria-label="wpływ 1 z 5"');
     expect(html).toContain('aria-label="wysiłek 5 z 5"');
     expect(html).not.toContain("Pytanie:");
@@ -57,7 +57,20 @@ describe("RecommendationCard", () => {
     expect(html).not.toContain("wysiłek mały");
   });
   it("odrzucona pokazuje status na czerwono", () => {
-    expect(renderToStaticMarkup(<RecommendationCard r={{ ...base, status: "dismissed" }} siteUrl={SITE} />)).toContain("text-red");
+    const html = renderToStaticMarkup(<RecommendationCard r={{ ...base, priority: 4, status: "dismissed" }} siteUrl={SITE} />);
+    expect(html).toContain('<span class="text-red">odrzucone</span>');
+  });
+  it("tylko wysoki priorytet jest na czerwono; średni i niski bez zmian", () => {
+    const html = (priority: number) => renderToStaticMarkup(<RecommendationCard r={{ ...base, priority }} siteUrl={SITE} />);
+    expect(html(6)).toContain('priorytet <span class="text-red">wysoki</span>');
+    expect(html(5)).toContain("priorytet <span>średni</span>");
+    expect(html(5)).not.toContain('class="text-red"');
+    expect(html(2)).toContain("priorytet <span>niski</span>");
+  });
+  it("na odwróconym tle (ink) wysoki priorytet nie jest czerwony, bo kontrast byłby za mały", () => {
+    const html = renderToStaticMarkup(<RecommendationCard r={base} siteUrl={SITE} inverse />);
+    expect(html).toContain("priorytet <span>wysoki</span>");
+    expect(html).not.toContain('class="text-red"');
   });
 });
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Button } from "@/components/ui/button";
-import { StatTile, Rows, Row, Dots, EmptyState, PageHero } from "@/components/psai";
+import { StatTile, Rows, Row, Dots, EmptyState, PageHero, ToneDot } from "@/components/psai";
 
 describe("komponenty PSAI", () => {
   it("StatTile pokazuje liczbę, jednostkę i pasek postępu", () => {
@@ -11,6 +11,20 @@ describe("komponenty PSAI", () => {
     expect(html).toContain('role="progressbar"');
     expect(html).toContain('aria-valuenow="22"');
     expect(html).toContain(">22<");
+  });
+  it("StatTile z tonem koloruje liczbę, bez tonu nie dodaje koloru", () => {
+    expect(renderToStaticMarkup(<StatTile label="V" value="80" tone="good" />)).toContain("text-teal");
+    expect(renderToStaticMarkup(<StatTile label="V" value="10" tone="bad" />)).toContain("text-red");
+    expect(renderToStaticMarkup(<StatTile label="V" value="50" tone="weak" />)).toContain("text-t0");
+    const plain = renderToStaticMarkup(<StatTile label="V" value="50" />);
+    expect(plain).not.toContain("text-teal"); expect(plain).not.toContain("text-red");
+  });
+  it("ToneDot ma kolor tokenu i etykietę stanu", () => {
+    const h = (t: "good" | "weak" | "bad") => renderToStaticMarkup(<ToneDot tone={t} />);
+    expect(h("good")).toContain("bg-teal"); expect(h("good")).toContain('aria-label="dobrze"');
+    expect(h("weak")).toContain("bg-s3"); expect(h("weak")).toContain('aria-label="słabo"');
+    expect(h("bad")).toContain("bg-red"); expect(h("bad")).toContain('aria-label="bardzo źle"');
+    expect(h("bad")).toContain("h-2 w-2 shrink-0 rounded-full");
   });
   it("Rows renderuje listę z hairline", () => {
     const html = renderToStaticMarkup(<Rows><Row>a</Row><Row href="/x">b</Row></Rows>);

@@ -11,3 +11,4 @@ export { Rows, Row } from "./Rows";
 export { EmptyState } from "./EmptyState";
 export { Skeleton, TileSkeleton } from "./Skeleton";
 export { Dots } from "./Dots";
+export { ToneDot } from "./ToneDot";

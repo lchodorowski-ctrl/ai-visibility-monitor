@@ -29,9 +29,12 @@ export function RecommendationMeta({ r, inverse, showStatus }: { r: Recommendati
   const status = r.status as RecStatus;
   const statusTone = inverse ? "" : status === "done" ? "text-teal" : status === "dismissed" ? "text-red" : "";
   const dots = inverse ? "text-bg/70" : undefined;
+  const priority = priorityLabel(priorityOf(r));
+  // Na odwróconym tle (ink) red ma za mały kontrast dla drobnego tekstu, tak samo jak statusTone wyżej.
+  const priorityTone = !inverse && priority === "wysoki" ? "text-red" : undefined;
   return (
     <Meta className={inverse ? "text-bg/70" : undefined}>
-      priorytet {priorityLabel(priorityOf(r))}
+      priorytet <span className={priorityTone}>{priority}</span>
       {" · "}<span aria-hidden="true">wpływ</span> <Dots value={r.impact} label="wpływ" className={dots} />
       {" · "}<span aria-hidden="true">wysiłek</span> <Dots value={r.effort} label="wysiłek" className={dots} />
       {(showStatus || status !== "todo") && STATUS_LABEL[status] && <> · <span className={statusTone}>{STATUS_LABEL[status].toLowerCase()}</span></>}

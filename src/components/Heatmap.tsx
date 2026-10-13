@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ENGINE_LABELS } from "@/lib/engines/registry";
 import type { EngineId } from "@/lib/engines/types";
+import { GOOD_VISIBILITY, TONE_LABEL, visibilityTone, type VisibilityTone } from "@/lib/metrics/tone";
 
 export interface HeatmapRow { promptId: string; promptText: string; cells: { engineId: string; visibilityRate: number | null }[] }
 
@@ -17,22 +18,58 @@ export function buildHeatmapRows(
   return { rows, engines };
 }
 
-// Monochromatyczna skala: kolor w tym stylu znaczy tylko błąd (red) lub sukces (teal), więc widoczność = krycie tuszu (ink).
-export function heatmapCellStyle(v: number | null): { className: string; style?: React.CSSProperties; label: string } {
-  const base = "grid h-12 place-items-center rounded-lg font-mono text-xs tabular-nums";
-  if (v === null) return { className: `${base} bg-s2 text-t2`, label: "—" };
-  // Kubełek liczymy z zaokrąglonego procentu, żeby kolor zawsze zgadzał się z etykietą (2/3 = "67%" = pełna czerń).
-  const p = Math.round(v * 100);
-  const label = `${p}%`;
-  if (p === 0) return { className: `${base} border border-line-2 bg-bg text-t1`, label };
-  if (p >= 67) return { className: `${base} bg-ink text-bg`, label };
-  // color-mix na tokenie ink, żeby skala podążała za motywem (jasny/ciemny).
-  const mix = Math.round((0.12 + v * 0.7) * 100);
-  return { className: `${base} ${p >= 45 ? "text-bg" : "text-t0"}`, style: { backgroundColor: `color-mix(in srgb, var(--color-ink) ${mix}%, transparent)` }, label };
+/** Ogólna widoczność pytania: średnia z silników, które je zmierzyły w ostatnim pomiarze (brak danych = brak wpisu). */
+export function promptVisibility(cells: { prompt_id: string; visibility_rate: number }[]): Map<string, number> {
+  const acc = new Map<string, { sum: number; n: number }>();
+  for (const c of cells) {
+    const a = acc.get(c.prompt_id) ?? { sum: 0, n: 0 };
+    a.sum += c.visibility_rate; a.n += 1;
+    acc.set(c.prompt_id, a);
+  }
+  return new Map([...acc].map(([id, a]) => [id, a.sum / a.n]));
 }
 
-export function Heatmap({ rows, engines, counts }: { rows: HeatmapRow[]; engines: string[]; counts?: Record<string, number> }) {
+const mixOf = (token: "teal" | "red", pctValue: number) => `color-mix(in srgb, var(--color-${token}) ${pctValue}%, transparent)`;
+
+// Trzy stany (patrz visibilityTone): dobrze = teal, bardzo źle = red (kolor w tym stylu znaczy tylko sukces lub błąd),
+// słabo = monochromatyczna skala, gdzie widoczność = krycie tuszu (ink). Krycie koloru rośnie z wartością w obrębie stanu.
+export function heatmapCellStyle(v: number | null, threshold: number): { className: string; style?: React.CSSProperties; label: string; tone?: VisibilityTone } {
+  const base = "grid h-12 place-items-center rounded-lg font-mono text-xs tabular-nums";
+  if (v === null) return { className: `${base} bg-s2 text-t2`, label: "—" };
+  // Stan i kubełek liczymy z zaokrąglonego procentu, żeby kolor zawsze zgadzał się z etykietą (2/3 = "67%" = dobrze).
+  const p = Math.round(v * 100);
+  const label = `${p}%`;
+  const tone = visibilityTone(v, threshold);
+  if (tone === "good") {
+    const mix = Math.round(35 + ((p - 67) / 33) * 65); // 35% przy 67%, 100% przy 100%
+    return { className: `${base} ${mix >= 55 ? "text-bg" : "text-t0"}`, style: { backgroundColor: mixOf("teal", mix) }, label, tone };
+  }
+  if (tone === "bad") {
+    const top = Math.round(threshold * 100) - 1; // ostatni procent poniżej progu
+    const mix = Math.round(18 + (top > 0 ? (p / top) * 27 : 0)); // 18% przy 0%, 45% tuż pod progiem
+    // Zero zostaje obrysowane, żeby pusta komórka odróżniała się od tła kafla.
+    return { className: `${base} ${p === 0 ? "border border-line-2 " : ""}text-t0`, style: { backgroundColor: mixOf("red", mix) }, label, tone };
+  }
+  if (p === 0) return { className: `${base} border border-line-2 bg-bg text-t1`, label, tone };
+  // color-mix na tokenie ink, żeby skala podążała za motywem (jasny/ciemny).
+  const mix = Math.round((0.12 + v * 0.7) * 100);
+  return { className: `${base} ${p >= 45 ? "text-bg" : "text-t0"}`, style: { backgroundColor: `color-mix(in srgb, var(--color-ink) ${mix}%, transparent)` }, label, tone };
+}
+
+function Legend({ threshold }: { threshold: number }) {
+  const item = "flex items-center gap-2";
   return (
+    <ul className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-[11px] text-t2" aria-label="Legenda kolorów">
+      <li className={item}><span aria-hidden="true" className="inline-block h-3 w-3 rounded-sm bg-teal" />dobrze ≥ {Math.round(GOOD_VISIBILITY * 100)}%</li>
+      <li className={item}><span aria-hidden="true" className="inline-block h-3 w-3 rounded-sm bg-ink/40" />słabo</li>
+      <li className={item}><span aria-hidden="true" className="inline-block h-3 w-3 rounded-sm bg-red" />bardzo źle &lt; {Math.round(threshold * 100)}%</li>
+    </ul>
+  );
+}
+
+export function Heatmap({ rows, engines, counts, threshold }: { rows: HeatmapRow[]; engines: string[]; counts?: Record<string, number>; threshold: number }) {
+  return (
+    <>
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] border-separate border-spacing-y-2">
         <thead>
@@ -48,8 +85,8 @@ export function Heatmap({ rows, engines, counts }: { rows: HeatmapRow[]; engines
               <td className="pr-6 text-sm leading-snug">{r.promptText}</td>
               {engines.map((e) => {
                 const v = r.cells.find((c) => c.engineId === e)?.visibilityRate ?? null;
-                const s = heatmapCellStyle(v);
-                return <td key={e} className="px-1"><div className={s.className} style={s.style} aria-label={`${ENGINE_LABELS[e as EngineId] ?? e}: ${s.label}`}>{s.label}</div></td>;
+                const s = heatmapCellStyle(v, threshold);
+                return <td key={e} className="px-1"><div className={s.className} style={s.style} aria-label={`${ENGINE_LABELS[e as EngineId] ?? e}: ${s.label}${s.tone ? `, ${TONE_LABEL[s.tone]}` : ""}`}>{s.label}</div></td>;
               })}
               {counts && (
                 <td className="pl-4 text-right text-sm">
@@ -61,5 +98,7 @@ export function Heatmap({ rows, engines, counts }: { rows: HeatmapRow[]; engines
         </tbody>
       </table>
     </div>
+    <Legend threshold={threshold} />
+    </>
   );
 }
