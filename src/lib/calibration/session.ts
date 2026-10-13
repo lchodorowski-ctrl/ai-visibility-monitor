@@ -1,7 +1,8 @@
 import { foldText } from "@/lib/extract/normalize";
+import { CALIBRATION_MESSAGES } from "./messages";
 
 export function assertOpenSession(s: { status: string } | null): asserts s is { status: "open" } {
-  if (!s || s.status !== "open") throw new Error("Kalibracja zamknięta lub nie istnieje");
+  if (!s || s.status !== "open") throw new Error(CALIBRATION_MESSAGES.closedOrMissing);
 }
 
 export function mergeAlias(aliases: string[], alias: string): string[] | null {
@@ -12,6 +13,8 @@ export function mergeAlias(aliases: string[], alias: string): string[] | null {
   return [...aliases, a];
 }
 
+export const MAX_URLS = 50;
+
 export function parseUrls(text: string): string[] {
-  return text.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).slice(0, 20);
+  return text.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).slice(0, MAX_URLS);
 }

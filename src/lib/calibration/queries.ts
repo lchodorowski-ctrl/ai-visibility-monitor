@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { isCalibrationEngine, type CalibrationEngine } from "./engines";
+import { CALIBRATION_ENGINES, isCalibrationEngine, type CalibrationEngine } from "./engines";
 import { apiOutcome, compareRow, agreementByEngine, type ApiOutcome, type ApiResponse, type RowResult, type EngineAgreement } from "./compare";
 
 export type CalibrationListItem = { id: string; status: "open" | "closed"; created_at: string; run_started_at: string | null; agreement: EngineAgreement[] };
@@ -14,14 +14,20 @@ export const getLatestDoneRun = cache(async (projectId: string) => {
   return data;
 });
 
-async function apiByPair(projectId: string, runId: string): Promise<Map<string, ApiResponse[]>> {
+const RESPONSES_SAFETY_LIMIT = 1000;
+
+async function apiByPair(projectId: string, runId: string, promptIds: string[]): Promise<Map<string, ApiResponse[]>> {
+  const map = new Map<string, ApiResponse[]>();
+  if (promptIds.length === 0) return map;
   const supabase = await createServerSupabase();
   const { data, error } = await supabase
     .from("responses")
     .select("id, prompt_id, engine_id, error, no_answer, mentions(brand_kind), citations(domain)")
-    .eq("project_id", projectId).eq("run_id", runId).limit(1000);
+    .eq("project_id", projectId).eq("run_id", runId)
+    .in("prompt_id", promptIds).in("engine_id", [...CALIBRATION_ENGINES])
+    .limit(RESPONSES_SAFETY_LIMIT);
   if (error) throw new Error(`calibration responses: ${error.message}`);
-  const map = new Map<string, ApiResponse[]>();
+  if ((data?.length ?? 0) >= RESPONSES_SAFETY_LIMIT) console.warn(`calibration responses: osiągnięto limit ${RESPONSES_SAFETY_LIMIT} wierszy dla przebiegu ${runId}, część odpowiedzi może być pominięta`);
   for (const r of data ?? []) {
     const key = `${r.prompt_id}:${r.engine_id}`;
     const list = map.get(key) ?? [];
@@ -42,7 +48,7 @@ export const getCalibration = cache(async (projectId: string, id: string): Promi
     .from("calibration_checks").select("id, prompt_id, engine_id, manual_mentioned, manual_urls, manual_alias, prompts(text, created_at)")
     .eq("project_id", projectId).eq("calibration_id", id);
   if (cErr) throw new Error(`getCalibration checks: ${cErr.message}`);
-  const api = cal.run_id ? await apiByPair(projectId, cal.run_id) : new Map<string, ApiResponse[]>();
+  const api = cal.run_id ? await apiByPair(projectId, cal.run_id, [...new Set((checks ?? []).map((c) => c.prompt_id))]) : new Map<string, ApiResponse[]>();
   const order = (e: string) => ["openai", "perplexity", "google_ai_overview"].indexOf(e);
   const keyed = (checks ?? [])
     .filter((c) => isCalibrationEngine(c.engine_id))
@@ -65,18 +71,16 @@ export const getCalibration = cache(async (projectId: string, id: string): Promi
   return { id: cal.id, status: cal.status as "open" | "closed", created_at: cal.created_at, closed_at: cal.closed_at, run, checks: views };
 });
 
-// Lista ma max 24 pozycje (2 lata miesięcznych kalibracji), więc wywołanie getCalibration per pozycja jest akceptowalne; to ekran używany raz w miesiącu.
+// Lista ma max 24 pozycje (2 lata miesięcznych kalibracji), więc wywołanie getCalibration per pozycja (równolegle) jest akceptowalne; to ekran używany raz w miesiącu.
 export const listCalibrations = cache(async (projectId: string): Promise<CalibrationListItem[]> => {
   const supabase = await createServerSupabase();
   const { data, error } = await supabase
     .from("calibrations").select("id, status, created_at, runs(started_at)")
     .eq("project_id", projectId).order("created_at", { ascending: false }).limit(24);
   if (error) throw new Error(`listCalibrations: ${error.message}`);
-  const items: CalibrationListItem[] = [];
-  for (const c of data ?? []) {
+  return Promise.all((data ?? []).map(async (c): Promise<CalibrationListItem> => {
     const view = await getCalibration(projectId, c.id);
-    items.push({ id: c.id, status: c.status as "open" | "closed", created_at: c.created_at, run_started_at: c.runs?.started_at ?? null,
-      agreement: agreementByEngine((view?.checks ?? []).map((v) => ({ promptId: v.promptId, engineId: v.engineId, result: v.result }))) });
-  }
-  return items;
+    return { id: c.id, status: c.status as "open" | "closed", created_at: c.created_at, run_started_at: c.runs?.started_at ?? null,
+      agreement: agreementByEngine((view?.checks ?? []).map((v) => ({ promptId: v.promptId, engineId: v.engineId, result: v.result }))) };
+  }));
 });

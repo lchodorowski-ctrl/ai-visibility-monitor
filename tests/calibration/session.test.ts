@@ -15,11 +15,16 @@ describe("mergeAlias", () => {
     expect(mergeAlias(["Polska Szkola AI"], "  polska szkoła ai ")).toBeNull();
     expect(mergeAlias(["PSAI"], "   ")).toBeNull();
   });
+
+  it("nazwa marki przekazana wśród znanych fraz blokuje duplikat", () => {
+    expect(mergeAlias(["Polska Szkoła AI", "PSAI"], "polska szkola ai")).toBeNull();
+  });
 });
 
 describe("parseUrls", () => {
-  it("dzieli po liniach, przycina, pomija puste, max 20", () => {
+  it("dzieli po liniach, przycina, pomija puste, max 50", () => {
     expect(parseUrls(" https://a.pl \n\n b.pl\r\n")).toEqual(["https://a.pl", "b.pl"]);
-    expect(parseUrls(Array.from({ length: 30 }, (_, i) => `x${i}.pl`).join("\n"))).toHaveLength(20);
+    expect(parseUrls(Array.from({ length: 60 }, (_, i) => `x${i}.pl`).join("\n"))).toHaveLength(50);
+    expect(parseUrls(Array.from({ length: 50 }, (_, i) => `x${i}.pl`).join("\n"))).toHaveLength(50);
   });
 });

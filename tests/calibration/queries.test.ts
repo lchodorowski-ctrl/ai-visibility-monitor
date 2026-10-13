@@ -9,16 +9,17 @@ const calls: string[] = [];
 
 // Fałszywy klient: stosuje filtry eq na kolumnach płaskich, osadzone relacje (runs, prompts, mentions, citations) są wpisane w wiersze.
 function table(name: string) {
-  const filters: [string, unknown][] = [];
+  const filters: [string, (v: unknown) => boolean][] = [];
   const result = (): Result => {
     if (errors[name]) return { data: null, error: { message: errors[name] } };
-    return { data: (tables[name] ?? []).filter((r) => filters.every(([k, v]) => r[k] === v)), error: null };
+    return { data: (tables[name] ?? []).filter((r) => filters.every(([k, ok]) => ok(r[k]))), error: null };
   };
   const api: Record<string, unknown> = {};
-  for (const m of ["select", "eq", "order", "limit"]) {
+  for (const m of ["select", "eq", "in", "order", "limit"]) {
     api[m] = (...a: unknown[]) => {
       calls.push(`${name}.${m}(${a.map(String).join(",")})`);
-      if (m === "eq") filters.push([a[0] as string, a[1]]);
+      if (m === "eq") filters.push([a[0] as string, (v) => v === a[1]]);
+      if (m === "in") filters.push([a[0] as string, (v) => (a[1] as unknown[]).includes(v)]);
       return api;
     };
   }
@@ -63,6 +64,28 @@ describe("getCalibration", () => {
     expect(calls).toContain("calibration_checks.eq(project_id,p1)");
     expect(calls).toContain("calibration_checks.eq(calibration_id,cal1)");
     expect(calls).toContain("responses.eq(project_id,p1)");
+    expect(calls).toContain("responses.eq(run_id,run1)");
+    expect(calls).toContain("responses.in(prompt_id,q1)");
+    expect(calls).toContain("responses.in(engine_id,openai,perplexity,google_ai_overview)");
+  });
+
+  it("odpowiedzi spoza pytań sesji i spoza silników kalibracji nie wpływają na wynik", async () => {
+    tables.calibration_checks = [check("c1", "q1", "openai", { manual_mentioned: false })];
+    tables.responses = [
+      resp("r-obce-pytanie", "q9", "openai", { mentions: [{ brand_kind: "own" }] }),
+      resp("r-gemini", "q1", "gemini", { mentions: [{ brand_kind: "own" }] }),
+      resp("r-ok", "q1", "openai"),
+    ];
+    const { getCalibration } = await import("@/lib/calibration/queries");
+    const v = await getCalibration("p1", "cal1");
+    expect(v?.checks[0]).toMatchObject({ api: "absent", apiResponseId: "r-ok", result: "match" });
+  });
+
+  it("sesja bez wierszy → bez zapytania o odpowiedzi", async () => {
+    const { getCalibration } = await import("@/lib/calibration/queries");
+    const v = await getCalibration("p1", "cal1");
+    expect(v?.checks).toEqual([]);
+    expect(calls.some((c) => c.startsWith("responses."))).toBe(false);
   });
 
   it("brak odpowiedzi dla pary → no_data i skipped", async () => {
@@ -140,6 +163,18 @@ describe("listCalibrations", () => {
     expect(list[0].agreement.find((a) => a.engineId === "openai")).toMatchObject({ agreed: 1, checked: 1, rate: 1 });
     expect(list[0].agreement.find((a) => a.engineId === "perplexity")).toMatchObject({ agreed: 0, checked: 1, rate: 0 });
     expect(list[0].agreement.find((a) => a.engineId === "google_ai_overview")).toMatchObject({ checked: 0, rate: null });
+  });
+
+  it("zachowuje kolejność kalibracji i liczy każdą osobno", async () => {
+    tables.calibrations = [cal({ id: "cal1" }), cal({ id: "cal2", status: "closed" })];
+    tables.calibration_checks = [check("c1", "q1", "openai"), { ...check("c2", "q1", "openai", { manual_mentioned: false }), calibration_id: "cal2" }];
+    tables.responses = [resp("r1", "q1", "openai", { mentions: [{ brand_kind: "own" }] })];
+    const { listCalibrations } = await import("@/lib/calibration/queries");
+    const list = await listCalibrations("p1");
+    expect(list.map((c) => c.id)).toEqual(["cal1", "cal2"]);
+    expect(list[0].agreement[0]).toMatchObject({ agreed: 1, checked: 1 });
+    expect(list[1]).toMatchObject({ status: "closed" });
+    expect(list[1].agreement[0]).toMatchObject({ agreed: 0, checked: 1 });
   });
 
   it("rzuca przy błędzie zapytania listy", async () => {
