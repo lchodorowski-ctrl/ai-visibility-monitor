@@ -22,3 +22,19 @@ export function qualifyPrompts(rows: PromptVisibility[], threshold: number): str
     })
     .map((r) => r.promptId);
 }
+
+/**
+ * Caps the qualified prompts to `limit` (each one costs a paid model call): key prompts
+ * first, then the lowest overall visibility; ties keep the input order.
+ */
+export function prioritizeQualified(
+  ids: string[],
+  info: Map<string, { isKey: boolean; overall: number | null }>,
+  limit: number,
+): { selected: string[]; skipped: string[] } {
+  const ranked = ids
+    .map((id, index) => ({ id, index, isKey: info.get(id)?.isKey ?? false, overall: info.get(id)?.overall ?? 1 }))
+    .sort((a, b) => Number(b.isKey) - Number(a.isKey) || a.overall - b.overall || a.index - b.index)
+    .map((r) => r.id);
+  return { selected: ranked.slice(0, limit), skipped: ranked.slice(limit) };
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { qualifyPrompts, type PromptVisibility } from "@/lib/recommend/qualify";
+import { qualifyPrompts, prioritizeQualified, type PromptVisibility } from "@/lib/recommend/qualify";
 const row = (p: Partial<PromptVisibility>): PromptVisibility => ({ promptId: "p", intent: "informational", overall: { visibilityRate: 0, responsesCount: 4 }, byEngine: [], ...p });
 describe("qualifyPrompts", () => {
   it("kwalifikuje poniżej progu lub 0% w ≥2 silnikach", () => {
@@ -20,5 +20,17 @@ describe("qualifyPrompts", () => {
   it("nie liczy silników bez odpowiedzi jako 0% widoczności", () => {
     const rows = [row({ promptId: "z", overall: { visibilityRate: 0.5, responsesCount: 4 }, byEngine: [{ engineId: "openai", visibilityRate: 0, responsesCount: 0 }, { engineId: "gemini", visibilityRate: 0, responsesCount: 0 }, { engineId: "claude", visibilityRate: 0, responsesCount: 2 }] })];
     expect(qualifyPrompts(rows, 0.34)).toEqual([]);
+  });
+});
+describe("prioritizeQualified", () => {
+  const info = new Map([
+    ["a", { isKey: false, overall: 0.3 }], ["b", { isKey: true, overall: 0.2 }], ["c", { isKey: false, overall: 0 }],
+    ["d", { isKey: false, overall: 0 }], ["e", { isKey: true, overall: 0.1 }],
+  ]);
+  it("najpierw kluczowe, potem najniższa widoczność, remisy w kolejności wejścia", () => {
+    expect(prioritizeQualified(["a", "b", "c", "d", "e"], info, 10)).toEqual({ selected: ["e", "b", "c", "d", "a"], skipped: [] });
+  });
+  it("tnie do limitu i zwraca pominięte", () => {
+    expect(prioritizeQualified(["a", "b", "c", "d", "e"], info, 3)).toEqual({ selected: ["e", "b", "c"], skipped: ["d", "a"] });
   });
 });

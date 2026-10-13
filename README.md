@@ -128,7 +128,7 @@ npx tsx --env-file=.env.local scripts/recommend-now.ts [projectId] [YYYY-MM-DD]
 
 **Przepływ:** run, agregacja (`daily_metrics`), `recommend-project`.
 
-1. **Kwalifikacja promptów** (`qualifyPrompts`). Do analizy trafia prompt z łączną widocznością poniżej progu `low_visibility_threshold` (domyślnie 0,34) albo z widocznością 0% w co najmniej dwóch silnikach, które faktycznie odpowiedziały. Prompty bez ważnych odpowiedzi są pomijane (brak danych to nie zero). Prompt o intencji `brand` kwalifikuje się tylko poniżej progu.
+1. **Kwalifikacja promptów** (`qualifyPrompts`). Do analizy trafia prompt z łączną widocznością poniżej progu `low_visibility_threshold` (domyślnie 0,34) albo z widocznością 0% w co najmniej dwóch silnikach, które faktycznie odpowiedziały. Prompty bez ważnych odpowiedzi są pomijane (brak danych to nie zero). Prompt o intencji `brand` kwalifikuje się tylko poniżej progu. Jedno uruchomienie analizuje najwyżej 20 pytań (każde to płatne wywołanie modelu): najpierw kluczowe (`is_key`), potem te z najniższą widocznością; liczba pominiętych trafia do logu taska.
 2. **Generowanie.** Dla każdego zakwalifikowanego promptu Claude (model z `ANTHROPIC_RECOMMENDER_MODEL`, domyślnie `claude-opus-5-5`) dostaje odpowiedzi silników, cytowane domeny i adresy, konkurentów, kartę faktów marki i listę podstron z mapy strony. Zwraca rekomendacje z oceną wpływu (`impact` 1-5) i wysiłku (`effort` 1-5).
 3. **Zasada konkretności.** Rekomendacja bez konkretnego artefaktu jest odrzucana: `content_new` wymaga zarysu (co najmniej 3 niepuste punkty `suggested_outline`) i proponowanej ścieżki, a `content_improve` i `offsite` wymagają `target_url` (ścieżka `/...` lub adres http/https). Odrzucone pozycje trafiają do logu taska, nie do bazy.
 4. **Reguły techniczne.** Osobno, bez modelu, sprawdzane są `/llms.txt` i `/sitemap.xml` na `site_url`. Rekomendacja `technical` powstaje wyłącznie przy odpowiedzi 404 lub 410; błąd sieci, 403, 429 i 5xx oznaczają „nieznane” i nic nie tworzą.
@@ -139,6 +139,8 @@ npx tsx --env-file=.env.local scripts/recommend-now.ts [projectId] [YYYY-MM-DD]
 **Priorytet** = `impact` x 2 - `effort` (zakres od -3 do 9); lista na `/app/recommendations` jest sortowana malejąco po priorytecie.
 
 **Koszt.** Jedno wywołanie na zakwalifikowany prompt, ok. 0,05-0,15 USD na pytanie przy cenach Opus 5.5 (4 USD / 20 USD za milion tokenów wejścia / wyjścia). Suma trafia do `runs.recommendations_cost_usd` (dodawana, nie nadpisywana; przy ręcznym odświeżeniu bez runu do ostatniego runu projektu) i liczy się do budżetu miesięcznego razem z `runs.cost_usd`. Koszt wywołania, które zakończyło się odmową lub ucięciem (`max_tokens`), też jest liczony.
+
+**Błędy.** Task nie ponawia prób (ponowienie kupiłoby wszystkie wywołania jeszcze raz). Błąd jednego pytania jest logowany, a pozostałe idą dalej; jeśli padną wszystkie wywołania modelu, run taska kończy się błędem.
 
 **Znane ograniczenie.** Jeśli klucz Anthropic nie jest przypisany do workspace'u, żywe generowanie rekomendacji wymaga `ANTHROPIC_WORKSPACE_ID`. Bez niego wywołanie kończy się błędem, a prompt jest liczony jako nieudany. To obecnie blokuje pierwsze żywe uruchomienie.
 
@@ -163,7 +165,7 @@ npx tsx --env-file=.env.local scripts/crawl-now.ts [projectId]
 - Crawler przedstawia się jako `PSAI-VisibilityBot/1.0`, respektuje `robots.txt` i pobiera 4 strony równolegle.
 - Host adresów z sitemapy jest podmieniany na `site_url`, więc mapa z produkcji da się przeczytać ze stagingu.
 - Dla każdej strony zapisywane są ścieżka, status HTTP, tytuł, H1, opis i fragment treści. Strony, które zniknęły z sitemapy, dostają status 410. Pusty wynik crawla nie wygasza istniejących wierszy.
-- Crawl nie startuje automatycznie po runie: uruchom go skryptem po zmianie `site_url` lub dużej zmianie treści strony.
+- `recommend-project` sam crawluje stronę (bez osobnego taska), gdy mapa jest pusta albo najnowszy wpis ma ponad 7 dni. Błąd crawla jest logowany i nie blokuje rekomendacji. Po zmianie `site_url` lub dużej zmianie treści uruchom crawl skryptem od razu.
 
 ## Skrypty
 

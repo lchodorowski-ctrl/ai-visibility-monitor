@@ -96,8 +96,15 @@ export const runProject = task({
       const agg = await aggregateProject.triggerAndWait({ projectId, runId, date });
       const aggregationError = agg.ok ? null : `aggregation failed: ${String(agg.error)}`;
 
-      // rekomendacje liczą się w tle (trigger, nie triggerAndWait) — run kończy się od razu
-      if (!aggregationError) await recommendProject.trigger({ projectId, runId, date });
+      // rekomendacje liczą się w tle (trigger, nie triggerAndWait) — run kończy się od razu;
+      // nieudane zlecenie rekomendacji nie psuje udanego pomiaru (logujemy i idziemy dalej)
+      if (!aggregationError) {
+        try {
+          await recommendProject.trigger({ projectId, runId, date });
+        } catch (err) {
+          console.error(`run-project: nie udało się zlecić recommend-project dla runu ${runId}:`, err instanceof Error ? err.message : String(err));
+        }
+      }
 
       const status = aggregationError ? ("failed" as const) : ("done" as const);
       const { error: finishError } = await admin.from("runs").update({

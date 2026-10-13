@@ -53,3 +53,9 @@ export function mergeEvidence(a: Evidence, b: Evidence): Evidence {
     sample_quotes: [...new Set([...a.sample_quotes, ...b.sample_quotes])].slice(0, MAX_QUOTES),
   };
 }
+
+/** Prompt ids stored in a recommendation's evidence (jsonb, so validated defensively). */
+export function evidencePromptIds(evidence: unknown): string[] {
+  const ids = evidence && typeof evidence === "object" && !Array.isArray(evidence) ? (evidence as { prompt_ids?: unknown }).prompt_ids : undefined;
+  return Array.isArray(ids) ? ids.filter((x): x is string => typeof x === "string") : [];
+}
