@@ -15,13 +15,23 @@ describe("ProjectSettingsSchema", () => {
       domains: "https://www.polskaszkola.ai/, polskaszkola.ai",
       monthly_budget_usd: "30",
       facts: "{}",
+      site_url: "https://x.pl",
+      low_visibility_threshold: "0.34",
     });
     expect(r.domains).toEqual(["polskaszkola.ai"]);
     expect(r.monthly_budget_usd).toBe(30);
   });
 
   it("odrzuca ujemny budżet i niepoprawny JSON faktów", () => {
-    expect(() => ProjectSettingsSchema.parse({ brand_name: "X", brand_aliases: "", domains: "", monthly_budget_usd: "-1", facts: "{}" })).toThrow();
-    expect(() => ProjectSettingsSchema.parse({ brand_name: "X", brand_aliases: "", domains: "", monthly_budget_usd: "1", facts: "{" })).toThrow();
+    expect(() => ProjectSettingsSchema.parse({ brand_name: "X", brand_aliases: "", domains: "", monthly_budget_usd: "-1", facts: "{}", site_url: "https://x.pl", low_visibility_threshold: "0.34" })).toThrow();
+    expect(() => ProjectSettingsSchema.parse({ brand_name: "X", brand_aliases: "", domains: "", monthly_budget_usd: "1", facts: "{", site_url: "https://x.pl", low_visibility_threshold: "0.34" })).toThrow();
+  });
+
+  it("normalizuje site_url i waliduje próg", () => {
+    const r = ProjectSettingsSchema.parse({ brand_name: "X", brand_aliases: "", domains: "", monthly_budget_usd: "1", facts: "{}", site_url: "https://polskaszkolaai.netlify.app/", low_visibility_threshold: "0.34" });
+    expect(r.site_url).toBe("https://polskaszkolaai.netlify.app");
+    expect(r.low_visibility_threshold).toBe(0.34);
+    expect(() => ProjectSettingsSchema.parse({ brand_name: "X", brand_aliases: "", domains: "", monthly_budget_usd: "1", facts: "{}", site_url: "ftp://x", low_visibility_threshold: "0.3" })).toThrow();
+    expect(() => ProjectSettingsSchema.parse({ brand_name: "X", brand_aliases: "", domains: "", monthly_budget_usd: "1", facts: "{}", site_url: "https://x.pl", low_visibility_threshold: "1.5" })).toThrow();
   });
 });

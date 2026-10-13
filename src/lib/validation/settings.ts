@@ -21,6 +21,10 @@ export const ProjectSettingsSchema = z.object({
   brand_aliases: listField,
   domains: domainsField,
   monthly_budget_usd: z.coerce.number().min(0, "Budżet nie może być ujemny"),
+  site_url: z.string().trim().pipe(z.url("Podaj pełny adres z https://"))
+    .refine((u) => /^https?:\/\//.test(u), "Tylko http(s)")
+    .transform((u) => u.replace(/\/+$/, "")),
+  low_visibility_threshold: z.coerce.number().min(0, "Próg 0–1").max(1, "Próg 0–1"),
   facts: z.string().default("{}").transform((s, ctx) => {
     try {
       const parsed: unknown = JSON.parse(s);
