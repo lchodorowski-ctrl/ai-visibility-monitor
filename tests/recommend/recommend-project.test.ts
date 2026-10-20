@@ -38,6 +38,7 @@ interface World {
   sitePagesFetchedAt?: string | null;
   runCost?: number;
   latestRun?: { id: string; recommendations_cost_usd: number } | null;
+  responses?: unknown[];
 }
 
 function world(w: World) {
@@ -54,7 +55,7 @@ function world(w: World) {
       return { data: w.latestRun ?? null };
     }
     if (c.table === "runs" && c.op === "update") return {};
-    if (c.table === "responses") return { data: [] };
+    if (c.table === "responses") return { data: w.responses ?? [] };
     if (c.table === "recommendations" && c.op === "select") return { data: c.cols === "type, title" ? [] : null };
     if (c.table === "recommendations") return {};
     throw new Error(`unexpected ${c.op} on ${c.table}`);
@@ -129,6 +130,21 @@ describe("runRecommendProject", () => {
     const resp = calls.find((c) => c.table === "responses")!;
     expect(has(resp, "in", "run_id", ["run-1", "run-0"])).toBe(true);
     expect(has(resp, "eq", "prompt_id", "p1")).toBe(true);
+  });
+
+  it("cytaty w dowodach: po jednym na silnik, z id odpowiedzi do linku", async () => {
+    const resp = (id: string, engine_id: string, text: string) => ({ id, engine_id, text, no_answer: false, error: null, citations: [], mentions: [] });
+    const { client, calls } = world({
+      prompts: [{ id: "p1", overall: 0 }], dayRuns: ["run-1"], sitePagesFetchedAt: freshCrawl(),
+      responses: [resp("r1", "openai", "Pierwsza"), resp("r2", "openai", "Druga"), resp("r3", "gemini", "Trzecia")],
+    });
+    await runRecommendProject({ projectId: PROJECT, runId: "run-1", date: "2026-10-13" }, { admin: client, generate: ok(), rules: noRules, crawl: vi.fn() });
+    expect(calls.find((c) => c.table === "responses")!.cols).toMatch(/^id, /);
+    const insert = calls.find((c) => c.table === "recommendations" && c.op === "insert")!;
+    expect((insert.payload as { evidence: { sample_quotes: unknown } }).evidence.sample_quotes).toEqual([
+      { engine_id: "openai", response_id: "r1", text: "Pierwsza" },
+      { engine_id: "gemini", response_id: "r3", text: "Trzecia" },
+    ]);
   });
 
   it("istniejące rekomendacje dla pytania obejmują też te scalone z innego pytania (evidence.prompt_ids)", async () => {

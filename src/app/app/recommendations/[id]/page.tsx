@@ -4,20 +4,19 @@ import { Eyebrow, Meta, Rows, Row, SectionHead, Tile } from "@/components/psai";
 import { ENGINE_LABELS } from "@/lib/engines/registry";
 import type { EngineId } from "@/lib/engines/types";
 import { fmtDate, pct } from "@/lib/format/number";
+import { pluralPl } from "@/lib/format/plural";
+import { toneTextClass, visibilityTone } from "@/lib/metrics/tone";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getCurrentProject } from "@/lib/workspace";
 import { isUuid } from "@/lib/validation/uuid";
 import { getRecommendation } from "@/lib/recommend/queries";
 import { TYPE_LABEL, type RecStatus, type RecType } from "@/lib/recommend/labels";
+import { targetHost, viewCompetitors, viewDomains, viewQuotes } from "@/lib/recommend/evidence-view";
 import { StatusForm } from "../StatusForm";
 import { RecommendationMeta, TargetUrl } from "../RecommendationCard";
+import { BalancedColumns, CountList, QuoteCard, type StackBlock } from "../Evidence";
 
 const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim().length > 0) : []);
-const counted = (v: unknown, key: "domain" | "name"): { label: string; count: number }[] =>
-  Array.isArray(v)
-    ? v.flatMap((x) => (x && typeof x === "object" && typeof (x as Record<string, unknown>)[key] === "string"
-        ? [{ label: (x as Record<string, string>)[key], count: Number((x as Record<string, unknown>).count) || 0 }] : []))
-    : [];
 
 export default async function RecommendationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -34,9 +33,12 @@ export default async function RecommendationPage({ params }: { params: Promise<{
   const promptIds = strings(ev.prompt_ids);
   const visibility = Object.entries(ev.visibility_by_engine && typeof ev.visibility_by_engine === "object" ? (ev.visibility_by_engine as Record<string, unknown>) : {})
     .flatMap(([engine, v]) => (typeof v === "number" ? [{ engine, v }] : []));
-  const domains = counted(ev.cited_domains, "domain");
-  const competitors = counted(ev.competitors_mentioned, "name");
-  const quotes = strings(ev.sample_quotes);
+  const domains = viewDomains(ev.cited_domains, { targetUrl: r.target_url, ownDomains: project.domains });
+  const competitors = viewCompetitors(ev.competitors_mentioned);
+  const quotes = viewQuotes(ev.sample_quotes);
+  const host = targetHost(r.target_url);
+  const quoteTerms = [...(host ? [host] : []), ...competitors.top.map((c) => c.label)];
+  const threshold = Number(project.low_visibility_threshold);
   const validPromptIds = promptIds.filter(isUuid);
   const promptText = new Map<string, string>();
   if (validPromptIds.length > 0) {
@@ -44,7 +46,66 @@ export default async function RecommendationPage({ params }: { params: Promise<{
     if (error) throw new Error(error.message);
     for (const p of data ?? []) promptText.set(p.id, p.text);
   }
-  const hasEvidence = validPromptIds.length + visibility.length + domains.length + competitors.length + quotes.length > 0;
+  const hasEvidence = validPromptIds.length + visibility.length + domains.total + competitors.total + quotes.length > 0;
+
+  const promptsBlock = validPromptIds.length > 0 && (
+    <div>
+      <Meta className="mb-3 block">Pytania</Meta>
+      <Rows>
+        {validPromptIds.map((pid) => (
+          <Row key={pid}>
+            <span className="min-w-0 flex-1 text-sm">{promptText.get(pid) ?? "Pytanie usunięte"}</span>
+            <span className="flex gap-4 text-sm">
+              <Link href={`/app/prompts#${pid}`} className="text-t1 underline-offset-4 hover:text-t0 hover:underline">heatmapa →</Link>
+              <Link href={`/app/responses?prompt=${pid}`} className="text-t1 underline-offset-4 hover:text-t0 hover:underline">odpowiedzi →</Link>
+            </span>
+          </Row>
+        ))}
+      </Rows>
+    </div>
+  );
+  const visibilityBlock = visibility.length > 0 && (
+    <div>
+      <Meta className="mb-3 block">Widoczność per silnik</Meta>
+      <Rows>{visibility.map(({ engine, v }) => (
+        <Row key={engine}>
+          <span className="flex-1 text-sm">{ENGINE_LABELS[engine as EngineId] ?? engine}</span>
+          <span className={`font-mono text-sm tabular-nums ${toneTextClass(visibilityTone(v, threshold))}`}>{pct(v)}</span>
+        </Row>
+      ))}</Rows>
+    </div>
+  );
+  /** `wide` splits the top rows into two lists side by side (full-width section). */
+  const domainsBlock = (wide: boolean) => domains.total > 0 && (
+    <div>
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <Meta>Cytowane domeny</Meta>
+        <Meta>{pluralPl(domains.total, ["domena", "domeny", "domen"])} · {pluralPl(domains.sum, ["cytowanie", "cytowania", "cytowań"])}</Meta>
+      </div>
+      <CountList view={domains} wide={wide} />
+    </div>
+  );
+  const competitorsBlock = competitors.total > 0 && (
+    <div>
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <Meta>Konkurenci w odpowiedziach</Meta>
+        <Meta>{pluralPl(competitors.sum, ["wzmianka", "wzmianki", "wzmianek"])}</Meta>
+      </div>
+      <CountList view={competitors} />
+    </div>
+  );
+
+  // rough rendered heights (px) per row, only to pick the shorter column
+  const listHeight = (v: { top: unknown[]; rest: unknown[] }) => 32 + v.top.length * 44 + (v.rest.length > 0 ? 40 : 0);
+  const blocks: StackBlock[] = [
+    { key: "prompts", node: promptsBlock, height: 32 + validPromptIds.length * 86 },
+    { key: "visibility", node: visibilityBlock, height: 32 + visibility.length * 56 },
+    // without competitors the domains get the full width below, split into two lists
+    ...(competitors.total > 0 ? [
+      { key: "domains", node: domainsBlock(false), height: listHeight(domains) },
+      { key: "competitors", node: competitorsBlock, height: listHeight(competitors) },
+    ] : []),
+  ].filter((b) => b.node);
 
   return (
     <div className="space-y-10">
@@ -94,53 +155,15 @@ export default async function RecommendationPage({ params }: { params: Promise<{
         <SectionHead title="Dowody" />
         {!hasEvidence
           ? <Tile><Meta>brak zapisanych dowodów</Meta></Tile>
-          : <div className="grid gap-6 md:grid-cols-2">
-              {validPromptIds.length > 0 && (
-                <div>
-                  <Meta className="mb-3 block">Pytania</Meta>
-                  <Rows>
-                    {validPromptIds.map((pid) => (
-                      <Row key={pid}>
-                        <span className="min-w-0 flex-1 text-sm">{promptText.get(pid) ?? "Pytanie usunięte"}</span>
-                        <span className="flex gap-4 text-sm">
-                          <Link href={`/app/prompts#${pid}`} className="text-t1 underline-offset-4 hover:text-t0 hover:underline">heatmapa →</Link>
-                          <Link href={`/app/responses?prompt=${pid}`} className="text-t1 underline-offset-4 hover:text-t0 hover:underline">odpowiedzi →</Link>
-                        </span>
-                      </Row>
-                    ))}
-                  </Rows>
-                </div>
-              )}
-              {visibility.length > 0 && (
-                <div>
-                  <Meta className="mb-3 block">Widoczność per silnik</Meta>
-                  <Rows>{visibility.map(({ engine, v }) => (
-                    <Row key={engine}><span className="flex-1 text-sm">{ENGINE_LABELS[engine as EngineId] ?? engine}</span><span className="font-mono text-sm tabular-nums">{pct(v)}</span></Row>
-                  ))}</Rows>
-                </div>
-              )}
-              {domains.length > 0 && (
-                <div>
-                  <Meta className="mb-3 block">Cytowane domeny</Meta>
-                  <Rows>{domains.map((d) => (
-                    <Row key={d.label}><span className="min-w-0 flex-1 break-all text-sm">{d.label}</span><span className="font-mono text-sm tabular-nums">{d.count}×</span></Row>
-                  ))}</Rows>
-                </div>
-              )}
-              {competitors.length > 0 && (
-                <div>
-                  <Meta className="mb-3 block">Konkurenci w odpowiedziach</Meta>
-                  <Rows>{competitors.map((c) => (
-                    <Row key={c.label}><span className="min-w-0 flex-1 text-sm">{c.label}</span><span className="font-mono text-sm tabular-nums">{c.count}×</span></Row>
-                  ))}</Rows>
-                </div>
-              )}
+          : <div className="space-y-10">
+              <BalancedColumns blocks={blocks} />
+              {competitors.total === 0 && domainsBlock(true)}
               {quotes.length > 0 && (
-                <div className="md:col-span-2">
+                <div>
                   <Meta className="mb-3 block">Cytaty z odpowiedzi</Meta>
-                  <div className="space-y-3">
-                    {quotes.map((q, i) => <blockquote key={i} className="rounded-[28px] bg-s1 px-6 py-4 font-mono text-xs leading-relaxed text-t1 md:px-8">{q}</blockquote>)}
-                  </div>
+                  <ul className="grid gap-4 md:grid-cols-2">
+                    {quotes.map((q, i) => <QuoteCard key={i} q={q} terms={quoteTerms} />)}
+                  </ul>
                 </div>
               )}
             </div>}

@@ -4,7 +4,7 @@ vi.mock("@anthropic-ai/sdk", () => ({ default: class { messages = { parse }; } }
 vi.mock("@anthropic-ai/sdk/helpers/zod", () => ({ zodOutputFormat: (s: unknown) => ({ type: "json_schema", schema: s }) }));
 
 const base = { type: "content_new", title: "Opublikuj stronę „Szkolenia AI dla firm” z cennikiem", summary: "Asystenci cytują PARP i EY, bo mają strony z cenami i programem. Brak takiej strony u Was.", action_steps: ["Napisz stronę", "Dodaj tabelę cen", "Podlinkuj z menu"], target_url: "/szkolenia-ai-dla-firm", suggested_outline: ["Dla kogo", "Program", "Ceny", "FAQ"], impact: 4, effort: 3, rationale_pl: "Dwa z trzech cytowanych źródeł to strony ofertowe z cenami." };
-const input = { prompt: { id: "p1", text: "Q", intent: "comparison", topic: null }, visibility: { overall: 0, byEngine: {} }, excerpts: [], citedDomains: [], citedUrls: [], competitorsMentioned: [], brand: { name: "PSAI", aliases: [], domains: [], facts: {}, siteUrl: "https://x" }, sitePages: [], existing: [] };
+const input = { prompt: { id: "p1", text: "Q", intent: "comparison", topic: null }, visibility: { overall: 0, byEngine: {} }, excerpts: [], quotes: [], citedDomains: [], citedUrls: [], competitorsMentioned: [], brand: { name: "PSAI", aliases: [], domains: [], facts: {}, siteUrl: "https://x" }, sitePages: [], existing: [] };
 
 describe("generateRecommendations", () => {
   beforeEach(() => { parse.mockReset(); process.env.ANTHROPIC_API_KEY = "k"; });

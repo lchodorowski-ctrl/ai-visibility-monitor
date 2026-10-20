@@ -53,4 +53,37 @@ describe("buildRecommendationInput", () => {
     expect(input.citedDomains).toEqual([{ domain: "a.pl", count: 16 }]);
     expect(input.competitorsMentioned).toEqual([]);
   });
+  it("cytat z krótkiej odpowiedzi bez trafienia jest cały, z długiej ucięty na granicy słowa", () => {
+    const base = { citations: [], mentions: [] };
+    const input = buildRecommendationInput({
+      prompt: { id: "p1", text: "Q", intent: "comparison", topic: null },
+      visibility: { overall: 0, byEngine: {} },
+      responses: [{ ...base, engineId: "openai", text: "słowo ".repeat(100) }],
+      brand: { name: "PSAI", aliases: [], domains: [], facts: null, siteUrl: "https://x" },
+      sitePages: [], existing: [], competitorAliases: [],
+    });
+    expect(input.quotes[0].text).toMatch(/^słowo( słowo)*…$/);
+    expect(input.quotes[0].text.length).toBeLessThanOrEqual(321);
+  });
+  it("cytaty: jeden na silnik, wycięte wokół konkurenta, z preferencją odpowiedzi, która go wymienia", () => {
+    const base = { citations: [], mentions: [] };
+    const long = "x".repeat(600) + " poleca EY Academy " + "y".repeat(600);
+    const input = buildRecommendationInput({
+      prompt: { id: "p1", text: "Q", intent: "comparison", topic: null },
+      visibility: { overall: 0, byEngine: {} },
+      responses: [
+        { ...base, id: "r1", engineId: "openai", text: "bez konkurenta ".repeat(40) },
+        { ...base, id: "r2", engineId: "openai", text: long },
+        { ...base, id: "r3", engineId: "openai", text: "EY Academy później" },
+        { ...base, engineId: "gemini", text: "   " },
+        { ...base, engineId: "gemini", text: "krótko" },
+      ],
+      brand: { name: "PSAI", aliases: [], domains: [], facts: null, siteUrl: "https://x" },
+      sitePages: [], existing: [], competitorAliases: ["EY Academy"],
+    });
+    expect(input.quotes.map((q) => [q.engineId, q.responseId])).toEqual([["openai", "r2"], ["gemini", null]]);
+    // window ±160 around the hit, snapped to whole words; cut ends are marked with "…"
+    expect(input.quotes[0].text).toBe("…poleca EY Academy…");
+    expect(input.quotes[1].text).toBe("krótko");
+  });
 });

@@ -39,6 +39,18 @@ describe("mergeEvidence", () => {
     expect(m.visibility_by_engine.openai).toBe(0.5);
     expect(JSON.stringify([many, more])).toBe(snapshot);
   });
+  it("sortuje domeny i konkurentów malejąco po scaleniu", () => {
+    const x = { ...a, cited_domains: [{ domain: "a.pl", count: 5 }, { domain: "b.pl", count: 1 }] };
+    const y = { ...b, cited_domains: [{ domain: "c.pl", count: 9 }, { domain: "b.pl", count: 3 }], competitors_mentioned: [{ name: "X", count: 7 }] };
+    const m = mergeEvidence(x, y);
+    expect(m.cited_domains).toEqual([{ domain: "c.pl", count: 9 }, { domain: "a.pl", count: 5 }, { domain: "b.pl", count: 3 }]);
+    expect(m.competitors_mentioned.map((c) => c.name)).toEqual(["X", "EY"]);
+  });
+  it("deduplikuje cytaty po tekście, także między starym i nowym formatem", () => {
+    const q = { engine_id: "openai", response_id: "r1", text: "q1" };
+    const m = mergeEvidence({ ...a, sample_quotes: ["q1", q, { ...q, text: "q2" }] }, { ...b, sample_quotes: [{ ...q, response_id: "r9", text: "q2" }, "q3"] });
+    expect(m.sample_quotes).toEqual(["q1", { ...q, text: "q2" }, "q3"]);
+  });
   it("jest idempotentne: ponowne scalenie tych samych dowodów nic nie zmienia", () => {
     const once = mergeEvidence(a, b);
     expect(mergeEvidence(once, b)).toEqual(once);

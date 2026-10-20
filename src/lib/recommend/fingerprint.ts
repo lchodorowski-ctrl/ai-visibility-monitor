@@ -2,13 +2,16 @@ import { createHash } from "node:crypto";
 import { foldText } from "@/lib/extract/normalize";
 import { isConcreteUrl, normalizeTargetUrl } from "@/lib/recommend/target-url";
 
+/** Legacy rows store "[engine] text"; new ones keep the engine and the response the quote links to. */
+export type SampleQuote = string | { engine_id: string; response_id: string | null; text: string };
+
 export interface Evidence {
   prompt_ids: string[];
   visibility_by_engine: Record<string, number>;
   cited_domains: { domain: string; count: number }[];
   cited_urls: string[];
   competitors_mentioned: { name: string; count: number }[];
-  sample_quotes: string[];
+  sample_quotes: SampleQuote[];
 }
 
 const MAX_URLS = 20;
@@ -93,7 +96,7 @@ export function fingerprintFor(item: { type: string; title: string; target_url: 
 }
 
 /**
- * Union of keys with the MAX count per key. Max (not sum) keeps the merge idempotent:
+ * Union of keys with the MAX count per key, most frequent first. Max (not sum) keeps the merge idempotent:
  * re-running the same day (retry, manual refresh) must not inflate the counts.
  */
 function maxCounts<K extends string, T extends { count: number } & Record<K, string>>(key: K, a: T[], b: T[]): T[] {
@@ -102,7 +105,15 @@ function maxCounts<K extends string, T extends { count: number } & Record<K, str
     const prev = m.get(x[key]);
     m.set(x[key], prev ? { ...prev, count: Math.max(prev.count, x.count) } : { ...x });
   }
-  return [...m.values()];
+  return [...m.values()].sort((x, y) => y.count - x.count);
+}
+
+const quoteText = (q: SampleQuote) => (typeof q === "string" ? q : q.text);
+
+/** First occurrence of every quote text wins, capped at MAX_QUOTES. */
+function mergeQuotes(a: SampleQuote[], b: SampleQuote[]): SampleQuote[] {
+  const seen = new Set<string>();
+  return [...a, ...b].filter((q) => !seen.has(quoteText(q)) && (seen.add(quoteText(q)), true)).slice(0, MAX_QUOTES);
 }
 
 /** Merges two evidence blobs describing the same recommendation (e.g. from two prompts); idempotent: merge(merge(a, b), b) = merge(a, b). */
@@ -113,7 +124,7 @@ export function mergeEvidence(a: Evidence, b: Evidence): Evidence {
     cited_domains: maxCounts("domain", a.cited_domains, b.cited_domains),
     cited_urls: [...new Set([...a.cited_urls, ...b.cited_urls])].slice(0, MAX_URLS),
     competitors_mentioned: maxCounts("name", a.competitors_mentioned, b.competitors_mentioned),
-    sample_quotes: [...new Set([...a.sample_quotes, ...b.sample_quotes])].slice(0, MAX_QUOTES),
+    sample_quotes: mergeQuotes(a.sample_quotes, b.sample_quotes),
   };
 }
 

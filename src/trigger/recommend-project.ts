@@ -109,7 +109,7 @@ async function generateForProject(
       const [responsesRes, existingRes] = await Promise.all([
         runIds.length === 0
           ? Promise.resolve({ data: [], error: null })
-          : admin.from("responses").select("engine_id, text, no_answer, error, citations(url, domain), mentions(brand_kind, brand_name)").eq("prompt_id", promptId).in("run_id", runIds).eq("no_answer", false).is("error", null).limit(50),
+          : admin.from("responses").select("id, engine_id, text, no_answer, error, citations(url, domain), mentions(brand_kind, brand_name)").eq("prompt_id", promptId).in("run_id", runIds).eq("no_answer", false).is("error", null).limit(50),
         // a recommendation merged from another prompt carries this prompt only in evidence.prompt_ids
         admin.from("recommendations").select("type, title").eq("project_id", projectId)
           .or(`prompt_id.eq.${promptId},evidence->prompt_ids.cs.["${promptId}"]`).neq("status", "dismissed"),
@@ -119,7 +119,7 @@ async function generateForProject(
       const input = buildRecommendationInput({
         prompt: { id: p.id, text: p.text, intent: p.intent, topic: (p.topics as { name: string } | null)?.name ?? null },
         visibility: { overall: v.overall?.visibilityRate ?? null, byEngine: Object.fromEntries(v.byEngine.map((e) => [e.engineId, e.visibilityRate])) },
-        responses: (responsesRes.data ?? []).map((r) => ({ engineId: r.engine_id, text: r.text, citations: r.citations, mentions: r.mentions.map((m) => ({ kind: m.brand_kind as "own" | "competitor", name: m.brand_name })) })),
+        responses: (responsesRes.data ?? []).map((r) => ({ id: r.id, engineId: r.engine_id, text: r.text, citations: r.citations, mentions: r.mentions.map((m) => ({ kind: m.brand_kind as "own" | "competitor", name: m.brand_name })) })),
         brand, sitePages: pagesRes.data ?? [], existing: existingRes.data ?? [], competitorAliases,
       });
       let gen;
@@ -136,7 +136,7 @@ async function generateForProject(
       costUsd += gen.costUsd;
       const evidence: Evidence = {
         prompt_ids: [promptId], visibility_by_engine: input.visibility.byEngine, cited_domains: input.citedDomains, cited_urls: input.citedUrls,
-        competitors_mentioned: input.competitorsMentioned, sample_quotes: input.excerpts.slice(0, 3).map((e) => `[${e.engineId}] ${e.text.slice(0, 300)}`),
+        competitors_mentioned: input.competitorsMentioned, sample_quotes: input.quotes.map((q) => ({ engine_id: q.engineId, response_id: q.responseId, text: q.text })),
       };
       await upsertRecommendations(admin, projectId, runId, promptId, gen.accepted, evidence);
       accepted += gen.accepted.length; rejected += gen.rejected.length;
