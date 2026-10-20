@@ -192,6 +192,7 @@ npx tsx --env-file=.env.local scripts/crawl-now.ts [projectId]
 | `scripts/run-now.ts` | ręczne uruchomienie runu (jak przycisk „Uruchom teraz”) |
 | `scripts/reaggregate.ts` | przeliczenie snapshotu dnia bez nowych zapytań do silników |
 | `scripts/backfill-sentiment.ts` | uzupełnienie brakującego sentymentu zapisanych odpowiedzi z własną marką: `[projectId] [--limit N] [--dry-run]` |
+| `scripts/backfill-competitor-mentions.ts` | uzupełnienie wzmianek i cytowań konkurentów w odpowiedziach sprzed dodania konkurentów, potem przeliczenie dni (koszt 0): `[projectId] [--apply] [--renumber]`, domyślnie tylko podgląd; `--renumber` przepisuje też pozycję własnej marki |
 | `scripts/dedupe-recommendations.ts` | scalenie zdublowanych rekomendacji po fingerprincie celu (ścieżka lub host): `[projectId] [--dry-run]` |
 | `scripts/crawl-now.ts` | crawl mapy strony (patrz „Mapa strony”) |
 | `scripts/recommend-now.ts` | generowanie rekomendacji (patrz „Rekomendacje”) |

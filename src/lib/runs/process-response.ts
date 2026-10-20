@@ -14,16 +14,20 @@ export interface ProcessedResponse {
   sentiment: SentimentResult | null;
 }
 
+/** Marki szukane w odpowiedzi: własna i konkurenci (wspólne dla pomiaru i scripts/backfill-competitor-mentions.ts). */
+export function brandDefs(project: ProjectBrand, competitors: CompetitorBrand[]): BrandDef[] {
+  return [
+    { kind: "own", name: project.brandName, aliases: project.aliases },
+    ...competitors.map((c) => ({ kind: "competitor" as const, name: c.name, aliases: c.aliases, competitorId: c.id })),
+  ];
+}
+
 export async function processResponse(
   input: { promptId: string; engineId: EngineId; result: EngineResult; project: ProjectBrand; competitors: CompetitorBrand[] },
   deps: { sentiment?: typeof analyzeSentiment } = {},
 ): Promise<ProcessedResponse> {
   const { promptId, engineId, result, project, competitors } = input;
-  const brands: BrandDef[] = [
-    { kind: "own", name: project.brandName, aliases: project.aliases },
-    ...competitors.map((c) => ({ kind: "competitor" as const, name: c.name, aliases: c.aliases, competitorId: c.id })),
-  ];
-  const mentions = result.noAnswer ? [] : extractMentions(result.text, brands);
+  const mentions = result.noAnswer ? [] : extractMentions(result.text, brandDefs(project, competitors));
   const citations = classifyCitations(result.citations, project.domains, competitors);
   const own = mentions.find((m) => m.kind === "own");
   const sentimentFn = deps.sentiment ?? analyzeSentiment;
