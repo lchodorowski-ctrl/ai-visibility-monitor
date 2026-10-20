@@ -1,4 +1,5 @@
 import { foldText } from "@/lib/extract/normalize";
+import type { TargetPresence } from "./target-presence";
 
 export interface RecommendationInput {
   prompt: { id: string; text: string; intent: string; topic: string | null };
@@ -7,7 +8,10 @@ export interface RecommendationInput {
   /** Short evidence quotes shown in the UI (one per engine), never sent to the model. */
   quotes: { engineId: string; responseId: string | null; text: string }[];
   citedDomains: { domain: string; count: number }[];
+  /** Most cited first. */
   citedUrls: string[];
+  /** Brand presence on the off-site cited pages; absent = not checked. */
+  targets?: TargetPresence[];
   competitorsMentioned: { name: string; count: number }[];
   brand: { name: string; aliases: string[]; domains: string[]; facts: unknown; siteUrl: string };
   sitePages: { path: string; title: string | null; description: string | null }[];
@@ -105,7 +109,7 @@ export function buildRecommendationInput(args: {
   const perEngine = new Map<string, number>();
   const excerpts: { engineId: string; text: string }[] = [];
   const domains = new Map<string, number>();
-  const urls = new Set<string>();
+  const urls = new Map<string, number>();
   const comps = new Map<string, number>();
   // one quote per engine, preferring a response that names a competitor
   const quotes = new Map<string, { engineId: string; responseId: string | null; text: string; hit: boolean }>();
@@ -123,7 +127,7 @@ export function buildRecommendationInput(args: {
     }
     for (const c of r.citations) {
       domains.set(c.domain, (domains.get(c.domain) ?? 0) + 1);
-      if (urls.size < MAX_CITED_URLS) urls.add(c.url);
+      urls.set(c.url, (urls.get(c.url) ?? 0) + 1);
     }
     for (const m of r.mentions) if (m.kind === "competitor") comps.set(m.name, (comps.get(m.name) ?? 0) + 1);
   }
@@ -133,7 +137,8 @@ export function buildRecommendationInput(args: {
     excerpts,
     quotes: [...quotes.values()].map(({ engineId, responseId, text }) => ({ engineId, responseId, text })),
     citedDomains: sortDesc([...domains].map(([domain, count]) => ({ domain, count }))),
-    citedUrls: [...urls],
+    // stable sort: equally cited URLs keep the order they were first seen in
+    citedUrls: sortDesc([...urls].map(([url, count]) => ({ url, count }))).slice(0, MAX_CITED_URLS).map((u) => u.url),
     competitorsMentioned: sortDesc([...comps].map(([name, count]) => ({ name, count }))),
     brand: args.brand,
     sitePages: args.sitePages.slice(0, MAX_SITE_PAGES),

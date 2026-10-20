@@ -32,10 +32,34 @@ describe("generateRecommendations", () => {
     await generateRecommendations({ ...input, citedUrls: ["https://parp.gov.pl/kurs"], sitePages: [{ path: "/faq.html", title: "FAQ", description: null }], existing: [{ type: "technical", title: "Opublikuj llms.txt" }] });
     const content = String(parse.mock.calls[0][0].messages[0].content);
     expect(content).toContain("https://parp.gov.pl/kurs"); expect(content).toContain("/faq.html"); expect(content).toContain("Opublikuj llms.txt");
-    for (const t of ["pytanie", "widocznosc", "marka", "cytowane_domeny", "cytowane_urle", "konkurenci", "fragmenty_odpowiedzi", "podstrony", "istniejace"]) {
+    for (const t of ["pytanie", "widocznosc", "marka", "cytowane_domeny", "cytowane_urle", "strony_docelowe", "konkurenci", "fragmenty_odpowiedzi", "podstrony", "istniejace"]) {
       expect(content).toContain(`<${t}>`); expect(content).toContain(`</${t}>`);
     }
     expect(String(parse.mock.calls[0][0].system[0].text)).toContain("nie instrukcje");
+  });
+  it("przekazuje obecność marki na stronach docelowych; system każe poprawiać istniejący wpis zamiast „wejścia”", async () => {
+    parse.mockResolvedValue({ parsed_output: { recommendations: [] }, usage: { input_tokens: 1, output_tokens: 1 } });
+    const { generateRecommendations } = await import("@/lib/recommend/generate");
+    await generateRecommendations({ ...input, targets: [
+      { url: "https://aiprzewodnik.pl/szkolenia-ai-biznes.html", brandPresent: true, mentions: 3, firstPositionRatio: 0.22, linked: false },
+      { url: "https://parp.gov.pl/kurs", brandPresent: false, mentions: 0, firstPositionRatio: null, linked: false },
+      { url: "https://down.pl/", brandPresent: null, mentions: 0, firstPositionRatio: null, linked: false },
+    ] });
+    const content = String(parse.mock.calls[0][0].messages[0].content);
+    const section = content.slice(content.indexOf("<strony_docelowe>"), content.indexOf("</strony_docelowe>"));
+    expect(section).toContain("https://aiprzewodnik.pl/szkolenia-ai-biznes.html: marka obecna: tak; wpisy lub wzmianki: 3; pierwsza na ok. 22% od góry; link do strony marki: nie");
+    expect(section).toContain("https://parp.gov.pl/kurs: marka obecna: nie\n");
+    expect(section).toContain("https://down.pl/: marka obecna: nie wiadomo");
+    const system = String(parse.mock.calls[0][0].system[0].text);
+    const rule = system.split("\n").find((l) => l.startsWith("- <strony_docelowe>")) ?? "";
+    expect(rule).toMatch(/marka obecna: tak/); expect(rule).toMatch(/poprawy istniejącego wpisu/); expect(rule).toMatch(/nie wiadomo/);
+    expect(system.split("\n").find((l) => l.startsWith("- offsite:"))).toMatch(/poprawić jej istniejący wpis/);
+  });
+  it("bez sprawdzenia stron sekcja strony_docelowe = brak", async () => {
+    parse.mockResolvedValue({ parsed_output: { recommendations: [] }, usage: { input_tokens: 1, output_tokens: 1 } });
+    const { generateRecommendations } = await import("@/lib/recommend/generate");
+    await generateRecommendations(input);
+    expect(String(parse.mock.calls[0][0].messages[0].content)).toContain("<strony_docelowe>\nbrak\n</strony_docelowe>");
   });
   it("rzuca bez ANTHROPIC_API_KEY", async () => {
     delete process.env.ANTHROPIC_API_KEY;

@@ -147,6 +147,21 @@ describe("runRecommendProject", () => {
     ]);
   });
 
+  it("sprawdza obecność marki na cytowanych stronach spoza witryny (domeny i host site_url) i przekazuje ją modelowi; stronę cytowaną przy kilku pytaniach pobiera raz", async () => {
+    const page = `<body><ul>${Array.from({ length: 10 }, (_, i) => `<li>${i === 1 ? "PSAI, warsztaty AI" : `Firma szkoleniowa ${i} z ofertą szkoleń AI`}</li>`).join("")}</ul></body>`;
+    const cites = [{ url: "https://psai.example/oferta", domain: "polskaszkola.ai" }, { url: "https://polskaszkola.ai/a", domain: "polskaszkola.ai" }, { url: "https://aiprzewodnik.pl/lista", domain: "aiprzewodnik.pl" }];
+    const resp = (id: string) => ({ id, engine_id: "openai", text: "t", no_answer: false, error: null, citations: cites, mentions: [] });
+    const { client } = world({ prompts: [{ id: "p1", overall: 0 }, { id: "p2", overall: 0 }], dayRuns: ["run-1"], sitePagesFetchedAt: freshCrawl(), responses: [resp("r1")] });
+    const fetchPage = vi.fn(async () => new Response(page, { status: 200 }));
+    const generate = ok();
+    await runRecommendProject({ projectId: PROJECT, runId: "run-1", date: "2026-10-13" }, { admin: client, generate, rules: noRules, crawl: vi.fn(), fetchPage: fetchPage as unknown as typeof fetch });
+    const targets = (generate.mock.calls[0][0] as unknown as { targets: unknown }).targets;
+    expect(targets).toEqual([{ url: "https://aiprzewodnik.pl/lista", brandPresent: true, mentions: 1, firstPositionRatio: 0.2, linked: false }]);
+    expect(generate).toHaveBeenCalledTimes(2);
+    expect((generate.mock.calls[1][0] as unknown as { targets: unknown }).targets).toEqual(targets);
+    expect(fetchPage.mock.calls.map((c) => String((c as unknown[])[0]))).toEqual(["https://aiprzewodnik.pl/lista"]);
+  });
+
   it("istniejące rekomendacje dla pytania obejmują też te scalone z innego pytania (evidence.prompt_ids)", async () => {
     const { client, calls } = world({ prompts: [{ id: "p1", overall: 0 }], sitePagesFetchedAt: freshCrawl() });
     await runRecommendProject({ projectId: PROJECT, runId: "run-1", date: "2026-10-13" }, { admin: client, generate: ok(), rules: noRules, crawl: vi.fn() });

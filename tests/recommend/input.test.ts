@@ -53,6 +53,20 @@ describe("buildRecommendationInput", () => {
     expect(input.citedDomains).toEqual([{ domain: "a.pl", count: 16 }]);
     expect(input.competitorsMentioned).toEqual([]);
   });
+  it("cytowane URL-e od najczęściej cytowanego; przy remisie kolejność pierwszego wystąpienia", () => {
+    const cite = (...paths: string[]) => paths.map((x) => ({ url: `https://a.pl/${x}`, domain: "a.pl" }));
+    const input = buildRecommendationInput({
+      prompt: { id: "p1", text: "Q", intent: "comparison", topic: null },
+      visibility: { overall: 0, byEngine: {} },
+      responses: [
+        { engineId: "openai", text: "t", citations: cite("rzadki", "lista", "drugi"), mentions: [] },
+        { engineId: "gemini", text: "t", citations: cite("lista", "drugi", "lista"), mentions: [] },
+      ],
+      brand: { name: "PSAI", aliases: [], domains: [], facts: null, siteUrl: "https://x" },
+      sitePages: [], existing: [], competitorAliases: [],
+    });
+    expect(input.citedUrls).toEqual(["https://a.pl/lista", "https://a.pl/drugi", "https://a.pl/rzadki"]);
+  });
   it("cytat z krótkiej odpowiedzi bez trafienia jest cały, z długiej ucięty na granicy słowa", () => {
     const base = { citations: [], mentions: [] };
     const input = buildRecommendationInput({

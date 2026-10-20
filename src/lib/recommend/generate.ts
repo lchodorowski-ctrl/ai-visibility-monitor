@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { RecommendationInput } from "./input";
 import { createAnthropic } from "@/lib/anthropic";
 import { isConcreteUrl, normalizeTargetUrl } from "./target-url";
+import type { TargetPresence } from "./target-presence";
 
 export { normalizeTargetUrl };
 
@@ -36,7 +37,8 @@ Zasady:
 - Po polsku, konkretnie, bez pustych superlatywów. Każda rekomendacja wskazuje jeden artefakt do zrobienia.
 - content_new: nowa podstrona — podaj tytuł, 3–8 punktów zarysu (suggested_outline) i proponowaną ścieżkę w target_url (np. /szkolenia-ai-dla-firm). Nie proponuj strony, która już istnieje na liście podstron — wtedy użyj content_improve z jej ścieżką.
 - content_improve: istniejąca podstrona (target_url = jej ścieżka z listy) i co konkretnie dodać (liczby, FAQ, porównanie, daty, autor).
-- offsite: konkretne miejsce, w którym asystenci cytują konkurencję, a nie markę (target_url = pełny adres zaczynający się od https://, najlepiej jeden z cytowanych URL-i — nie sama domena) i jak się tam znaleźć.
+- offsite: konkretne miejsce, w którym asystenci cytują konkurencję, a nie markę (target_url = pełny adres zaczynający się od https://, najlepiej jeden z cytowanych URL-i — nie sama domena) i jak się tam znaleźć albo, gdy marka już tam jest, jak poprawić jej istniejący wpis.
+- <strony_docelowe> to automatyczne sprawdzenie cytowanych stron spoza witryny marki. „marka obecna: tak”: nie pisz, że marki tam brakuje, i nie proponuj „wejścia”, „zgłoszenia” ani „dodania” marki; rekomendacja dotyczy poprawy istniejącego wpisu (wyższa pozycja na liście, pełniejszy i aktualny opis, link do strony marki, jeśli go brak). „marka obecna: nie wiadomo”: nie zakładaj ani obecności, ani braku; pierwszym krokiem niech będzie sprawdzenie, czy marka już jest na tej stronie.
 - technical: zmiana techniczna strony (np. llms.txt, dane strukturalne) — tylko jeśli dowody na to wskazują.
 - fact_fix: asystent podaje nieprawdę o marce — wskaż, gdzie opublikować poprawne fakty.
 - Nie wymyślaj źródeł ani liczb; odwołuj się do dowodów z wejścia. Nie powtarzaj rekomendacji z listy „istniejące”.
@@ -62,6 +64,12 @@ export function validateConcreteness(raw: GeneratedRecommendation): string | nul
 
 const tag = (name: string, body: string) => `<${name}>\n${body}\n</${name}>`;
 
+function renderTarget(t: TargetPresence): string {
+  if (t.brandPresent == null) return `${t.url}: marka obecna: nie wiadomo (strony nie udało się pobrać ani odczytać)`;
+  if (!t.brandPresent) return `${t.url}: marka obecna: nie`;
+  return `${t.url}: marka obecna: tak; wpisy lub wzmianki: ${t.mentions}; pierwsza na ok. ${Math.round((t.firstPositionRatio ?? 0) * 100)}% od góry; link do strony marki: ${t.linked ? "tak" : "nie"}`;
+}
+
 function renderInput(i: RecommendationInput): string {
   const sections = [
     tag("pytanie", `${i.prompt.text} (intencja: ${i.prompt.intent}${i.prompt.topic ? `, temat: ${i.prompt.topic}` : ""})`),
@@ -69,6 +77,7 @@ function renderInput(i: RecommendationInput): string {
     tag("marka", `${i.brand.name} (aliasy: ${i.brand.aliases.join(", ") || "brak"}; domeny: ${i.brand.domains.join(", ")}; strona: ${i.brand.siteUrl})\nKarta faktów: ${JSON.stringify(i.brand.facts)}`),
     tag("cytowane_domeny", i.citedDomains.map((d) => `${d.domain} (${d.count})`).join(", ") || "brak"),
     tag("cytowane_urle", i.citedUrls.join("\n") || "brak"),
+    tag("strony_docelowe", i.targets?.map(renderTarget).join("\n") || "brak"),
     tag("konkurenci", i.competitorsMentioned.map((c) => `${c.name} (${c.count})`).join(", ") || "brak"),
     tag("fragmenty_odpowiedzi", i.excerpts.map((e) => `[${e.engineId}] ${e.text}`).join("\n---\n") || "brak"),
     tag("podstrony", `Podstrony marki (${i.sitePages.length}):\n${i.sitePages.map((p) => `${p.path} — ${p.title ?? ""}${p.description ? ` — ${p.description}` : ""}`).join("\n") || "brak"}`),

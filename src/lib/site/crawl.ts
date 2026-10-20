@@ -9,7 +9,8 @@ const MAX_PAGES = 200;
 
 export interface CrawledPage { url: string; path: string; title: string | null; h1: string | null; description: string | null; excerpt: string; status: number }
 
-async function getText(fetchImpl: typeof fetch, url: string, timeoutMs: number): Promise<{ status: number; body: string }> {
+/** GET with the bot UA and a timeout, no retries; never throws (status 0 = network error / timeout, body "" unless 2xx). */
+export async function getText(fetchImpl: typeof fetch, url: string, timeoutMs: number): Promise<{ status: number; body: string }> {
   try {
     const res = await fetchImpl(url, { headers: { "User-Agent": UA, Accept: "text/html,application/xml;q=0.9,*/*;q=0.5" }, signal: AbortSignal.timeout(timeoutMs), redirect: "follow" });
     return { status: res.status, body: res.ok ? await res.text() : "" };

@@ -8,6 +8,7 @@ import { buildRecommendationInput } from "@/lib/recommend/input";
 import { generateRecommendations } from "@/lib/recommend/generate";
 import { technicalRules } from "@/lib/recommend/rules";
 import { upsertRecommendations } from "@/lib/recommend/persist";
+import { targetPresenceChecker } from "@/lib/recommend/target-presence";
 import type { Evidence } from "@/lib/recommend/fingerprint";
 import { crawlSite, persistSitePages } from "@/lib/site/crawl";
 
@@ -20,6 +21,8 @@ export interface RecommendProjectDeps {
   rules?: typeof technicalRules;
   /** Crawls the site and persists site_pages; injectable for tests. */
   crawl?: (admin: Admin, projectId: string, siteUrl: string) => Promise<unknown>;
+  /** fetch for the brand-presence check of cited off-site pages; injectable for tests. */
+  fetchPage?: typeof fetch;
 }
 
 /** Each qualified prompt is one paid model call; the rest waits for the next run. */
@@ -94,6 +97,8 @@ async function generateForProject(
   if (skipped.length) console.warn(`recommend-project: limit ${MAX_PROMPTS_PER_RUN} pytań na uruchomienie — pominięto ${skipped.length} (wrócą przy następnym runie)`);
   const competitorAliases = (compsRes.data ?? []).flatMap((c) => [c.name, ...c.aliases]);
   const brand = { name: project.brand_name, aliases: project.brand_aliases, domains: project.domains, facts: project.facts, siteUrl: project.site_url };
+  // one checker per run: a page cited for several prompts is fetched once; the site's own host is never off-site
+  const checkTargets = targetPresenceChecker({ ...brand, domains: [...brand.domains, project.site_url] }, deps.fetchPage);
   const dayStart = `${date}T00:00:00Z`, dayEnd = new Date(Date.parse(dayStart) + 86400000).toISOString();
   const { data: dayRuns, error: runsErr } = await admin.from("runs").select("id").eq("project_id", projectId).gte("started_at", dayStart).lt("started_at", dayEnd);
   if (runsErr) throw new Error(runsErr.message);
@@ -122,6 +127,7 @@ async function generateForProject(
         responses: (responsesRes.data ?? []).map((r) => ({ id: r.id, engineId: r.engine_id, text: r.text, citations: r.citations, mentions: r.mentions.map((m) => ({ kind: m.brand_kind as "own" | "competitor", name: m.brand_name })) })),
         brand, sitePages: pagesRes.data ?? [], existing: existingRes.data ?? [], competitorAliases,
       });
+      input.targets = await checkTargets(input.citedUrls);
       let gen;
       try {
         gen = await generate(input);
