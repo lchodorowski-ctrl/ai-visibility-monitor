@@ -22,10 +22,26 @@ export function domainMatches(domain: string, candidates: string[]): boolean {
   });
 }
 
+/** Hosts an engine routes its sources through (Gemini grounding: vertexaisearch/grounding-api-redirect/...); the real source domain is then in the title. */
+export const REDIRECT_HOSTS = ["vertexaisearch.cloud.google.com"];
+
+export function isRedirectHost(domain: string): boolean {
+  return REDIRECT_HOSTS.includes(normalizeDomain(domain));
+}
+
+/** Source domain of a redirect citation, taken from a title that is a bare host ("comarch.pl"); "" when the title is anything else. */
+export function domainFromTitle(title: string | null | undefined): string {
+  const t = (title ?? "").trim();
+  if (!t || /\s/.test(t)) return "";
+  const d = normalizeDomain(t);
+  return d && !isRedirectHost(d) ? d : "";
+}
+
 export function toCitation(url: string, title?: string): Citation | null {
   if (!/^https?:\/\//i.test(url)) return null;
-  const domain = normalizeDomain(url);
+  let domain = normalizeDomain(url);
   if (!domain) return null;
+  if (isRedirectHost(domain)) domain = domainFromTitle(title) || domain;
   return title ? { url, domain, title } : { url, domain };
 }
 

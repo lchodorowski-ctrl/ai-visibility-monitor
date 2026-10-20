@@ -24,6 +24,13 @@ describe("gemini adapter", () => {
     expect(parseGeminiResponse(noText).text).toContain("Akademia AI");
   });
 
+  it("parseGeminiResponse: przekierowanie grounding → domena źródła z tytułu", async () => {
+    const { parseGeminiResponse } = await import("@/lib/engines/gemini");
+    const url = "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE";
+    const raw = { steps: [{ type: "model_output", content: [{ type: "text", text: "Tekst", annotations: [{ type: "url_citation", url, title: "polskaszkola.ai" }] }] }] };
+    expect(parseGeminiResponse(raw).citations).toEqual([{ url, domain: "polskaszkola.ai", title: "polskaszkola.ai" }]);
+  });
+
   it("parseGeminiResponse: null → pusty wynik", async () => {
     const { parseGeminiResponse } = await import("@/lib/engines/gemini");
     expect(parseGeminiResponse(null)).toEqual({ text: "", citations: [] });
