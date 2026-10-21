@@ -34,6 +34,7 @@ Dostajesz jedno pytanie użytkownika, w którym marka jest niewidoczna lub mało
 Zwróć 1–3 rekomendacje, które realnie zwiększą szansę, że asystent wymieni lub zacytuje markę przy tym pytaniu.
 Zasady:
 - Po polsku, konkretnie, bez pustych superlatywów. Każda rekomendacja wskazuje jeden artefakt do zrobienia.
+- Karta faktów w sekcji <karta_faktow> pochodzi od samej marki (jej ustawienia) i jest wiążąca: każda rekomendacja musi być z nią zgodna. Nie proponuj ofert, programów, cen, widełek, terminów, szkoleń otwartych, lokalizacji, nazw klientów ani bezpłatnych produktów, których karta nie potwierdza albo które wyklucza, nawet jeśli robią tak konkurenci i wskazują na to dowody. Pole zasady_dla_rekomendacji traktuj jak obowiązującą regułę. Jeśli zgodnych z kartą rekomendacji jest mniej, zwróć mniej rekomendacji, także żadnej.
 - content_new: nowa podstrona — podaj tytuł, 3–8 punktów zarysu (suggested_outline) i proponowaną ścieżkę w target_url (np. /szkolenia-ai-dla-firm). Nie proponuj strony, która już istnieje na liście podstron — wtedy użyj content_improve z jej ścieżką.
 - content_improve: istniejąca podstrona (target_url = jej ścieżka z listy) i co konkretnie dodać (liczby, FAQ, porównanie, daty, autor).
 - offsite: konkretne miejsce, w którym asystenci cytują konkurencję, a nie markę (target_url = pełny adres zaczynający się od https://, najlepiej jeden z cytowanych URL-i — nie sama domena) i jak się tam znaleźć.
@@ -66,7 +67,9 @@ function renderInput(i: RecommendationInput): string {
   const sections = [
     tag("pytanie", `${i.prompt.text} (intencja: ${i.prompt.intent}${i.prompt.topic ? `, temat: ${i.prompt.topic}` : ""})`),
     tag("widocznosc", `ogółem ${i.visibility.overall == null ? "brak danych" : Math.round(i.visibility.overall * 100) + "%"}; per silnik: ${Object.entries(i.visibility.byEngine).map(([e, v]) => `${e} ${Math.round(v * 100)}%`).join(", ") || "brak"}`),
-    tag("marka", `${i.brand.name} (aliasy: ${i.brand.aliases.join(", ") || "brak"}; domeny: ${i.brand.domains.join(", ")}; strona: ${i.brand.siteUrl})\nKarta faktów: ${JSON.stringify(i.brand.facts)}`),
+    tag("marka", `${i.brand.name} (aliasy: ${i.brand.aliases.join(", ") || "brak"}; domeny: ${i.brand.domains.join(", ")}; strona: ${i.brand.siteUrl})`),
+    // own section so the SYSTEM rule can name it: the brand's facts bind every recommendation
+    tag("karta_faktow", JSON.stringify(i.brand.facts ?? {}, null, 2)),
     tag("cytowane_domeny", i.citedDomains.map((d) => `${d.domain} (${d.count})`).join(", ") || "brak"),
     tag("cytowane_urle", i.citedUrls.join("\n") || "brak"),
     tag("konkurenci", i.competitorsMentioned.map((c) => `${c.name} (${c.count})`).join(", ") || "brak"),

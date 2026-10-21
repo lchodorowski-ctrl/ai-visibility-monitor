@@ -104,6 +104,23 @@ describe("generateRecommendations", () => {
     expect(r.accepted).toHaveLength(1);
     expect(r.accepted[0].target_url).toBe("https://parp.gov.pl/ranking");
   });
+  it("karta faktów idzie w osobnej sekcji, a prompt systemowy każe się jej trzymać", async () => {
+    parse.mockResolvedValue({ parsed_output: { recommendations: [] }, usage: { input_tokens: 1, output_tokens: 1 } });
+    const { generateRecommendations } = await import("@/lib/recommend/generate");
+    const facts = { ceny: "Nie publikujemy cennika.", zasady_dla_rekomendacji: "Nie proponuj cen ani terminów." };
+    await generateRecommendations({ ...input, brand: { ...input.brand, facts } });
+    const content = String(parse.mock.calls[0][0].messages[0].content);
+    const karta = content.match(/<karta_faktow>\n([\s\S]*?)\n<\/karta_faktow>/)?.[1] ?? "";
+    expect(JSON.parse(karta)).toEqual(facts);
+    expect(content.match(/<marka>[\s\S]*?<\/marka>/)?.[0]).not.toContain("Nie publikujemy cennika");
+    const system = String(parse.mock.calls[0][0].system[0].text);
+    const rule = system.split("\n").find((l) => l.includes("<karta_faktow>")) ?? "";
+    expect(rule).toMatch(/wiążąc/);
+    expect(rule).toContain("zasady_dla_rekomendacji");
+    expect(rule).toMatch(/cen/);
+    expect(rule).toMatch(/termin/);
+    expect(rule).toMatch(/mniej rekomendacji/);
+  });
   it("prompt systemowy wymaga pełnego adresu https:// dla offsite", async () => {
     parse.mockResolvedValue({ parsed_output: { recommendations: [] }, usage: { input_tokens: 1, output_tokens: 1 } });
     const { generateRecommendations } = await import("@/lib/recommend/generate");
