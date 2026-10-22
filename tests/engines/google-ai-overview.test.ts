@@ -44,6 +44,18 @@ describe("google ai overview adapter", () => {
     await expect(googleAiOverviewAdapter.query("x", { locale: "pl-PL", country: "PL" })).rejects.toThrow(/HTTP 500: boom/);
   });
 
+  it("HTTP 402 / zadanie 40200 → czytelny komunikat o braku środków, bez ponawiania", async () => {
+    const payment = { status_code: 20000, cost: 0, tasks: [{ status_code: 40200, status_message: "Payment Required.", result: null }] };
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify(payment), { status: 402 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { googleAiOverviewAdapter } = await import("@/lib/engines/google-ai-overview");
+    await expect(googleAiOverviewAdapter.query("x", { locale: "pl-PL", country: "PL" })).rejects.toThrow(/brak środków na koncie/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => new Response(JSON.stringify(payment), { status: 200 })));
+    await expect(googleAiOverviewAdapter.query("x", { locale: "pl-PL", country: "PL" })).rejects.toThrow(/brak środków na koncie/);
+  });
+
   it("rzuca błąd przy statusie zadania DataForSEO != 20000", async () => {
     const failed = { status_code: 20000, tasks: [{ status_code: 40501, status_message: "Invalid Field", result: null }] };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(failed), { status: 200 })));

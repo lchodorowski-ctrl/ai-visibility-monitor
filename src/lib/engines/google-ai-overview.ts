@@ -5,6 +5,9 @@ import { withRetry, TransientError, isTransientStatus } from "./retry";
 
 type AnyRecord = Record<string, unknown>;
 const ENDPOINT = "https://api.dataforseo.com/v3/serp/google/organic/live/advanced";
+// HTTP 402 / zadanie 40200: na przedpłaconym koncie skończyło się saldo.
+const PAYMENT_REQUIRED_MESSAGE =
+  "DataForSEO: brak środków na koncie (Payment Required). Doładuj saldo na app.dataforseo.com i uruchom pomiar ponownie.";
 
 function pushRefs(list: unknown, out: Citation[]) {
   for (const ref of (list ?? []) as AnyRecord[]) {
@@ -64,6 +67,7 @@ export const googleAiOverviewAdapter: EngineAdapter = {
         },
         body: JSON.stringify(body),
       });
+      if (res.status === 402) throw new Error(PAYMENT_REQUIRED_MESSAGE);
       if (!res.ok) {
         const message = `DataForSEO HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`;
         throw isTransientStatus(res.status) ? new TransientError(message) : new Error(message);
@@ -75,6 +79,7 @@ export const googleAiOverviewAdapter: EngineAdapter = {
         // Błąd serwera po stronie DataForSEO (przejściowy) — ponawiamy.
         throw new TransientError(`DataForSEO task ${taskStatus}: ${(data.tasks as AnyRecord[])[0].status_message}`);
       }
+      if (taskStatus === 40200) throw new Error(PAYMENT_REQUIRED_MESSAGE);
       if (taskStatus && taskStatus !== 20000) {
         throw new Error(`DataForSEO task ${taskStatus}: ${(data.tasks as AnyRecord[])[0].status_message}`);
       }
