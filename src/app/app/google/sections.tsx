@@ -3,7 +3,7 @@ import {
 } from "@/lib/seo/queries";
 import { cannibalization, ctrCurve, lowCtr, newAndLost, strikingDistance, type Opportunity } from "@/lib/seo/opportunities";
 import { ctr, delta, fillMissingDays, gscWindows, topOpportunities, topQueries } from "@/lib/seo/overview";
-import { fmtDate } from "@/lib/format/number";
+import { fmtDate, fmtDecimal, fmtNumber, fmtSignedPercent } from "@/lib/format/number";
 import { pluralPl } from "@/lib/format/plural";
 import { Button } from "@/components/ui/button";
 import { Meta, Row, Rows, SectionHead, StatTile, Tile } from "@/components/psai";
@@ -17,20 +17,22 @@ const PAGE_LIMIT = 100;
 
 const NO_VALUE = "brak";
 
-// Plain spaces as thousands separators (Intl uses a no-break space)
-const plain = (s: string) => s.replace(/[\u00a0\u202f]/g, " ");
-const integer = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
-const oneDecimal = new Intl.NumberFormat("pl-PL", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const int = (n: number) => plain(integer.format(n));
-const dec = (n: number | null) => (n === null ? NO_VALUE : plain(oneDecimal.format(n)));
+/** Decimal with a comma, or the placeholder when there is no value. */
+const dec = (n: number | null) => (n === null ? NO_VALUE : fmtDecimal(n));
 const usd = (n: number) => n.toFixed(2);
 const dmy = (iso: string) => iso.split("-").reverse().join(".");
 
-/** "+12%" / "−5%" (minus sign U+2212) / "0%"; text when there is nothing to compare with. */
+/** "+12% wobec poprzednich 28"; text when there is nothing to compare with. */
 function changeText(d: number | null): string {
-  if (d === null) return "brak danych do porównania";
-  const p = Math.round(d * 100);
-  return `${p > 0 ? "+" : p < 0 ? "−" : ""}${Math.abs(p)}% wobec poprzednich 28`;
+  return d === null ? "brak danych do porównania" : `${fmtSignedPercent(d)} wobec poprzednich 28`;
+}
+
+/** Position change in places, in words: a lower position is better, so a relative percentage would read the wrong way. */
+function positionChangeText(cur: number | null, prev: number | null): string | null {
+  if (cur === null || prev === null) return null;
+  const d = cur - prev;
+  if (Math.abs(d) < 0.05) return "bez zmian";
+  return `${d < 0 ? "lepiej" : "gorzej"} o ${fmtDecimal(Math.abs(d))} poz.`;
 }
 
 const SYNC_STATUS: Record<string, string> = {
@@ -62,7 +64,7 @@ export async function StatusSection({ projectId, gscProperty, lastDate, seoBudge
         {lastDate && <Meta className="block">{`Dane do ${dmy(lastDate)}`}</Meta>}
         <Meta className="block">{`Wydatki w tym miesiącu: SEO ${usd(seoSpent)} / ${usd(seoBudget)} USD, AI ${usd(aiSpent)} / ${usd(aiBudget)} USD`}</Meta>
       </div>
-      <form action={syncGscNow}><Button type="submit" disabled={!gscProperty}>Synchronizuj</Button></form>
+      <form action={syncGscNow}><Button type="submit" disabled={!gscProperty?.trim()}>Synchronizuj</Button></form>
     </div>
   );
 }
@@ -75,13 +77,14 @@ export async function GscStatsSection({ projectId, lastDate }: { projectId: stri
   ]);
   const curCtr = ctr(cur.clicks, cur.impressions);
   const detail = (d: number | null) => `28 dni · ${changeText(d)}`;
+  const positionChange = positionChangeText(cur.position, prev.position);
   return (
     <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-      <StatTile label="Kliknięcia" value={cur.clicks === null ? NO_VALUE : int(cur.clicks)} detail={detail(delta(cur.clicks, prev.clicks))} />
-      <StatTile label="Wyświetlenia" value={cur.impressions === null ? NO_VALUE : int(cur.impressions)} detail={detail(delta(cur.impressions, prev.impressions))} />
+      <StatTile label="Kliknięcia" value={cur.clicks === null ? NO_VALUE : fmtNumber(cur.clicks)} detail={detail(delta(cur.clicks, prev.clicks))} />
+      <StatTile label="Wyświetlenia" value={cur.impressions === null ? NO_VALUE : fmtNumber(cur.impressions)} detail={detail(delta(cur.impressions, prev.impressions))} />
       <StatTile label="CTR" value={curCtr === null ? NO_VALUE : dec(curCtr * 100)} unit={curCtr === null ? undefined : "%"}
         detail={detail(delta(curCtr, ctr(prev.clicks, prev.impressions)))} />
-      <StatTile label="Średnia pozycja" value={dec(cur.position)} detail={detail(delta(cur.position, prev.position))} />
+      <StatTile label="Średnia pozycja" value={dec(cur.position)} detail={positionChange ? `28 dni · ${positionChange}` : "28 dni"} />
     </div>
   );
 }
@@ -106,6 +109,8 @@ export function OpportunityList({ items }: { items: Opportunity[] }) {
       {items.map((o) => {
         const tag = o.kind === "new" ? "nowa" : o.kind === "lost" ? "utracona" : null;
         const gain = Math.max(1, Math.round(o.potentialClicks));
+        // lost: the numbers are from the previous window and the clicks are gone, not to be won
+        const lost = o.kind === "lost";
         return (
           <Row key={`${o.kind}:${subject(o)}`}>
             <div className="min-w-0 flex-1">
@@ -114,20 +119,22 @@ export function OpportunityList({ items }: { items: Opportunity[] }) {
                 {subject(o)}
               </p>
               <Meta className="mt-1 block">
-                {o.kind === "cannibal" ? `wyświetlenia frazy ${int(o.impressions)}` : `pozycja ${dec(o.position)} · wyświetlenia ${int(o.impressions)}`}
+                {o.kind === "cannibal"
+                  ? `wyświetlenia frazy ${fmtNumber(o.impressions)}`
+                  : `pozycja ${dec(o.position)} · wyświetlenia ${fmtNumber(o.impressions)}${lost ? " (poprzednio)" : ""}`}
               </Meta>
               {o.kind === "cannibal" && (
                 <ul className="mt-2 space-y-1">
                   {o.pages.map((p) => (
-                    <li key={p.page} className="break-all text-sm text-t1">
-                      {p.page}
-                      <Meta className="ml-2">{`wyświetlenia ${int(p.impressions)} · pozycja ${dec(p.position)}`}</Meta>
+                    <li key={p.page} className="text-sm">
+                      <span className="block break-words text-t1">{p.page}</span>
+                      <Meta className="block">{`wyświetlenia ${fmtNumber(p.impressions)} · pozycja ${dec(p.position)}`}</Meta>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
-            <span className="font-mono text-sm font-semibold tabular-nums">{`+${pluralPl(gain, ["kliknięcie", "kliknięcia", "kliknięć"])}/28 dni`}</span>
+            <span className="font-mono text-sm font-semibold tabular-nums">{`${lost ? "\u2212" : "+"}${pluralPl(gain, ["kliknięcie", "kliknięcia", "kliknięć"])}/28 dni`}</span>
           </Row>
         );
       })}
@@ -166,7 +173,7 @@ export async function OpportunitiesSection({ projectId, lastDate }: { projectId:
 }
 
 const figures = (clicks: number, impressions: number, position: number | null) =>
-  `kliknięcia ${int(clicks)} · wyświetlenia ${int(impressions)} · pozycja ${dec(position)}`;
+  `kliknięcia ${fmtNumber(clicks)} · wyświetlenia ${fmtNumber(impressions)} · pozycja ${dec(position)}`;
 
 export async function TopQueriesSection({ projectId, lastDate }: { projectId: string; lastDate: string }) {
   const top = topQueries(await getQueryWindows(projectId, gscWindows(lastDate), QUERY_LIMIT));
@@ -204,7 +211,7 @@ export async function TopPagesSection({ projectId, lastDate }: { projectId: stri
           <Rows>
             {top.map((p) => (
               <Row key={p.page}>
-                <span className="min-w-0 flex-1 break-all">{p.page}</span>
+                <span className="min-w-0 flex-1 break-words">{p.page}</span>
                 <Meta>{figures(p.clicks, p.impressions, p.position)}</Meta>
               </Row>
             ))}

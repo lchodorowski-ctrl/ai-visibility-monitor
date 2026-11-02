@@ -1,14 +1,13 @@
 "use client";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import type { SiteDay } from "@/lib/seo/overview";
+import { fmtCompact, fmtNumber } from "@/lib/format/number";
 
 const shortDate = (d: string) => {
   const [, m, day] = d.split("-");
   return m && day ? `${day}.${m}` : d;
 };
 
-const full = new Intl.NumberFormat("pl-PL");
-const compact = new Intl.NumberFormat("pl-PL", { notation: "compact" });
 const tick = { fontSize: 11, fontFamily: "var(--font-mono)", fill: "var(--color-t2)" } as const;
 
 // Clicks: solid ink line; impressions: dashed grey line, so the two stay apart without relying on colour.
@@ -23,12 +22,12 @@ function GscTooltip({ active, payload, label }: { active?: boolean; payload?: re
       <div className="mb-1 font-mono text-t2">{String(label)}</div>
       <div className="flex items-center gap-2">
         <span aria-hidden className="inline-block h-0.5 w-3 rounded-full" style={{ background: CLICKS }} />
-        <span className="font-semibold tabular-nums">{full.format(p.clicks)}</span>
+        <span className="font-semibold tabular-nums">{fmtNumber(p.clicks)}</span>
         <span className="text-t1">kliknięć</span>
       </div>
       <div className="mt-0.5 flex items-center gap-2">
         <span aria-hidden className="inline-block w-3 border-t-2 border-dashed" style={{ borderColor: IMPRESSIONS }} />
-        <span className="font-semibold tabular-nums">{full.format(p.impressions)}</span>
+        <span className="font-semibold tabular-nums">{fmtNumber(p.impressions)}</span>
         <span className="text-t1">wyświetleń</span>
       </div>
     </div>
@@ -51,8 +50,8 @@ export function GscTrendChart({ data }: { data: SiteDay[] }) {
         <LineChart data={data} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
           <CartesianGrid vertical={false} stroke="var(--color-line)" strokeWidth={1} />
           <XAxis dataKey="date" tickFormatter={shortDate} tick={tick} tickLine={false} axisLine={{ stroke: "var(--color-line-2)" }} minTickGap={24} />
-          <YAxis yAxisId="clicks" allowDecimals={false} tickFormatter={(v: number) => compact.format(v)} tick={tick} tickLine={false} axisLine={false} width={40} />
-          <YAxis yAxisId="impressions" orientation="right" allowDecimals={false} tickFormatter={(v: number) => compact.format(v)} tick={tick} tickLine={false} axisLine={false} width={48} />
+          <YAxis yAxisId="clicks" allowDecimals={false} tickFormatter={(v: number) => fmtCompact(v)} tick={tick} tickLine={false} axisLine={false} width={40} />
+          <YAxis yAxisId="impressions" orientation="right" allowDecimals={false} tickFormatter={(v: number) => fmtCompact(v)} tick={tick} tickLine={false} axisLine={false} width={48} />
           <Tooltip content={GscTooltip} cursor={{ stroke: "var(--color-line-3)", strokeWidth: 1 }} />
           <Line
             yAxisId="clicks" type="monotone" dataKey="clicks" name="Kliknięcia" stroke={CLICKS} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"

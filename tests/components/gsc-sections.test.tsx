@@ -42,7 +42,7 @@ describe("OpportunityList", () => {
     expect(html).toContain("+48 kliknięć/28 dni");
     expect(html).toContain("+31 kliknięć/28 dni");
     expect(html).toContain("+6 kliknięć/28 dni");
-    expect(html).toContain("+9 kliknięć/28 dni");
+    expect(html).toContain("\u22129 kliknięć/28 dni"); // utracona: minus U+2212
   });
 
   it("pokazuje pozycję i wyświetlenia; pozycja z polskim przecinkiem", () => {
@@ -54,18 +54,32 @@ describe("OpportunityList", () => {
   it("kanibalizacja: liczba to „wyświetlenia frazy”, a konkurujące strony mają wyświetlenia i pozycje", () => {
     const html = render(<OpportunityList items={items.slice(2, 3)} />);
     expect(html).toContain("wyświetlenia frazy 320");
-    expect(html).toContain("/szkolenia");
-    expect(html).toContain("wyświetlenia 200");
-    expect(html).toContain("pozycja 5,1");
-    expect(html).toContain("/blog/szkolenia-ai");
-    expect(html).toContain("wyświetlenia 120");
-    expect(html).toContain("pozycja 8,4");
+    // każda konkurująca strona w osobnych liniach: ścieżka, potem wyświetlenia i pozycja
+    expect(html).toContain(">/szkolenia<");
+    expect(html).toContain(">wyświetlenia 200 · pozycja 5,1<");
+    expect(html).toContain(">/blog/szkolenia-ai<");
+    expect(html).toContain(">wyświetlenia 120 · pozycja 8,4<");
+  });
+
+  it("żaden tekst nie jest łamany w środku słowa (bez break-all)", () => {
+    expect(render(<OpportunityList items={items} />)).not.toContain("break-all");
   });
 
   it("nowe i utracone frazy mają oznaczenie rodzaju", () => {
     const html = render(<OpportunityList items={items.slice(3)} />);
     expect(html).toContain("nowa</span>");
     expect(html).toContain("utracona</span>");
+  });
+
+  it("utracona fraza: liczby z poprzedniego okna są tak opisane, a potencjał ma minus; nowa ma plus i bez dopisku", () => {
+    const lost = render(<OpportunityList items={items.slice(4)} />);
+    expect(lost).toContain("pozycja 6,0 · wyświetlenia 40 (poprzednio)");
+    expect(lost).toContain("\u22129 kliknięć/28 dni");
+    expect(lost).not.toContain("+9 kliknięć");
+    const added = render(<OpportunityList items={items.slice(3, 4)} />);
+    expect(added).toContain("+6 kliknięć/28 dni");
+    expect(added).not.toContain("(poprzednio)");
+    expect(added).not.toContain("\u2212");
   });
 
   it("odmienia „kliknięcie” i nie pokazuje „+0”", () => {
@@ -80,6 +94,9 @@ describe("OpportunityList", () => {
     expect(html).toContain("Brak szans w tej grupie");
   });
 });
+
+// the button's class list contains "disabled:" variants, so look for the attribute itself
+const syncDisabled = (html: string) => /<button[^>]*\sdisabled=""[^>]*>Synchronizuj<\/button>/.test(html);
 
 describe("StatusSection", () => {
   const props = { projectId: "p", gscProperty: "sc-domain:polskaszkola.ai", lastDate: "2026-10-31", seoBudget: 10, aiBudget: 20 };
@@ -108,7 +125,14 @@ describe("StatusSection", () => {
     status(null, 0, 0);
     const html = render(await StatusSection({ ...props, gscProperty: null, lastDate: null }));
     expect(html).toContain("Jeszcze nie było żadnej synchronizacji.");
-    expect(html).toMatch(/<button[^>]*disabled[^>]*>Synchronizuj<\/button>/);
+    expect(syncDisabled(html)).toBe(true);
+  });
+
+  it("usługa złożona z samych spacji też wyłącza przycisk; wpisana usługa go włącza", async () => {
+    status(null, 0, 0);
+    const blank = render(await StatusSection({ ...props, gscProperty: "   " }));
+    expect(syncDisabled(blank)).toBe(true);
+    expect(syncDisabled(render(await StatusSection(props)))).toBe(false);
   });
 });
 
@@ -128,7 +152,33 @@ describe("GscStatsSection", () => {
     expect(html).toContain(">9,4<");
     expect(html).toContain("28 dni · +18% wobec poprzednich 28");
     expect(html).toContain("28 dni · +5% wobec poprzednich 28");
-    expect(html).toContain("28 dni · −15% wobec poprzednich 28"); // pozycja 11 → 9,4, minus U+2212
+    // pozycja: bezwzględna zmiana słowami (niższa liczba = lepiej), nie procent
+    expect(html).toContain("28 dni · lepiej o 1,6 poz."); // 11 → 9,4
+    expect(html).not.toContain("wobec poprzednich 28\"><"); // bez dopisku procentowego przy pozycji
+    expect(html.match(/wobec poprzednich 28/g)).toHaveLength(3);
+  });
+
+  const positions = async (cur: number | null, prev: number | null) => {
+    q.getGscTotals.mockImplementation(async (_p: string, from: string) => ({ clicks: 10, impressions: 100, position: from === "2026-10-04" ? cur : prev }));
+    return render(await GscStatsSection({ projectId: "p", lastDate: "2026-10-31" }));
+  };
+
+  it("średnia pozycja: „lepiej o”, gdy liczba spadła, „gorzej o”, gdy wzrosła, z przecinkiem dziesiętnym", async () => {
+    expect(await positions(9.4, 9.7)).toContain("28 dni · lepiej o 0,3 poz.");
+    expect(await positions(9.7, 9.4)).toContain("28 dni · gorzej o 0,3 poz.");
+    expect(await positions(20.2, 8)).toContain("28 dni · gorzej o 12,2 poz.");
+  });
+
+  it("średnia pozycja: „bez zmian” poniżej 0,05; od 0,05 już zmiana", async () => {
+    expect(await positions(9.4, 9.42)).toContain("28 dni · bez zmian");
+    expect(await positions(9.42, 9.4)).toContain("28 dni · bez zmian");
+    expect(await positions(9.4, 9.5)).toContain("28 dni · lepiej o 0,1 poz.");
+  });
+
+  it("średnia pozycja bez poprzedniej wartości: tylko „28 dni”", async () => {
+    const html = await positions(9.4, null);
+    expect(html).toContain(">28 dni<");
+    expect(html).not.toMatch(/poz\./);
   });
 
   it("bez poprzedniego okna i bez danych: kreski i komunikat o braku porównania", async () => {
