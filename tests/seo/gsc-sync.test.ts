@@ -7,12 +7,12 @@ import fixture from "../fixtures/gsc/query-page.json";
 const today = new Date("2026-11-02T04:30:00Z");
 
 describe("syncWindows", () => {
-  it("bez ostatniej daty: miesięczne okna od 16 miesięcy wstecz do wczoraj", () => {
+  it("bez ostatniej daty: miesięczne okna od 16 miesięcy wstecz do dziś − 2 dni", () => {
     const w = syncWindows({ today, lastDate: null, backfill: false });
-    expect(w).toHaveLength(17);
+    expect(w).toHaveLength(16);
     expect(w[0]).toEqual({ start: "2025-07-01", end: "2025-07-31" });
     expect(w[1]).toEqual({ start: "2025-08-01", end: "2025-08-31" });
-    expect(w.at(-1)).toEqual({ start: "2026-11-01", end: "2026-11-01" });
+    expect(w.at(-1)).toEqual({ start: "2026-10-01", end: "2026-10-31" });
   });
 
   it("okna miesięczne przylegają do siebie bez dziur i nakładek", () => {
@@ -22,28 +22,31 @@ describe("syncWindows", () => {
   });
 
   it("backfill ignoruje ostatnią datę", () => {
-    const w = syncWindows({ today, lastDate: "2026-11-01", backfill: true });
-    expect(w).toHaveLength(17);
+    const w = syncWindows({ today, lastDate: "2026-10-31", backfill: true });
+    expect(w).toHaveLength(16);
     expect(w[0].start).toBe("2025-07-01");
   });
 
-  it("pierwszego dnia miesiąca nie tworzy okna bez dni", () => {
-    const w = syncWindows({ today: new Date("2026-11-01T04:30:00Z"), lastDate: null, backfill: false });
-    expect(w).toHaveLength(16);
-    expect(w.at(-1)).toEqual({ start: "2026-10-01", end: "2026-10-31" });
+  it("dziś − 2 przypada na ostatni dzień miesiąca: nie tworzy okna następnego miesiąca; dzień później jest okno jednodniowe", () => {
+    expect(syncWindows({ today: new Date("2026-11-02T04:30:00Z"), lastDate: null, backfill: false }).at(-1)).toEqual({ start: "2026-10-01", end: "2026-10-31" });
+    const w = syncWindows({ today: new Date("2026-11-03T04:30:00Z"), lastDate: null, backfill: false });
+    expect(w).toHaveLength(17);
+    expect(w.at(-1)).toEqual({ start: "2026-11-01", end: "2026-11-01" });
   });
 
-  it("przyrostowo: start to dzień − 5, gdy ostatnia data jest świeża", () => {
-    expect(syncWindows({ today, lastDate: "2026-11-01", backfill: false })).toEqual([{ start: "2026-10-28", end: "2026-11-01" }]);
+  it("przyrostowo: start to dzień − 6, więc ponowne pobranie obejmuje 5 dni do dziś − 2, gdy ostatnia data jest świeża", () => {
+    expect(syncWindows({ today, lastDate: "2026-10-31", backfill: false })).toEqual([{ start: "2026-10-27", end: "2026-10-31" }]);
   });
 
   it("przyrostowo: start to ostatnia data − 2, gdy dane są starsze", () => {
-    expect(syncWindows({ today, lastDate: "2026-10-20", backfill: false })).toEqual([{ start: "2026-10-18", end: "2026-11-01" }]);
+    expect(syncWindows({ today, lastDate: "2026-10-20", backfill: false })).toEqual([{ start: "2026-10-18", end: "2026-10-31" }]);
   });
 
-  it("koniec to zawsze wczoraj, także na przełomie roku", () => {
-    expect(syncWindows({ today: new Date("2027-01-01T05:00:00Z"), lastDate: "2026-12-31", backfill: false }))
+  it("koniec to zawsze dziś − 2 dni (UTC), także na przełomie roku", () => {
+    expect(syncWindows({ today: new Date("2027-01-02T05:00:00Z"), lastDate: "2026-12-31", backfill: false }))
       .toEqual([{ start: "2026-12-27", end: "2026-12-31" }]);
+    expect(syncWindows({ today: new Date("2027-01-01T05:00:00Z"), lastDate: "2026-12-30", backfill: false }))
+      .toEqual([{ start: "2026-12-26", end: "2026-12-30" }]);
   });
 });
 
@@ -170,11 +173,11 @@ describe("runGscSync", () => {
   });
 
   it("z usługą wysyła trzy zapytania na okno z dataState all", async () => {
-    const { client } = world({ lastDate: "2026-11-01" });
+    const { client } = world({ lastDate: "2026-10-31" });
     await runGscSync({ projectId: PROJECT }, { admin: client, auth, fetchRows: fromFixture, now });
 
     expect(fromFixture).toHaveBeenCalledTimes(3);
-    const window = { startDate: "2026-10-28", endDate: "2026-11-01", dataState: "all" };
+    const window = { startDate: "2026-10-27", endDate: "2026-10-31", dataState: "all" };
     expect(fromFixture.mock.calls.map(([a, p, q]) => [a, p, q])).toEqual([
       [auth, PROPERTY, { ...window, dimensions: ["date"] }],
       [auth, PROPERTY, { ...window, dimensions: ["date", "page"] }],
@@ -183,7 +186,7 @@ describe("runGscSync", () => {
   });
 
   it("zapisuje trzy tabele: ścieżki zamiast adresów, urządzenia małymi literami, scalone warianty", async () => {
-    const { client, calls } = world({ lastDate: "2026-11-01" });
+    const { client, calls } = world({ lastDate: "2026-10-31" });
 
     const res = await runGscSync({ projectId: PROJECT }, { admin: client, auth, fetchRows: fromFixture, now });
 
@@ -216,7 +219,7 @@ describe("runGscSync", () => {
   });
 
   it("zamyka zadanie jako done ze statystykami", async () => {
-    const { client, calls } = world({ lastDate: "2026-11-01" });
+    const { client, calls } = world({ lastDate: "2026-10-31" });
     await runGscSync({ projectId: PROJECT }, { admin: client, auth, fetchRows: fromFixture, now });
     expect(jobUpdate(calls)).toMatchObject({
       status: "done",
@@ -226,13 +229,13 @@ describe("runGscSync", () => {
   });
 
   it("tabelę serwisu zapisuje na końcu, żeby ostatnia data nie wyprzedziła stron i fraz", async () => {
-    const { client, calls } = world({ lastDate: "2026-11-01" });
+    const { client, calls } = world({ lastDate: "2026-10-31" });
     await runGscSync({ projectId: PROJECT }, { admin: client, auth, fetchRows: fromFixture, now });
     expect(calls.filter((c) => c.op === "upsert").map((c) => c.table)).toEqual(["gsc_query_daily", "gsc_page_daily", "gsc_site_daily"]);
   });
 
   it("2500 wierszy fraz idzie do bazy w trzech paczkach (1000, 1000, 500)", async () => {
-    const { client, calls } = world({ lastDate: "2026-11-01" });
+    const { client, calls } = world({ lastDate: "2026-10-31" });
     const many = Array.from({ length: 2500 }, (_, i): GscRow => ({
       keys: ["2026-10-31", `fraza ${i}`, "https://polskaszkola.ai/a", "DESKTOP"], clicks: 1, impressions: 10, ctr: 0.1, position: 3,
     }));
@@ -248,24 +251,24 @@ describe("runGscSync", () => {
   });
 
   it.each([
-    { name: "backfill", payload: { projectId: PROJECT, backfill: true }, lastDate: "2026-11-01" },
+    { name: "backfill", payload: { projectId: PROJECT, backfill: true }, lastDate: "2026-10-31" },
     { name: "pierwsze uruchomienie bez danych", payload: { projectId: PROJECT }, lastDate: null },
-  ])("$name: 17 okien miesięcznych po trzy zapytania, pierwsze od 2025-07-01", async ({ payload, lastDate }) => {
+  ])("$name: 16 okien miesięcznych po trzy zapytania, pierwsze od 2025-07-01", async ({ payload, lastDate }) => {
     const { client, calls } = world({ lastDate });
     const fetchRows = vi.fn<typeof fetchAllRows>().mockResolvedValue([]);
 
     const res = await runGscSync(payload, { admin: client, auth, fetchRows, now });
 
-    expect(fetchRows).toHaveBeenCalledTimes(17 * 3);
+    expect(fetchRows).toHaveBeenCalledTimes(16 * 3);
     expect(fetchRows.mock.calls[0][2]).toMatchObject({ startDate: "2025-07-01", endDate: "2025-07-31" });
-    expect(fetchRows.mock.calls.at(-1)![2]).toMatchObject({ startDate: "2026-11-01", endDate: "2026-11-01" });
+    expect(fetchRows.mock.calls.at(-1)![2]).toMatchObject({ startDate: "2026-10-01", endDate: "2026-10-31" });
     expect(res.status).toBe("done");
-    expect(res.days).toBe(calendarDays("2025-07-01", "2026-11-01"));
+    expect(res.days).toBe(calendarDays("2025-07-01", "2026-10-31"));
     expect(calls.some((c) => c.op === "upsert")).toBe(false);
   });
 
   it("pomija wiersze bez liczbowej pozycji i liczy je w statystykach", async () => {
-    const { client, calls } = world({ lastDate: "2026-11-01" });
+    const { client, calls } = world({ lastDate: "2026-10-31" });
     const fetchRows = vi.fn(async (_a: GoogleAuth, _p: string, q: Omit<GscQuery, "rowLimit" | "startRow">): Promise<GscRow[]> => {
       if (q.dimensions.length !== 1) return [];
       return [
@@ -284,7 +287,7 @@ describe("runGscSync", () => {
   });
 
   it("gdy API rzuca, zadanie dostaje failed z komunikatem, a wyjątek leci dalej", async () => {
-    const { client, calls } = world({ lastDate: "2026-11-01" });
+    const { client, calls } = world({ lastDate: "2026-10-31" });
     const fetchRows = vi.fn().mockRejectedValue(new Error("Google API 403: brak dostępu dla bot@psai.iam.gserviceaccount.com"));
 
     await expect(runGscSync({ projectId: PROJECT }, { admin: client, auth, fetchRows, now })).rejects.toThrow("Google API 403");
@@ -294,14 +297,14 @@ describe("runGscSync", () => {
   });
 
   it("błąd zapisu do bazy też kończy zadanie jako failed", async () => {
-    const { client, calls } = world({ lastDate: "2026-11-01", failOn: "gsc_page_daily" });
+    const { client, calls } = world({ lastDate: "2026-10-31", failOn: "gsc_page_daily" });
     await expect(runGscSync({ projectId: PROJECT }, { admin: client, auth, fetchRows: fromFixture, now })).rejects.toThrow("boom gsc_page_daily");
     expect(jobUpdate(calls)).toMatchObject({ status: "failed", error: "boom gsc_page_daily" });
   });
 
   it("brak klucza konta usługi kończy zadanie jako failed zamiast wywrócić zadanie przed zapisem", async () => {
     vi.stubEnv("GOOGLE_SERVICE_ACCOUNT_JSON", "");
-    const { client, calls } = world({ lastDate: "2026-11-01" });
+    const { client, calls } = world({ lastDate: "2026-10-31" });
     const fetchRows = vi.fn();
 
     await expect(runGscSync({ projectId: PROJECT }, { admin: client, fetchRows, now })).rejects.toThrow("GOOGLE_SERVICE_ACCOUNT_JSON");

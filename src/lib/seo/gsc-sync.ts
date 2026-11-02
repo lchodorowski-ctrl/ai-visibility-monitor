@@ -11,7 +11,12 @@ export const NO_PROPERTY_MESSAGE = "Brak usługi Search Console w Ustawieniach �
 
 /** Search Console trzyma dane 16 miesięcy; tyle też pobieramy przy pełnej synchronizacji. */
 const BACKFILL_MONTHS = 16;
-/** Najnowsze dni bywają jeszcze korygowane, więc każda synchronizacja przelicza kilka ostatnich. */
+/**
+ * Synchronizacja kończy się na dziś − 2 dni (UTC), nie na wczoraj: zadanie rusza o 06:30 w Warszawie, czyli 21:30 poprzedniego
+ * dnia w Pacific (strefie, w której Search Console liczy dzień), więc "wczoraj UTC" to jeszcze niepełny dzień.
+ */
+const END_LAG_DAYS = 2;
+/** Najnowsze dni bywają jeszcze korygowane, więc każda synchronizacja przelicza kilka ostatnich (5 dni do końca okna). */
 const REFRESH_DAYS = 5;
 const REFRESH_OVERLAP_DAYS = 2;
 const UPSERT_CHUNK = 1000;
@@ -22,14 +27,14 @@ const addDays = (day: string, n: number) => isoDay(new Date(Date.parse(`${day}T0
 const errorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 /**
- * Okna dat do pobrania (włącznie z oboma końcami). Koniec to zawsze wczoraj (UTC).
+ * Okna dat do pobrania (włącznie z oboma końcami). Koniec to zawsze dziś − 2 dni (UTC).
  * Pełna synchronizacja (`backfill` albo brak danych): miesięczne okna od pierwszego dnia miesiąca sprzed
- * 16 miesięcy. Przyrostowa: jedno okno od `min(dziś − 5 dni, ostatnia data − 2 dni)`.
+ * 16 miesięcy. Przyrostowa: jedno okno od `min(dziś − 6 dni, ostatnia data − 2 dni)`, czyli co najmniej 5 dni do końca.
  */
 export function syncWindows(o: { today: Date; lastDate: string | null; backfill: boolean }): { start: string; end: string }[] {
-  const end = addDays(isoDay(o.today), -1);
+  const end = addDays(isoDay(o.today), -END_LAG_DAYS);
   if (!o.backfill && o.lastDate !== null) {
-    const start = addDays(isoDay(o.today), -REFRESH_DAYS);
+    const start = addDays(end, -(REFRESH_DAYS - 1));
     const overlapStart = addDays(o.lastDate, -REFRESH_OVERLAP_DAYS);
     return [{ start: start < overlapStart ? start : overlapStart, end }];
   }
