@@ -1,0 +1,207 @@
+/**
+ * Pure logic of the "Kierunek" summary on the main overview (no I/O): is the brand going up, down or standing still
+ * in AI assistants overall, in Google AI Overviews and in Google search results, and the texts that say so.
+ *
+ * Every verdict is computed from the numbers as they are shown on screen (rounded points, whole percentages),
+ * so a card never shows "-5 pp" next to a "no change" verdict.
+ */
+import type { Tables } from "@/lib/db-types";
+import type { GscTotals } from "@/lib/seo/queries";
+import { shiftDate, WINDOW_DAYS } from "@/lib/seo/overview";
+import { fmtDecimal, fmtNumber, fmtSignedNumber, fmtSignedPercent, pct, positionChangeText } from "@/lib/format/number";
+import { pluralPl } from "@/lib/format/plural";
+
+export type Direction = "up" | "down" | "flat" | "unknown";
+
+export const DIRECTION_THRESHOLDS = {
+  /** AI Visibility Score change (0-100 scale) that counts as a move. */
+  scorePoints: 3,
+  /** Visibility rate change (0.05 = 5 percentage points). */
+  ratePoints: 0.05,
+  /** Relative change in Search Console clicks (0.1 = 10%). */
+  clicksRelative: 0.1,
+  /** Fewer clicks than this in the previous window is too small a base for a percentage. */
+  clicksMinBase: 20,
+  /** Average position change in places. */
+  positionPlaces: 0.5,
+  /** How far back the AI measurement used for comparison should be. */
+  baselineDays: 28,
+} as const;
+
+const TH = DIRECTION_THRESHOLDS;
+
+/** Absorbs floating point noise at the threshold: 0.45 - 0.40 is 0.04999999999999999, yet it is 5 pp. */
+const EPSILON = 1e-9;
+
+/**
+ * The point to compare the latest one with: the newest one at least `days` before `latestDate`; without it the
+ * oldest point earlier than `latestDate` (a short history still gives a comparison); without that, null.
+ */
+export function pickBaseline<T extends { date: string }>(points: T[], latestDate: string, days: number = DIRECTION_THRESHOLDS.baselineDays): T | null {
+  const cutoff = shiftDate(latestDate, -days);
+  let oldEnough: T | null = null;
+  let oldest: T | null = null;
+  for (const p of points) {
+    if (p.date <= cutoff && (!oldEnough || p.date > oldEnough.date)) oldEnough = p;
+    if (p.date < latestDate && (!oldest || p.date < oldest.date)) oldest = p;
+  }
+  return oldEnough ?? oldest;
+}
+
+/** A rise of at least `threshold` is "up", a fall of at least `threshold` is "down", anything smaller is "flat". */
+export function higherIsBetter(cur: number, base: number, threshold: number): Direction {
+  if (!Number.isFinite(cur) || !Number.isFinite(base)) return "unknown";
+  const diff = cur - base;
+  if (diff === 0 || Math.abs(diff) < threshold - EPSILON) return "flat";
+  return diff > 0 ? "up" : "down";
+}
+
+/** The same for values where less is better (average position). */
+export function lowerIsBetter(cur: number, base: number, threshold: number): Direction {
+  return higherIsBetter(base, cur, threshold);
+}
+
+export interface ChannelSummary {
+  key: "ai" | "aio" | "google";
+  label: string;
+  direction: Direction;
+  /** The number behind the verdict, with its change: "Score 54, +6 pkt". */
+  headline: string;
+  detail: string;
+  /** ISO date of the measurement the change is counted from, or null. */
+  since: string | null;
+  /** What is compared, shown instead of the baseline date when there is none (Search Console compares two periods). */
+  period?: string;
+  href: string;
+}
+
+const NO_BASELINE = "brak wcześniejszego pomiaru do porównania";
+
+interface MetricPoint { date: string; score: number; visibilityRate: number; citationRate: number }
+
+/**
+ * Overall points of one engine (null: all engines together), oldest first. Rows of single prompts are not part of the
+ * overview, and a row without a valid response (responses_count 0) is no measurement. Numeric columns may arrive as strings.
+ */
+function seriesFor(rows: Tables<"daily_metrics">[], engineId: string | null): MetricPoint[] {
+  const points: MetricPoint[] = [];
+  for (const r of rows) {
+    if (r.prompt_id !== null || r.engine_id !== engineId || !(Number(r.responses_count) > 0)) continue;
+    const p = { date: r.date, score: Number(r.score), visibilityRate: Number(r.visibility_rate), citationRate: Number(r.citation_rate) };
+    if (Number.isFinite(p.score) && Number.isFinite(p.visibilityRate) && Number.isFinite(p.citationRate)) points.push(p);
+  }
+  return points.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+}
+
+function latestWithBaseline(points: MetricPoint[]): { latest: MetricPoint; base: MetricPoint | null } | null {
+  const latest = points.at(-1);
+  return latest ? { latest, base: pickBaseline(points, latest.date) } : null;
+}
+
+/** Change between two rates in whole percentage points, as the rounded percentages on screen differ. */
+const ppChange = (cur: number, base: number) => Math.round(cur * 100) - Math.round(base * 100);
+/** A rate rounded to a whole percent, so the verdict is based on the number that is shown. */
+const wholePercent = (rate: number) => Math.round(rate * 100) / 100;
+const change = (delta: number, unit: string) => (delta === 0 ? "bez zmian" : `${fmtSignedNumber(delta, 0)} ${unit}`);
+
+const NO_MEASUREMENTS = { headline: "Brak pomiarów", detail: "Uruchom pomiar, żeby zobaczyć kierunek." };
+
+export function aiSummary(rows: Tables<"daily_metrics">[]): ChannelSummary {
+  const id = { key: "ai", label: "Asystenci AI (wszystkie silniki)", href: "/app/prompts" } as const;
+  const found = latestWithBaseline(seriesFor(rows, null));
+  if (!found) return { ...id, direction: "unknown", ...NO_MEASUREMENTS, since: null };
+  const { latest, base } = found;
+  const score = Math.round(latest.score);
+  if (!base) {
+    return { ...id, direction: "unknown", headline: `Score ${score}`, detail: `widoczność ${pct(latest.visibilityRate)}, ${NO_BASELINE}`, since: null };
+  }
+  const baseScore = Math.round(base.score);
+  return {
+    ...id,
+    direction: higherIsBetter(score, baseScore, TH.scorePoints),
+    headline: `Score ${score}, ${change(score - baseScore, "pkt")}`,
+    detail: `widoczność ${pct(latest.visibilityRate)}, ${change(ppChange(latest.visibilityRate, base.visibilityRate), "pp")}`,
+    since: base.date,
+  };
+}
+
+export function aioSummary(rows: Tables<"daily_metrics">[]): ChannelSummary {
+  const id = { key: "aio", label: "Google AI Overviews", href: "/app/prompts" } as const;
+  const found = latestWithBaseline(seriesFor(rows, "google_ai_overview"));
+  if (!found) return { ...id, direction: "unknown", ...NO_MEASUREMENTS, since: null };
+  const { latest, base } = found;
+  if (!base) {
+    return { ...id, direction: "unknown", headline: `Widoczność ${pct(latest.visibilityRate)}`, detail: `cytowania ${pct(latest.citationRate)}, ${NO_BASELINE}`, since: null };
+  }
+  return {
+    ...id,
+    direction: higherIsBetter(wholePercent(latest.visibilityRate), wholePercent(base.visibilityRate), TH.ratePoints),
+    headline: `Widoczność ${pct(latest.visibilityRate)}, ${change(ppChange(latest.visibilityRate, base.visibilityRate), "pp")}`,
+    detail: `cytowania ${pct(latest.citationRate)}, ${change(ppChange(latest.citationRate, base.citationRate), "pp")}`,
+    since: base.date,
+  };
+}
+
+const CLICK_FORMS: [string, string, string] = ["kliknięcie", "kliknięcia", "kliknięć"];
+
+/** "142 kliknięcia", with the thousands separated like everywhere else in the app ("12 345 kliknięć"). */
+const clicksText = (n: number) => pluralPl(n, CLICK_FORMS).replace(String(n), fmtNumber(n));
+
+export function googleSummary(cur: GscTotals | null, prev: GscTotals | null, configured: boolean): ChannelSummary {
+  const id = { key: "google", label: "Google: wyniki wyszukiwania", href: "/app/google", since: null } as const;
+  if (!configured) {
+    return { ...id, direction: "unknown", headline: "Podłącz Search Console", detail: "Wpisz usługę w Ustawienia → Google." };
+  }
+  if (!cur || cur.clicks === null) {
+    return { ...id, direction: "unknown", headline: "Brak danych z Search Console", detail: "Kliknij Synchronizuj na stronie Google." };
+  }
+
+  const clicks = Math.round(cur.clicks);
+  const prevClicks = prev?.clicks == null ? null : Math.round(prev.clicks);
+  // a percentage of a handful of clicks is noise: below the minimum base the clicks do not decide and show no percentage
+  const bigEnoughBase = prevClicks !== null && prevClicks >= TH.clicksMinBase;
+  const rel = bigEnoughBase ? (clicks - prevClicks) / prevClicks : null;
+  // like fmtSignedPercent, round the magnitude, so "+10%" on screen is always "up"
+  const shownRel = rel === null ? null : Math.sign(rel) * Math.round(Math.abs(rel) * 100) / 100;
+
+  const byClicks: Direction = shownRel === null ? "unknown" : higherIsBetter(shownRel, 0, TH.clicksRelative);
+  const byPosition: Direction = cur.position !== null && prev?.position != null ? lowerIsBetter(cur.position, prev.position, TH.positionPlaces) : "unknown";
+  // clear clicks decide; otherwise (no clear change or too small a base) the average position does
+  const direction = byClicks === "up" || byClicks === "down" ? byClicks : byPosition !== "unknown" ? byPosition : byClicks;
+
+  let headline: string;
+  if (prevClicks === null) headline = clicksText(clicks);
+  else if (shownRel === null) headline = `${clicksText(clicks)} (poprzednio ${fmtNumber(prevClicks)})`;
+  else headline = `${clicksText(clicks)}, ${shownRel === 0 ? "bez zmian" : fmtSignedPercent(shownRel)}`;
+
+  let detail: string;
+  if (cur.position === null) detail = "brak danych o średniej pozycji";
+  else if (prevClicks === null) detail = `średnia pozycja ${fmtDecimal(cur.position)}, brak poprzednich ${WINDOW_DAYS} dni do porównania`;
+  else {
+    const positionChange = positionChangeText(cur.position, prev?.position ?? null);
+    detail = `średnia pozycja ${fmtDecimal(cur.position)}${positionChange ? ` (${positionChange})` : ""}`;
+  }
+
+  return { ...id, direction, headline, detail, period: prevClicks !== null ? `ostatnie ${WINDOW_DAYS} dni wobec poprzednich ${WINDOW_DAYS}` : `ostatnie ${WINDOW_DAYS} dni` };
+}
+
+const SHORT_LABEL: Record<ChannelSummary["key"], string> = { ai: "AI", aio: "AI Overviews", google: "Google" };
+
+/**
+ * One sentence about the whole picture. A channel without data is not counted towards the direction, but it does not
+ * vanish from the sentence either: "up everywhere" is said only when every channel has data and is up.
+ */
+export function overallHeadline(summaries: ChannelSummary[]): string {
+  const names = (d: Direction) => summaries.filter((s) => s.direction === d).map((s) => SHORT_LABEL[s.key]);
+  const up = names("up");
+  const down = names("down");
+  const flat = names("flat");
+  const unknown = names("unknown");
+  if (up.length + down.length + flat.length === 0) return "Za mało danych, żeby ocenić kierunek. Potrzebne są co najmniej dwa pomiary.";
+  if (unknown.length === 0 && down.length === 0 && flat.length === 0) return "Idziemy w górę we wszystkich kanałach";
+  if (unknown.length === 0 && up.length === 0 && flat.length === 0) return "Spadamy we wszystkich kanałach";
+  return ([["W górę", up], ["W dół", down], ["Bez zmian", flat], ["Brak danych", unknown]] as const)
+    .filter(([, list]) => list.length > 0)
+    .map(([title, list]) => `${title}: ${list.join(", ")}.`)
+    .join(" ");
+}

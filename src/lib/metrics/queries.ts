@@ -20,6 +20,9 @@ const getOverallRows = cache(async (projectId: string, days: number) => {
   return data ?? [];
 });
 
+/** Overall and per-engine rows of the last 90 days for the direction summary; the same cached query as the stats and the trend. */
+export const getDirectionRows = cache((projectId: string) => getOverallRows(projectId, 90));
+
 export const getLatestMetrics = cache(async (projectId: string) => {
   const rows = await getOverallRows(projectId, 90);
   const { latest, byEngine } = shapeOverview(rows, []);

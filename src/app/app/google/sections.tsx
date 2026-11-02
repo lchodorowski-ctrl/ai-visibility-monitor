@@ -3,7 +3,7 @@ import {
 } from "@/lib/seo/queries";
 import { cannibalization, ctrCurve, lowCtr, newAndLost, strikingDistance, type Opportunity } from "@/lib/seo/opportunities";
 import { ctr, delta, fillMissingDays, gscWindows, topOpportunities, topQueries } from "@/lib/seo/overview";
-import { fmtDate, fmtDecimal, fmtNumber, fmtSignedPercent } from "@/lib/format/number";
+import { fmtDate, fmtDecimal, fmtNumber, fmtSignedPercent, positionChangeText } from "@/lib/format/number";
 import { pluralPl } from "@/lib/format/plural";
 import { Button } from "@/components/ui/button";
 import { Meta, Row, Rows, SectionHead, StatTile, Tile } from "@/components/psai";
@@ -25,14 +25,6 @@ const dmy = (iso: string) => iso.split("-").reverse().join(".");
 /** "+12% wobec poprzednich 28"; text when there is nothing to compare with. */
 function changeText(d: number | null): string {
   return d === null ? "brak danych do porównania" : `${fmtSignedPercent(d)} wobec poprzednich 28`;
-}
-
-/** Position change in places, in words: a lower position is better, so a relative percentage would read the wrong way. */
-function positionChangeText(cur: number | null, prev: number | null): string | null {
-  if (cur === null || prev === null) return null;
-  const d = cur - prev;
-  if (Math.abs(d) < 0.05) return "bez zmian";
-  return `${d < 0 ? "lepiej" : "gorzej"} o ${fmtDecimal(Math.abs(d))} poz.`;
 }
 
 const SYNC_STATUS: Record<string, string> = {

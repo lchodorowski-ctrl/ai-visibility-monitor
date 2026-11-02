@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { plainSpaces, fmtDecimal, fmtNumber, fmtCompact, fmtSignedNumber, fmtSignedPercent } from "@/lib/format/number";
+import { plainSpaces, fmtDecimal, fmtNumber, fmtCompact, fmtSignedNumber, fmtSignedPercent, positionChangeText } from "@/lib/format/number";
 
 const NO_BREAK = /[\u00a0\u202f]/;
 
@@ -92,5 +92,25 @@ describe("fmtSignedPercent", () => {
   it("liczba miejsc po przecinku jest opcjonalna", () => {
     expect(fmtSignedPercent(0.1834, 1)).toBe("+18,3%");
     expect(fmtSignedPercent(-0.0526, 1)).toBe("−5,3%");
+  });
+});
+
+describe("positionChangeText", () => {
+  it("niższa pozycja to „lepiej”, wyższa to „gorzej”, z przecinkiem dziesiętnym i „poz.”", () => {
+    expect(positionChangeText(9.4, 12)).toBe("lepiej o 2,6 poz.");
+    expect(positionChangeText(12, 9.4)).toBe("gorzej o 2,6 poz.");
+    expect(positionChangeText(20.2, 8)).toBe("gorzej o 12,2 poz.");
+  });
+
+  it("zmiana poniżej 0,05 to „bez zmian”, od 0,05 już zmiana", () => {
+    expect(positionChangeText(9.4, 9.42)).toBe("bez zmian");
+    expect(positionChangeText(9.42, 9.4)).toBe("bez zmian");
+    expect(positionChangeText(9.4, 9.5)).toBe("lepiej o 0,1 poz.");
+  });
+
+  it("bez jednej z wartości nie ma tekstu (null)", () => {
+    expect(positionChangeText(null, 9)).toBeNull();
+    expect(positionChangeText(9, null)).toBeNull();
+    expect(positionChangeText(null, null)).toBeNull();
   });
 });

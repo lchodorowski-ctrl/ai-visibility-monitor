@@ -47,3 +47,14 @@ export function fmtSignedNumber(n: number, digits = 1): string {
 export function fmtSignedPercent(change: number, digits = 0): string {
   return `${fmtSignedNumber(change * 100, digits)}%`;
 }
+
+/**
+ * Average position change in places, in words: a lower position is better, so a relative percentage would read the
+ * wrong way. "lepiej o 2,6 poz.", "gorzej o 0,3 poz.", "bez zmian" below 0.05; null when either position is missing.
+ */
+export function positionChangeText(cur: number | null, prev: number | null): string | null {
+  if (cur === null || prev === null) return null;
+  const d = cur - prev;
+  if (Math.abs(d) < 0.05) return "bez zmian";
+  return `${d < 0 ? "lepiej" : "gorzej"} o ${fmtDecimal(Math.abs(d))} poz.`;
+}
