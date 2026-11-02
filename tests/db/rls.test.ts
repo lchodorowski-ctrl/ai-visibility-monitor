@@ -194,4 +194,203 @@ describe.skipIf(!url)("RLS", () => {
       await c.end();
     }
   });
+
+  describe("Search Console", () => {
+    const PHRASE = "szkolenia ai wrocław łódź";
+    const PREV_DAY = "2020-01-01";
+    const CUR_DAY = "2020-01-02";
+    const DAYS = [PREV_DAY, CUR_DAY];
+
+    const connect = async () => {
+      const c = new Client({ connectionString: url });
+      await c.connect();
+      return c;
+    };
+
+    const asRole = async <T>(
+      c: Client,
+      role: "anon" | "authenticated",
+      claims: object,
+      run: () => Promise<T>,
+    ): Promise<T> => {
+      try {
+        await c.query(`set role ${role}`);
+        await c.query(`select set_config('request.jwt.claims', $1, false)`, [JSON.stringify(claims)]);
+        return await run();
+      } finally {
+        await c.query(`reset role`);
+        await c.query(`select set_config('request.jwt.claims', '', false)`);
+      }
+    };
+
+    const prepareUsers = async (c: Client) => {
+      for (const uid of [MEMBER, OUTSIDER]) {
+        await c.query(`insert into auth.users (id, email) values ($1, $2) on conflict do nothing`, [uid, `${uid}@rls.test.local`]);
+      }
+      await c.query(`insert into memberships (org_id, user_id) values ($1, $2) on conflict do nothing`, [ORG, MEMBER]);
+    };
+
+    const cleanup = async (c: Client) => {
+      await c.query(`reset role`);
+      await c.query(`select set_config('request.jwt.claims', '', false)`);
+      for (const table of ["gsc_site_daily", "gsc_page_daily", "gsc_query_daily"]) {
+        await c.query(`delete from ${table} where project_id = $1 and date = any($2::date[])`, [PROJECT, DAYS]);
+      }
+      await c.query(`delete from memberships where user_id = any($1::uuid[])`, [[MEMBER, OUTSIDER]]);
+      await c.query(`delete from auth.users where id = any($1::uuid[])`, [[MEMBER, OUTSIDER]]);
+      await c.end();
+    };
+
+    // Superuser (bez RLS) wstawia dane dwóch dni: poprzednie okno = PREV_DAY, bieżące = CUR_DAY.
+    const seed = async (c: Client) => {
+      await c.query(
+        `insert into gsc_site_daily (project_id, date, clicks, impressions, position) values
+           ($1, $2, 10, 100, 5.00),
+           ($1, $3, 20, 300, 9.00)`,
+        [PROJECT, PREV_DAY, CUR_DAY],
+      );
+      await c.query(
+        `insert into gsc_page_daily (project_id, date, page, clicks, impressions, position) values
+           ($1, $2, '/a', 6, 60, 4.00),
+           ($1, $3, '/a', 14, 140, 6.00),
+           ($1, $2, '/b', 4, 40, 10.00),
+           ($1, $3, '/b', 6, 160, 10.00),
+           ($1, $3, '/c', 20, 100, 3.00)`,
+        [PROJECT, PREV_DAY, CUR_DAY],
+      );
+      await c.query(
+        `insert into gsc_query_daily (project_id, date, query, page, device, clicks, impressions, position) values
+           ($1, $2, $4, '/a', 'desktop', 2, 50, 4.00),
+           ($1, $3, $4, '/a', 'desktop', 5, 100, 3.00),
+           ($1, $3, $4, '/b', 'mobile', 1, 100, 7.00),
+           ($1, $3, 'tylko w nowym oknie', '/a', 'desktop', 1, 30, 12.00),
+           ($1, $2, 'tylko w starym oknie', '/b', 'tablet', 0, 500, 20.00)`,
+        [PROJECT, PREV_DAY, CUR_DAY, PHRASE],
+      );
+    };
+
+    const MEMBER_CLAIMS = { sub: MEMBER, role: "authenticated" };
+    const OUTSIDER_CLAIMS = { sub: OUTSIDER, role: "authenticated" };
+
+    it("GSC: anon i nie-członek nie widzą danych ani agregatów, członek widzi", async () => {
+      const c = await connect();
+
+      const read = (role: "anon" | "authenticated", claims: object) =>
+        asRole(c, role, claims, async () => {
+          const rows = await c.query(
+            `select (select count(*) from gsc_site_daily where project_id = $1 and date = any($2::date[]))::int as site,
+                    (select count(*) from gsc_page_daily where project_id = $1 and date = any($2::date[]))::int as pages,
+                    (select count(*) from gsc_query_daily where project_id = $1 and date = any($2::date[]))::int as queries`,
+            [PROJECT, DAYS],
+          );
+          const totals = await c.query(`select * from gsc_totals($1, $2, $3)`, [PROJECT, PREV_DAY, CUR_DAY]);
+          const topPages = await c.query(`select * from gsc_top_pages($1, $2, $3, 10)`, [PROJECT, PREV_DAY, CUR_DAY]);
+          const windows = await c.query(`select * from gsc_query_windows($1, $2, $3, $4, $5, 10)`, [
+            PROJECT, CUR_DAY, CUR_DAY, PREV_DAY, PREV_DAY,
+          ]);
+          const queryPages = await c.query(`select * from gsc_query_pages($1, $2, $3, 0)`, [PROJECT, PREV_DAY, CUR_DAY]);
+          return { counts: rows.rows[0], totals: totals.rows, topPages: topPages.rows, windows: windows.rows, queryPages: queryPages.rows };
+        });
+
+      try {
+        await prepareUsers(c);
+        await seed(c);
+
+        const anon = await read("anon", {});
+        const outsider = await read("authenticated", OUTSIDER_CLAIMS);
+        const member = await read("authenticated", MEMBER_CLAIMS);
+
+        for (const hidden of [anon, outsider]) {
+          expect(hidden.counts).toEqual({ site: 0, pages: 0, queries: 0 });
+          expect(hidden.totals).toHaveLength(1);
+          expect(hidden.totals[0].clicks).toBeNull();
+          expect(hidden.totals[0].impressions).toBeNull();
+          expect(hidden.totals[0].position).toBeNull();
+          expect(hidden.topPages).toEqual([]);
+          expect(hidden.windows).toEqual([]);
+          expect(hidden.queryPages).toEqual([]);
+        }
+
+        expect(member.counts).toEqual({ site: 2, pages: 5, queries: 5 });
+        expect(Number(member.totals[0].clicks)).toBe(30);
+        expect(member.windows.map((r) => r.query)).toContain(PHRASE);
+        expect(member.queryPages.filter((r) => r.query === PHRASE)).toHaveLength(2);
+      } finally {
+        await cleanup(c);
+      }
+    });
+
+    it("GSC: agregaty ważą pozycję wyświetleniami, łączą okna i stosują limit w SQL", async () => {
+      const c = await connect();
+      const asMember = <T>(run: () => Promise<T>) => asRole(c, "authenticated", MEMBER_CLAIMS, run);
+
+      try {
+        await prepareUsers(c);
+        await seed(c);
+
+        await asMember(async () => {
+          const totals = await c.query(`select * from gsc_totals($1, $2, $3)`, [PROJECT, PREV_DAY, CUR_DAY]);
+          expect(totals.rows).toHaveLength(1);
+          expect(Number(totals.rows[0].clicks)).toBe(30);
+          expect(Number(totals.rows[0].impressions)).toBe(400);
+          // (5*100 + 9*300) / 400, a nie zwykła średnia 7
+          expect(Number(totals.rows[0].position)).toBeCloseTo(8, 5);
+
+          const empty = await c.query(`select * from gsc_totals($1, $2, $3)`, [PROJECT, "2019-01-01", "2019-01-02"]);
+          expect(empty.rows).toEqual([{ clicks: null, impressions: null, position: null }]);
+
+          // /a i /c mają po 20 kliknięć, o kolejności decydują wyświetlenia
+          const pages = await c.query(`select * from gsc_top_pages($1, $2, $3, 10)`, [PROJECT, PREV_DAY, CUR_DAY]);
+          expect(pages.rows.map((r) => r.page)).toEqual(["/a", "/c", "/b"]);
+          expect(Number(pages.rows[0].clicks)).toBe(20);
+          expect(Number(pages.rows[0].impressions)).toBe(200);
+          expect(Number(pages.rows[0].position)).toBeCloseTo(5.4, 5);
+          const limited = await c.query(`select * from gsc_top_pages($1, $2, $3, 2)`, [PROJECT, PREV_DAY, CUR_DAY]);
+          expect(limited.rows.map((r) => r.page)).toEqual(["/a", "/c"]);
+
+          const windows = await c.query(`select * from gsc_query_windows($1, $2, $3, $4, $5, 10)`, [
+            PROJECT, CUR_DAY, CUR_DAY, PREV_DAY, PREV_DAY,
+          ]);
+          // sortowanie po greatest(cur_impressions, prev_impressions): 500, 200, 30
+          expect(windows.rows.map((r) => r.query)).toEqual(["tylko w starym oknie", PHRASE, "tylko w nowym oknie"]);
+          const [old, both, fresh] = windows.rows;
+          expect(Number(old.cur_clicks)).toBe(0);
+          expect(Number(old.cur_impressions)).toBe(0);
+          expect(old.cur_position).toBeNull();
+          expect(Number(old.prev_impressions)).toBe(500);
+          expect(Number(old.prev_position)).toBeCloseTo(20, 5);
+          // aktualne okno: obie strony i oba urządzenia zsumowane, pozycja (3*100 + 7*100) / 200
+          expect(Number(both.cur_clicks)).toBe(6);
+          expect(Number(both.cur_impressions)).toBe(200);
+          expect(Number(both.cur_position)).toBeCloseTo(5, 5);
+          expect(Number(both.prev_clicks)).toBe(2);
+          expect(Number(both.prev_impressions)).toBe(50);
+          expect(Number(both.prev_position)).toBeCloseTo(4, 5);
+          expect(Number(fresh.cur_impressions)).toBe(30);
+          expect(Number(fresh.prev_clicks)).toBe(0);
+          expect(Number(fresh.prev_impressions)).toBe(0);
+          expect(fresh.prev_position).toBeNull();
+          const windowsLimited = await c.query(`select * from gsc_query_windows($1, $2, $3, $4, $5, 2)`, [
+            PROJECT, CUR_DAY, CUR_DAY, PREV_DAY, PREV_DAY,
+          ]);
+          expect(windowsLimited.rows.map((r) => r.query)).toEqual(["tylko w starym oknie", PHRASE]);
+
+          // tylko fraza na co najmniej dwóch stronach; próg dotyczy łącznych wyświetleń frazy (250)
+          const shared = await c.query(`select * from gsc_query_pages($1, $2, $3, 250)`, [PROJECT, PREV_DAY, CUR_DAY]);
+          expect(shared.rows.map((r) => [r.query, r.page])).toEqual([[PHRASE, "/a"], [PHRASE, "/b"]]);
+          expect(Number(shared.rows[0].clicks)).toBe(7);
+          expect(Number(shared.rows[0].impressions)).toBe(150);
+          expect(Number(shared.rows[0].position)).toBeCloseTo(10 / 3, 4);
+          expect(Number(shared.rows[1].impressions)).toBe(100);
+          const tooHigh = await c.query(`select * from gsc_query_pages($1, $2, $3, 251)`, [PROJECT, PREV_DAY, CUR_DAY]);
+          expect(tooHigh.rows).toEqual([]);
+          // w poprzednim dniu fraza stoi tylko na jednej stronie
+          const prevOnly = await c.query(`select * from gsc_query_pages($1, $2, $3, 0)`, [PROJECT, PREV_DAY, PREV_DAY]);
+          expect(prevOnly.rows).toEqual([]);
+        });
+      } finally {
+        await cleanup(c);
+      }
+    });
+  });
 });

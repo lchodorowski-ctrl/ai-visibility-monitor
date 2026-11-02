@@ -159,6 +159,66 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"gsc_page_daily": {
+                  Row: {
+                    "clicks": number,"date": string,"impressions": number,"page": string,"position": number | null,"project_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "clicks": number,"date": string,"impressions": number,"page": string,"position"?: number | null,"project_id": string
+                  }
+                  Update: {
+                    "clicks"?: number,"date"?: string,"impressions"?: number,"page"?: string,"position"?: number | null,"project_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "gsc_page_daily_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"gsc_query_daily": {
+                  Row: {
+                    "clicks": number,"date": string,"device": string,"impressions": number,"page": string,"position": number | null,"project_id": string,"query": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "clicks": number,"date": string,"device": string,"impressions": number,"page": string,"position"?: number | null,"project_id": string,"query": string
+                  }
+                  Update: {
+                    "clicks"?: number,"date"?: string,"device"?: string,"impressions"?: number,"page"?: string,"position"?: number | null,"project_id"?: string,"query"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "gsc_query_daily_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"gsc_site_daily": {
+                  Row: {
+                    "clicks": number,"date": string,"impressions": number,"position": number | null,"project_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "clicks": number,"date": string,"impressions": number,"position"?: number | null,"project_id": string
+                  }
+                  Update: {
+                    "clicks"?: number,"date"?: string,"impressions"?: number,"position"?: number | null,"project_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "gsc_site_daily_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"memberships": {
                   Row: {
                     "org_id": string,"role": string,"user_id": string
@@ -441,7 +501,27 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "is_org_member":
+            "gsc_query_pages":
+{ Args: { "p_from": string,"p_min_impressions": number,"p_project": string,"p_to": string }; Returns: {
+              "clicks": number,"impressions": number,"page": string,"position": number,"query": string
+            }[]
+                           },
+"gsc_query_windows":
+{ Args: { "p_cur_from": string,"p_cur_to": string,"p_limit": number,"p_prev_from": string,"p_prev_to": string,"p_project": string }; Returns: {
+              "cur_clicks": number,"cur_impressions": number,"cur_position": number,"prev_clicks": number,"prev_impressions": number,"prev_position": number,"query": string
+            }[]
+                           },
+"gsc_top_pages":
+{ Args: { "p_from": string,"p_limit": number,"p_project": string,"p_to": string }; Returns: {
+              "clicks": number,"impressions": number,"page": string,"position": number
+            }[]
+                           },
+"gsc_totals":
+{ Args: { "p_from": string,"p_project": string,"p_to": string }; Returns: {
+              "clicks": number,"impressions": number,"position": number
+            }[]
+                           },
+"is_org_member":
 { Args: { "org": string }; Returns: boolean
                            },
 "project_org":
