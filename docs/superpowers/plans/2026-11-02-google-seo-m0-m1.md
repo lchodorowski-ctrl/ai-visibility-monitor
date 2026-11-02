@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Zakładka „Google” z codzienną synchronizacją Search Console, widokiem Przegląd (kafle, trend, szanse, top frazy i strony) oraz fundamentami pod kolejne kamienie (klient DataForSEO, rejestr zadań SEO z limitem, auth Google, ustawienia).
+**Goal:** Zakładka „Google” z codzienną synchronizacją Search Console, widokiem Przegląd (kafle, trend, szanse, top frazy i strony), sekcją „Kierunek” na głównym Przeglądzie (w górę czy w dół: AI, AI Overviews, Google) oraz fundamentami pod kolejne kamienie (klient DataForSEO, rejestr zadań SEO z limitem, auth Google, ustawienia).
 
 **Architecture:** Dane GSC trafiają do trzech tabel dziennych przez task Trigger `gsc-sync` (ciało `runGscSync()` wołane też ze skryptu `--local`), uruchamiany codziennie harmonogramem `schedules.task`. UI czyta przez funkcje SQL (`rpc`) i `React.cache`, a szanse liczą czyste funkcje w `src/lib/seo/opportunities.ts`. Auth Google to własny JWT RS256 przez `node:crypto`.
 
@@ -281,6 +281,40 @@ src/app/app/google/page.tsx, sections.tsx, actions.ts, src/components/GscTrendCh
 - [ ] **Step 4: Run** `npm test`, `npm run lint`, `npx tsc --noEmit`, `npm run build` → wszystko zielone
 - [ ] **Step 5: Podgląd**: `preview_start` `dev-3001`, wejście na `/app/google` (bez zalogowania przekierowanie na `/login` to poprawny wynik), konsola bez błędów; widok po zalogowaniu sprawdza Łukasz
 - [ ] **Step 6: Commit** `feat(google): Search Console overview page with opportunities`
+
+---
+
+### Task 9: Kierunek na głównym Przeglądzie
+
+Prośba Łukasza (2026-11-02): na głównym dashboardzie `/app` podsumowanie, czy idziemy w górę, czy spadamy, osobno dla asystentów AI, Google AI Overviews i wyników Google.
+
+**Files:**
+- Create: `src/lib/trends/direction.ts`, `src/app/app/overview/direction.tsx`
+- Modify: `src/lib/metrics/queries.ts` (eksport `getDirectionRows`), `src/app/app/page.tsx`
+- Test: `tests/trends/direction.test.ts`, `tests/components/direction-cards.test.tsx`
+
+**Interfaces:**
+- Consumes: `getGscLastDate`, `getGscTotals` (`src/lib/seo/queries.ts`, Task 8), `gscWindows` (`src/lib/seo/overview.ts`, Task 8); wiersze `daily_metrics`
+- Produces:
+  - `src/lib/trends/direction.ts` (czyste):
+    - `export type Direction = "up" | "down" | "flat" | "unknown"`
+    - `export const DIRECTION_THRESHOLDS = { scorePoints: 3, ratePoints: 0.05, clicksRelative: 0.1, clicksMinBase: 20, positionPlaces: 0.5, baselineDays: 28 } as const`
+    - `export function pickBaseline<T extends { date: string }>(points: T[], latestDate: string, days = 28): T | null`: najnowszy punkt z datą `<= latestDate − days`; gdy brak, najstarszy punkt wcześniejszy niż `latestDate`; gdy brak, `null`
+    - `export function higherIsBetter(cur: number, base: number, threshold: number): Direction` i `export function lowerIsBetter(cur: number, base: number, threshold: number): Direction` (różnica w granicach progu → `"flat"`)
+    - `export interface ChannelSummary { key: "ai" | "aio" | "google"; label: string; direction: Direction; headline: string; detail: string; since: string | null; href: string }`
+    - `export function aiSummary(rows: Tables<"daily_metrics">[]): ChannelSummary`: wiersze `prompt_id null`, `engine_id null`, `responses_count > 0`; kierunek ze Score (próg 3 pkt); `headline` np. „Score 54, +6 pkt”, `detail` „widoczność 42%, +8 pp”, `since` = data bazy, `href` `/app/prompts`, `label` „Asystenci AI (wszystkie silniki)”
+    - `export function aioSummary(rows): ChannelSummary`: to samo dla `engine_id = "google_ai_overview"`, kierunek z `visibility_rate` (próg 5 pp), `detail` z `citation_rate`, `label` „Google AI Overviews”, `href` `/app/prompts`
+    - `export function googleSummary(cur: GscTotals | null, prev: GscTotals | null, configured: boolean): ChannelSummary` gdzie `GscTotals = { clicks: number | null; impressions: number | null; position: number | null }`: kierunek z kliknięć (zmiana względna, próg 10%, tylko gdy baza `>= 20` kliknięć), przy `"flat"` albo za małej bazie rozstrzyga średnia pozycja (`lowerIsBetter`, próg 0,5); `headline` „142 kliknięcia, +18%”, `detail` „średnia pozycja 9,4 (lepiej o 1,2)”; `configured === false` albo brak danych → `"unknown"` z `headline` „Podłącz Search Console” (gdy nieskonfigurowane) albo „Brak danych z Search Console”; `label` „Google: wyniki wyszukiwania”, `href` `/app/google`
+    - `export function overallHeadline(s: ChannelSummary[]): string`: wszystkie znane w górę → „Idziemy w górę we wszystkich kanałach”; wszystkie znane w dół → „Spadamy we wszystkich kanałach”; mieszane → „W górę: <etykiety krótkie>. W dół: <…>. Bez zmian: <…>.” (pomijaj puste grupy; krótkie etykiety: „AI”, „AI Overviews”, „Google”); żadnego znanego → „Za mało danych, żeby ocenić kierunek. Potrzebne są co najmniej dwa pomiary.”
+    - liczby ujemne ze znakiem minus U+2212 („−5 pp”), polskie przecinki dziesiętne, odmiana „kliknięcie/kliknięcia/kliknięć” przez `pluralPl` (`src/lib/format/plural.ts`)
+  - `src/lib/metrics/queries.ts`: `export const getDirectionRows = cache((projectId: string) => getOverallRows(projectId, 90))`
+  - `src/app/app/overview/direction.tsx`: `DirectionCards({ summaries, headline })` (prezentacja: nagłówek zdania + siatka 3 kafli; każdy kafel: etykieta, strzałka ↑/↓/→ z tekstem dla czytników „w górę/w dół/bez zmian/brak danych”, kolor `text-teal` w górę, `text-red` w dół, `text-t2` pozostałe, `headline`, `detail`, „od DD.MM” gdy `since`, cały kafel linkiem do `href`) i `DirectionSection({ projectId, gscProperty })` (serwerowy: zbiera trzy podsumowania; okna GSC z `gscWindows(lastDate)`)
+  - `src/app/app/page.tsx`: `DirectionSection` w `Suspense` (fallback: 3× `TileSkeleton`) zaraz pod `PageHero`/`RunStatus`, nad `StatsSection`
+- [ ] **Step 1: Failing tests**: `direction.test.ts`: `pickBaseline` (punkty 01.10, 08.10, 15.10, 29.10, najnowszy 29.10 → baza 01.10; tylko 22.10 i 29.10 → 22.10; jeden punkt → null); `aiSummary` Score 48 → 54 daje `"up"` i „+6 pkt”, 54 → 52 `"flat"`, 54 → 49 `"down"` i „−5 pkt”; `aioSummary` 0,40 → 0,33 daje `"down"` i „−7 pp”; `googleSummary` 120 → 142 kliknięcia `"up"` „+18%”, 15 → 9 kliknięć (za mała baza) i pozycja 12,0 → 9,4 `"up"` „lepiej o 2,6”, `configured false` → `"unknown"` „Podłącz Search Console”; `overallHeadline` dla wszystkich w górę, mieszanych i samych `unknown`. `direction-cards.test.tsx`: render z trzema podsumowaniami (up, down, unknown) → widać nagłówek, strzałki z tekstami „w górę” i „w dół”, klasy `text-teal` i `text-red`, linki `/app/prompts` i `/app/google`
+- [ ] **Step 2: Run** → FAIL; **Step 3: Implement**; **Step 4: Run** `npm test`, `npx tsc --noEmit`, eslint na zmienionych plikach → zielone
+- [ ] **Step 5: Commit** `feat(overview): direction summary for AI, AI Overviews and Google`
+
+M2 dopisze czwarty kafel „Pozycje fraz” (ile fraz w górę i w dół tydzień do tygodnia).
 
 ---
 
