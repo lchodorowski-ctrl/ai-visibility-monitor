@@ -82,6 +82,30 @@ describe("OpportunityList", () => {
     expect(added).not.toContain("\u2212");
   });
 
+  it("nowa i utracona fraza bez kliknięć: liczba wyświetleń zamiast „+N kliknięć”, bez zaokrąglania do 1", () => {
+    const fresh: Opportunity = { kind: "new", query: "nowa bez klików", clicks: 0, impressions: 80, position: 9, ctr: 0, potentialClicks: 0 };
+    const gone: Opportunity = { kind: "lost", query: "utracona bez klików", clicks: 0, impressions: 12345, position: 6, ctr: 0, potentialClicks: 0 };
+    const added = render(<OpportunityList items={[fresh]} />);
+    expect(added).toContain("80 wyświetleń");
+    expect(added).not.toContain("kliknię");
+    expect(added).not.toContain("(poprzednio)");
+    const lost = render(<OpportunityList items={[gone]} />);
+    expect(lost).toContain("12 345 wyświetleń (poprzednio)");
+    expect(lost).not.toContain("kliknię");
+    expect(lost).not.toContain("\u2212");
+  });
+
+  it("nowa fraza z jednym kliknięciem: „+1 kliknięcie”, utracona z dwoma: „−2 kliknięcia”", () => {
+    const one: Opportunity = { kind: "new", query: "q1", clicks: 1, impressions: 20, position: 9, ctr: 0.05, potentialClicks: 1 };
+    const two: Opportunity = { kind: "lost", query: "q2", clicks: 2, impressions: 20, position: 9, ctr: 0.1, potentialClicks: 2 };
+    expect(render(<OpportunityList items={[one]} />)).toContain("+1 kliknięcie/28 dni");
+    expect(render(<OpportunityList items={[two]} />)).toContain("\u22122 kliknięcia/28 dni");
+  });
+
+  it("własny komunikat pustej listy zastępuje domyślny", () => {
+    expect(render(<OpportunityList items={[]} empty="Nic tu nie ma" />)).toContain("Nic tu nie ma");
+  });
+
   it("odmienia „kliknięcie” i nie pokazuje „+0”", () => {
     const one = (potentialClicks: number): Opportunity => ({ kind: "striking", query: "q", clicks: 0, impressions: 100, position: 8, ctr: 0, potentialClicks });
     expect(render(<OpportunityList items={[one(1.2)]} />)).toContain("+1 kliknięcie/28 dni");
@@ -99,7 +123,8 @@ describe("OpportunityList", () => {
 const syncDisabled = (html: string) => /<button[^>]*\sdisabled=""[^>]*>Synchronizuj<\/button>/.test(html);
 
 describe("StatusSection", () => {
-  const props = { projectId: "p", gscProperty: "sc-domain:polskaszkola.ai", lastDate: "2026-10-31", seoBudget: 10, aiBudget: 20 };
+  const now = new Date("2026-11-02T12:00:00Z");
+  const props = { projectId: "p", gscProperty: "sc-domain:polskaszkola.ai", lastDate: "2026-10-31", seoBudget: 10, aiBudget: 20, now };
   const status = (lastSync: Record<string, unknown> | null, seoSpent = 0.5, aiSpent = 12.3) => q.getSeoStatus.mockResolvedValue({ lastSync, seoSpent, aiSpent });
   beforeEach(() => vi.clearAllMocks());
 
@@ -108,10 +133,32 @@ describe("StatusSection", () => {
     const html = render(await StatusSection(props));
     expect(html).toContain("Ostatnia synchronizacja");
     expect(html).toContain("zakończona");
-    expect(html).toContain("Wydatki w tym miesiącu: SEO 0.50 / 10.00 USD, AI 12.30 / 20.00 USD");
+    expect(html).toContain("Wydatki w tym miesiącu: SEO 0.50 / 10.00 USD, AI 12.30 / 20.00 USD, razem 12.80 USD");
     expect(html).toContain("Synchronizuj");
     expect(html).toContain("31.10.2026");
     expect(q.getSeoStatus).toHaveBeenCalledWith("p");
+  });
+
+  it("suma wydatków SEO i AI jest liczona i pokazana w USD z dwoma miejscami", async () => {
+    status(null, 0.1, 0.2);
+    expect(render(await StatusSection(props))).toContain("SEO 0.10 / 10.00 USD, AI 0.20 / 20.00 USD, razem 0.30 USD");
+    status(null, 0, 0);
+    expect(render(await StatusSection(props))).toContain("razem 0.00 USD");
+  });
+
+  it("zadanie w toku od niedawna to „w toku”", async () => {
+    status({ status: "running", error: null, started_at: "2026-11-02T11:30:00Z", finished_at: null });
+    const html = render(await StatusSection(props));
+    expect(html).toContain("w toku");
+    expect(html).not.toContain("przerwana");
+  });
+
+  it("zadanie w toku dłużej niż 45 minut to „przerwana”, nie „w toku”", async () => {
+    status({ status: "running", error: null, started_at: "2026-11-02T11:14:00Z", finished_at: null });
+    const html = render(await StatusSection(props));
+    expect(html).toContain("przerwana");
+    expect(html).not.toContain("w toku");
+    expect(html).toMatch(/<span class="text-red">przerwana<\/span>/);
   });
 
   it("nieudana synchronizacja pokazuje treść błędu", async () => {
@@ -142,7 +189,7 @@ describe("GscStatsSection", () => {
   it("cztery kafle z wartościami i zmianą wobec poprzednich 28 dni", async () => {
     q.getGscTotals.mockImplementation(async (_p: string, from: string) =>
       from === "2026-10-04" ? { clicks: 142, impressions: 4200, position: 9.4 } : { clicks: 120, impressions: 4000, position: 11 });
-    const html = render(await GscStatsSection({ projectId: "p", lastDate: "2026-10-31" }));
+    const html = render(await GscStatsSection({ projectId: "p", lastDate: "2026-10-31", firstDate: "2025-07-01" }));
     expect(q.getGscTotals).toHaveBeenCalledWith("p", "2026-10-04", "2026-10-31");
     expect(q.getGscTotals).toHaveBeenCalledWith("p", "2026-09-06", "2026-10-03");
     for (const label of ["Kliknięcia", "Wyświetlenia", "CTR", "Średnia pozycja"]) expect(html).toContain(label);
@@ -152,15 +199,47 @@ describe("GscStatsSection", () => {
     expect(html).toContain(">9,4<");
     expect(html).toContain("28 dni · +18% wobec poprzednich 28");
     expect(html).toContain("28 dni · +5% wobec poprzednich 28");
+    expect(html).toContain("28 dni · +0,4 pp wobec poprzednich 28"); // CTR 3,38% wobec 3,00%: zmiana w punktach procentowych
     // pozycja: bezwzględna zmiana słowami (niższa liczba = lepiej), nie procent
     expect(html).toContain("28 dni · lepiej o 1,6 poz."); // 11 → 9,4
     expect(html).not.toContain("wobec poprzednich 28\"><"); // bez dopisku procentowego przy pozycji
     expect(html.match(/wobec poprzednich 28/g)).toHaveLength(3);
   });
 
+  const ctrDetail = async (cur: [number, number], prev: [number, number]) => {
+    q.getGscTotals.mockImplementation(async (_p: string, from: string) => {
+      const [clicks, impressions] = from === "2026-10-04" ? cur : prev;
+      return { clicks, impressions, position: 9 };
+    });
+    return render(await GscStatsSection({ projectId: "p", lastDate: "2026-10-31", firstDate: "2025-07-01" }));
+  };
+
+  it("CTR: zmiana w punktach procentowych, nie procent względny; minus to U+2212", async () => {
+    expect(await ctrDetail([30, 1000], [20, 1000])).toContain("28 dni · +1,0 pp wobec poprzednich 28");
+    const down = await ctrDetail([20, 1000], [23, 1000]);
+    expect(down).toContain("28 dni · \u22120,3 pp wobec poprzednich 28");
+    expect(await ctrDetail([20, 1000], [20, 1000])).toContain("28 dni · 0,0 pp wobec poprzednich 28");
+  });
+
+  it("CTR: poprzednie okno z wyświetleniami, ale bez kliknięć, to zmiana od 0 pp; bez wyświetleń nie ma porównania", async () => {
+    expect(await ctrDetail([10, 1000], [0, 1000])).toContain("28 dni · +1,0 pp wobec poprzednich 28");
+    expect(await ctrDetail([10, 1000], [0, 0])).toContain("28 dni · brak danych do porównania");
+  });
+
+  it("za krótka historia: nie pyta o poprzednie okno, a każdy kafel mówi o braku danych do porównania", async () => {
+    q.getGscTotals.mockResolvedValue({ clicks: 142, impressions: 4200, position: 9.4 });
+    const html = render(await GscStatsSection({ projectId: "p", lastDate: "2026-10-31", firstDate: "2026-09-21" }));
+    expect(q.getGscTotals).toHaveBeenCalledTimes(1);
+    expect(q.getGscTotals).toHaveBeenCalledWith("p", "2026-10-04", "2026-10-31");
+    expect(html).toContain(">142<");
+    expect(html.match(/28 dni · brak danych do porównania/g)).toHaveLength(4);
+    expect(html).not.toContain("wobec poprzednich 28");
+    expect(html).not.toMatch(/poz\./);
+  });
+
   const positions = async (cur: number | null, prev: number | null) => {
     q.getGscTotals.mockImplementation(async (_p: string, from: string) => ({ clicks: 10, impressions: 100, position: from === "2026-10-04" ? cur : prev }));
-    return render(await GscStatsSection({ projectId: "p", lastDate: "2026-10-31" }));
+    return render(await GscStatsSection({ projectId: "p", lastDate: "2026-10-31", firstDate: "2025-07-01" }));
   };
 
   it("średnia pozycja: „lepiej o”, gdy liczba spadła, „gorzej o”, gdy wzrosła, z przecinkiem dziesiętnym", async () => {
@@ -183,7 +262,7 @@ describe("GscStatsSection", () => {
 
   it("bez poprzedniego okna i bez danych: kreski i komunikat o braku porównania", async () => {
     q.getGscTotals.mockResolvedValue({ clicks: null, impressions: null, position: null });
-    const html = render(await GscStatsSection({ projectId: "p", lastDate: "2026-10-31" }));
+    const html = render(await GscStatsSection({ projectId: "p", lastDate: "2026-10-31", firstDate: "2025-07-01" }));
     expect(html.match(/>brak</g)).toHaveLength(4);
     expect(html).toContain("28 dni · brak danych do porównania");
   });
@@ -227,7 +306,7 @@ describe("OpportunitiesSection", () => {
 
   it("cztery grupy z szansami liczonymi z okna bieżącego i poprzedniego", async () => {
     arrange();
-    const html = render(await OpportunitiesSection({ projectId: "p", lastDate: "2026-10-31" }));
+    const html = render(await OpportunitiesSection({ projectId: "p", lastDate: "2026-10-31", firstDate: "2025-07-01" }));
     for (const heading of ["Blisko top 3", "Niski CTR", "Kanibalizacja", "Nowe i utracone frazy"]) expect(html).toContain(heading);
     expect(html).toContain("fraza blisko top 3");
     expect(html).toContain("+21 kliknięć/28 dni"); // 200 * (0,11 - 0,005)
@@ -241,6 +320,31 @@ describe("OpportunitiesSection", () => {
     expect(q.getQueryPages).toHaveBeenCalledWith("p", "2026-10-04", "2026-10-31");
   });
 
+  it("nowe i utracone frazy bez kliknięć są widoczne i idą od największej liczby wyświetleń", async () => {
+    arrange([
+      window_("nowa mało wyświetleń", metrics(6, 15, 9)),
+      window_("nowa bez klików", metrics(0, 250, 12)),
+      window_("utracona bez klików", metrics(0, 0, null), metrics(0, 90, 8)),
+    ]);
+    const html = render(await OpportunitiesSection({ projectId: "p", lastDate: "2026-10-31", firstDate: "2025-07-01" }));
+    expect(html).toContain("250 wyświetleń");
+    expect(html).toContain("90 wyświetleń (poprzednio)");
+    expect(html).not.toContain("\u22121 kliknięcie");
+    const order = ["nowa bez klików", "utracona bez klików", "nowa mało wyświetleń"].map((n) => html.indexOf(n));
+    expect(order.every((i) => i > -1)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+  });
+
+  it("za krótka historia: bez nowych i utraconych fraz (poprzednie okno jest puste), reszta szans działa", async () => {
+    arrange();
+    const html = render(await OpportunitiesSection({ projectId: "p", lastDate: "2026-10-31", firstDate: "2026-09-21" }));
+    expect(html).toContain("fraza blisko top 3");
+    expect(html).not.toContain("fraza nowa");
+    expect(html).not.toContain("fraza utracona");
+    expect(html).toContain("Za krótka historia do porównania z poprzednimi 28 dniami.");
+    expect(html).not.toContain("Brak szans w tej grupie");
+  });
+
   it("ukrywa szanse bez potencjału i pokazuje najwyżej pięć na grupę", async () => {
     const before = metrics(5, 100, 9); // fraza istniała w poprzednim oknie: nie jest „nowa” ani „utracona”
     const many = Array.from({ length: 8 }, (_, i) => window_(`fraza ${i}`, metrics(0, 100 + i * 10, 15), before));
@@ -248,7 +352,7 @@ describe("OpportunitiesSection", () => {
     arrange([...many, zero]);
     q.getTopPages.mockResolvedValue([]);
     q.getQueryPages.mockResolvedValue([]);
-    const html = render(await OpportunitiesSection({ projectId: "p", lastDate: "2026-10-31" }));
+    const html = render(await OpportunitiesSection({ projectId: "p", lastDate: "2026-10-31", firstDate: "2025-07-01" }));
     expect(html).not.toContain("fraza zerowa");
     expect(html.match(/fraza \d/g)).toHaveLength(5);
     expect(html).toContain("fraza 7"); // największy potencjał

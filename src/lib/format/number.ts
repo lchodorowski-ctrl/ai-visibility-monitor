@@ -49,12 +49,27 @@ export function fmtSignedPercent(change: number, digits = 0): string {
 }
 
 /**
- * Average position change in places, in words: a lower position is better, so a relative percentage would read the
- * wrong way. "lepiej o 2,6 poz.", "gorzej o 0,3 poz.", "bez zmian" below 0.05; null when either position is missing.
+ * Average position change in places, rounded to the 0.1 that is shown: negative is better (a lower number), positive is
+ * worse, 0 below 0.05; null when either position is missing. The text and every verdict take this one number, so an
+ * arrow never disagrees with "lepiej o 0,5 poz." (rounding the two positions separately could).
  */
-export function positionChangeText(cur: number | null, prev: number | null): string | null {
+export function positionChange(cur: number | null, prev: number | null): number | null {
   if (cur === null || prev === null) return null;
   const d = cur - prev;
-  if (Math.abs(d) < 0.05) return "bez zmian";
+  const places = Math.round(Math.abs(d) * 10) / 10;
+  return places === 0 ? 0 : Math.sign(d) * places;
+}
+
+/**
+ * Average position change in words: a lower position is better, so a relative percentage would read the wrong way.
+ * "lepiej o 2,6 poz.", "gorzej o 0,3 poz.", "bez zmian" below 0.05; null when either position is missing.
+ */
+export function positionChangeText(cur: number | null, prev: number | null): string | null {
+  const d = positionChange(cur, prev);
+  if (d === null) return null;
+  if (d === 0) return "bez zmian";
   return `${d < 0 ? "lepiej" : "gorzej"} o ${fmtDecimal(Math.abs(d))} poz.`;
 }
+
+/** "2026-10-31" as "31.10". */
+export const fmtDayMonth = (iso: string): string => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;

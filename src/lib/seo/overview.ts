@@ -35,26 +35,48 @@ export function ctr(clicks: number | null, impressions: number | null): number |
   return clicks / impressions;
 }
 
-export type OverviewState = "no_property" | "no_data" | "error" | "ok";
+/** The previous window is complete only when the history reaches back to its first day; a shorter history inflates every comparison. */
+export function hasPreviousWindow(firstDate: string | null, w: GscWindows): boolean {
+  return firstDate !== null && firstDate <= w.prev.from;
+}
+
+/** A sync still `running` after this long has died without closing its ledger entry (the task limit is far shorter). */
+const RUNNING_JOB_MAX_MS = 45 * 60_000;
+
+/** A `running` job older than 45 minutes: it was interrupted, no result will come. Unreadable `started_at` is not an alarm. */
+export function isInterruptedJob(job: { status: string; started_at: string }, now: Date): boolean {
+  return job.status === "running" && now.getTime() - Date.parse(job.started_at) > RUNNING_JOB_MAX_MS;
+}
+
+export type OverviewState = "no_property" | "no_data" | "syncing" | "empty_result" | "error" | "ok";
 
 /**
- * What the page shows: no Search Console property, no data yet, a failed first sync (error), or the data.
- * With data present a failed last sync is not a page-level error: the status line reports it.
+ * What the page shows: no Search Console property, no data yet (nothing synced, or a sync that died), a sync in
+ * progress, a finished sync that returned no rows, a failed first sync (error), or the data.
+ * With data present a failed or running last sync is not a page-level state: the status line reports it.
  * A `skipped` job (no property at that time) is not an error either.
  */
 export function overviewState(o: {
   gscProperty: string | null;
   lastDate: string | null;
-  lastJob: { status: string; error: string | null } | null;
+  lastJob: { status: string; error: string | null; started_at: string } | null;
+  now?: Date;
 }): OverviewState {
   if (!o.gscProperty?.trim()) return "no_property";
   if (o.lastDate) return "ok";
-  return o.lastJob?.status === "failed" ? "error" : "no_data";
+  const job = o.lastJob;
+  if (job?.status === "failed") return "error";
+  if (job?.status === "running" && !isInterruptedJob(job, o.now ?? new Date())) return "syncing";
+  if (job?.status === "done") return "empty_result";
+  return "no_data";
 }
 
-/** Opportunities worth showing: potential above 0, in the given order, at most `max`. */
+/**
+ * Opportunities worth showing, in the given order, at most `max`. Striking distance, low CTR and cannibalization
+ * need a potential above 0; new and lost phrases stay without clicks: that a phrase appeared or vanished is the news.
+ */
 export function topOpportunities(items: Opportunity[], max = 5): Opportunity[] {
-  return items.filter((o) => o.potentialClicks > 0).slice(0, max);
+  return items.filter((o) => o.kind === "new" || o.kind === "lost" || o.potentialClicks > 0).slice(0, max);
 }
 
 /** Queries with impressions in the current window, most clicks first (more impressions on a tie). */

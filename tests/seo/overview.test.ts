@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  gscWindows, shiftDate, delta, ctr, overviewState, topOpportunities, topQueries, fillMissingDays,
+  gscWindows, shiftDate, delta, ctr, overviewState, hasPreviousWindow, isInterruptedJob, topOpportunities, topQueries, fillMissingDays,
 } from "@/lib/seo/overview";
 import type { Opportunity, QueryWindow } from "@/lib/seo/opportunities";
 
@@ -35,6 +35,41 @@ describe("gscWindows", () => {
   });
 });
 
+describe("hasPreviousWindow", () => {
+  const w = gscWindows("2026-10-31"); // poprzednie okno: 2026-09-06 do 2026-10-03
+
+  it("poprzednie okno jest pełne, gdy historia zaczyna się najpóźniej w jego pierwszym dniu", () => {
+    expect(hasPreviousWindow("2026-09-06", w)).toBe(true);
+    expect(hasPreviousWindow("2025-07-01", w)).toBe(true);
+  });
+
+  it("krótsza historia (pierwsza data po początku poprzedniego okna) to brak poprzedniego okna", () => {
+    expect(hasPreviousWindow("2026-09-07", w)).toBe(false);
+    expect(hasPreviousWindow("2026-09-21", w)).toBe(false); // 40 dni historii
+  });
+
+  it("bez żadnych danych też nie ma z czym porównać", () => {
+    expect(hasPreviousWindow(null, w)).toBe(false);
+  });
+});
+
+describe("isInterruptedJob", () => {
+  const now = new Date("2026-11-02T12:00:00Z");
+  const running = (started_at: string) => ({ status: "running", started_at });
+
+  it("zadanie w toku dłużej niż 45 minut uznajemy za przerwane; równe 45 minut jeszcze trwa", () => {
+    expect(isInterruptedJob(running("2026-11-02T11:15:00Z"), now)).toBe(false);
+    expect(isInterruptedJob(running("2026-11-02T11:14:59Z"), now)).toBe(true);
+    expect(isInterruptedJob(running("2026-11-02T11:59:00Z"), now)).toBe(false);
+  });
+
+  it("zadanie w innym stanie nigdy nie jest przerwane, a nieczytelna data nie wywołuje fałszywego alarmu", () => {
+    expect(isInterruptedJob({ status: "done", started_at: "2026-10-01T00:00:00Z" }, now)).toBe(false);
+    expect(isInterruptedJob({ status: "failed", started_at: "2026-10-01T00:00:00Z" }, now)).toBe(false);
+    expect(isInterruptedJob(running("nie data"), now)).toBe(false);
+  });
+});
+
 describe("delta", () => {
   it("zmiana względna wobec poprzedniego okna", () => {
     expect(delta(120, 100)).toBe(0.2);
@@ -66,31 +101,51 @@ describe("ctr", () => {
 });
 
 describe("overviewState", () => {
-  const job = (status: string, error: string | null = null) => ({ status, error });
+  const now = new Date("2026-11-02T12:00:00Z");
+  const job = (status: string, error: string | null = null, started_at = "2026-11-02T11:50:00Z") => ({ status, error, started_at });
+  const state = (o: { gscProperty?: string | null; lastDate?: string | null; lastJob?: ReturnType<typeof job> | null }) =>
+    overviewState({ gscProperty: "sc-domain:x.pl", lastDate: null, lastJob: null, now, ...o });
 
   it("brak usługi Search Console (null albo pusty tekst) → no_property, także gdy są dane i zadanie", () => {
-    expect(overviewState({ gscProperty: null, lastDate: null, lastJob: null })).toBe("no_property");
-    expect(overviewState({ gscProperty: "  ", lastDate: "2026-10-31", lastJob: job("done") })).toBe("no_property");
+    expect(state({ gscProperty: null })).toBe("no_property");
+    expect(state({ gscProperty: "  ", lastDate: "2026-10-31", lastJob: job("done") })).toBe("no_property");
   });
 
-  it("usługa jest, ale brak danych i brak nieudanego zadania → no_data", () => {
-    expect(overviewState({ gscProperty: "sc-domain:x.pl", lastDate: null, lastJob: null })).toBe("no_data");
-    expect(overviewState({ gscProperty: "sc-domain:x.pl", lastDate: null, lastJob: job("running") })).toBe("no_data");
-    expect(overviewState({ gscProperty: "sc-domain:x.pl", lastDate: null, lastJob: job("done") })).toBe("no_data");
+  it("usługa jest, ale brak danych i brak zadania → no_data", () => {
+    expect(state({})).toBe("no_data");
   });
 
   it("brak danych i ostatnie zadanie nieudane → error", () => {
-    expect(overviewState({ gscProperty: "sc-domain:x.pl", lastDate: null, lastJob: job("failed", "403") })).toBe("error");
+    expect(state({ lastJob: job("failed", "403") })).toBe("error");
   });
 
-  it("pominięte zadanie (sprzed wpisania usługi) nie jest błędem", () => {
-    expect(overviewState({ gscProperty: "sc-domain:x.pl", lastDate: null, lastJob: job("skipped", "Brak usługi") })).toBe("no_data");
+  it("brak danych i zadanie w toku od niedawna → syncing", () => {
+    expect(state({ lastJob: job("running", null, "2026-11-02T11:15:00Z") })).toBe("syncing");
+    expect(state({ lastJob: job("running", null, "2026-11-02T11:59:00Z") })).toBe("syncing");
   });
 
-  it("są dane → ok, także gdy ostatnia synchronizacja się nie udała (błąd widać w statusie)", () => {
-    expect(overviewState({ gscProperty: "sc-domain:x.pl", lastDate: "2026-10-31", lastJob: job("done") })).toBe("ok");
-    expect(overviewState({ gscProperty: "sc-domain:x.pl", lastDate: "2026-10-31", lastJob: job("failed", "boom") })).toBe("ok");
-    expect(overviewState({ gscProperty: "sc-domain:x.pl", lastDate: "2026-10-31", lastJob: null })).toBe("ok");
+  it("zadanie w toku dłużej niż 45 minut jest przerwane, więc to zwykły brak danych (nie „w toku”)", () => {
+    expect(state({ lastJob: job("running", null, "2026-11-02T11:14:59Z") })).toBe("no_data");
+    expect(state({ lastJob: job("running", null, "2026-10-30T04:30:00Z") })).toBe("no_data");
+  });
+
+  it("synchronizacja zakończona, a danych nadal brak → empty_result", () => {
+    expect(state({ lastJob: job("done") })).toBe("empty_result");
+  });
+
+  it("pominięte zadanie (sprzed wpisania usługi) nie jest błędem ani pustym wynikiem", () => {
+    expect(state({ lastJob: job("skipped", "Brak usługi") })).toBe("no_data");
+  });
+
+  it("są dane → ok, także gdy ostatnia synchronizacja się nie udała albo trwa (błąd i status widać w pasku)", () => {
+    expect(state({ lastDate: "2026-10-31", lastJob: job("done") })).toBe("ok");
+    expect(state({ lastDate: "2026-10-31", lastJob: job("failed", "boom") })).toBe("ok");
+    expect(state({ lastDate: "2026-10-31", lastJob: job("running") })).toBe("ok");
+    expect(state({ lastDate: "2026-10-31", lastJob: null })).toBe("ok");
+  });
+
+  it("bez wstrzykniętego czasu używa bieżącego (świeże zadanie w toku to syncing)", () => {
+    expect(overviewState({ gscProperty: "sc-domain:x.pl", lastDate: null, lastJob: job("running", null, new Date().toISOString()) })).toBe("syncing");
   });
 });
 
@@ -105,6 +160,12 @@ describe("topOpportunities", () => {
       striking("e", 5), striking("f", 4), striking("ujemna", -3),
     ];
     expect(topOpportunities(items).map((o) => o.query)).toEqual(["a", "b", "c", "d", "e"]);
+  });
+
+  it("nowe i utracone frazy zostają mimo zerowych kliknięć (pojawienie się i zniknięcie frazy to informacja)", () => {
+    const fresh: Opportunity = { kind: "new", query: "nowa bez klików", clicks: 0, impressions: 80, position: 9, ctr: 0, potentialClicks: 0 };
+    const gone: Opportunity = { kind: "lost", query: "utracona bez klików", clicks: 0, impressions: 60, position: 6, ctr: 0, potentialClicks: 0 };
+    expect(topOpportunities([fresh, striking("zero", 0), gone]).map((o) => (o.kind === "cannibal" ? o.query : o.query))).toEqual(["nowa bez klików", "utracona bez klików"]);
   });
 
   it("limit można zmienić; pusta lista zostaje pusta", () => {

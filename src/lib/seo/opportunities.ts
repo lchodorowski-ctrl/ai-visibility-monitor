@@ -179,13 +179,17 @@ export function cannibalization(rows: QueryPage[]): Opportunity[] {
   return out.sort(byPotential);
 }
 
-/** Queries that appeared (no impressions before) or vanished (none now); potential is the clicks of the window where the query exists. */
+/**
+ * Queries that appeared (no impressions before) or vanished (none now). The numbers are those of the window where the
+ * query exists; `potentialClicks` is its clicks, but the list is ordered by that window's impressions (largest first):
+ * a phrase without a single click is still worth showing, and there is no "potential" to rank it by.
+ */
 export function newAndLost(rows: QueryWindow[]): Opportunity[] {
   const min = THRESHOLDS.newLostMinImpressions;
-  const out: Opportunity[] = [];
+  const out: MetricOpportunity[] = [];
   for (const { query, cur, prev } of rows) {
     if (prev.impressions === 0 && cur.impressions >= min) out.push(metricOpportunity("new", { query }, cur, cur.clicks));
     else if (cur.impressions === 0 && prev.impressions >= min) out.push(metricOpportunity("lost", { query }, prev, prev.clicks));
   }
-  return out.sort(byPotential);
+  return out.sort((a, b) => b.impressions - a.impressions || b.clicks - a.clicks);
 }

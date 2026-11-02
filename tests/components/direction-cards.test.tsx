@@ -4,7 +4,7 @@ import type { Tables } from "@/lib/db-types";
 import type { ChannelSummary } from "@/lib/trends/direction";
 
 const m = vi.hoisted(() => ({ getDirectionRows: vi.fn() }));
-const q = vi.hoisted(() => ({ getGscLastDate: vi.fn(), getGscTotals: vi.fn() }));
+const q = vi.hoisted(() => ({ getGscLastDate: vi.fn(), getGscFirstDate: vi.fn(), getGscTotals: vi.fn() }));
 vi.mock("@/lib/metrics/queries", () => m);
 vi.mock("@/lib/seo/queries", () => q);
 
@@ -111,17 +111,21 @@ const rows = [
 ];
 
 describe("DirectionSection", () => {
+  const now = new Date("2026-11-02T10:00:00Z");
+  const section = (gscProperty: string | null = "sc-domain:polskaszkola.ai") => DirectionSection({ projectId: "p", gscProperty, now });
+
   beforeEach(() => {
     vi.clearAllMocks();
     m.getDirectionRows.mockResolvedValue(rows);
     q.getGscLastDate.mockResolvedValue("2026-10-31");
+    q.getGscFirstDate.mockResolvedValue("2025-07-01");
     q.getGscTotals.mockImplementation(async (_p: string, from: string) =>
       from === "2026-10-04" ? { clicks: 142, impressions: 4200, position: 9.4 } : { clicks: 120, impressions: 4000, position: 10.6 });
   });
   afterEach(() => vi.restoreAllMocks());
 
   it("zbiera trzy podsumowania i zdanie o kierunku; okna Search Console z ostatniej daty danych", async () => {
-    const html = render(await DirectionSection({ projectId: "p", gscProperty: "sc-domain:polskaszkola.ai" }));
+    const html = render(await section());
     expect(m.getDirectionRows).toHaveBeenCalledWith("p");
     expect(q.getGscLastDate).toHaveBeenCalledWith("p");
     expect(q.getGscTotals).toHaveBeenCalledWith("p", "2026-10-04", "2026-10-31");
@@ -135,12 +139,43 @@ describe("DirectionSection", () => {
     expect(html).toContain('href="/app/google"');
   });
 
+  it("kafel Google podaje okres porównania z datą ostatnich danych", async () => {
+    expect(render(await section())).toContain("28 dni do 31.10 wobec poprzednich 28");
+  });
+
+  it("historia krótsza niż dwa okna: nie pyta o poprzednie okno, kierunek nieznany, bez procentu", async () => {
+    q.getGscFirstDate.mockResolvedValue("2026-09-21"); // 40 dni historii: poprzednie okno zaczynałoby się 2026-09-06
+    const html = render(await section());
+    expect(q.getGscTotals).toHaveBeenCalledTimes(1);
+    expect(q.getGscTotals).toHaveBeenCalledWith("p", "2026-10-04", "2026-10-31");
+    expect(html).toContain("142 kliknięcia");
+    expect(html).toContain("Za krótka historia do porównania (dane od 21.09)");
+    expect(html).not.toContain("+18%");
+    expect(html).toContain("W górę: AI. W dół: AI Overviews. Brak danych: Google.");
+  });
+
+  it("historia sięgająca początku poprzedniego okna wystarcza do porównania", async () => {
+    q.getGscFirstDate.mockResolvedValue("2026-09-06");
+    const html = render(await section());
+    expect(q.getGscTotals).toHaveBeenCalledWith("p", "2026-09-06", "2026-10-03");
+    expect(html).toContain("142 kliknięcia, +18%");
+  });
+
+  it("ostatnie dane starsze niż 7 dni: kafel Google mówi, że dane są nieaktualne", async () => {
+    q.getGscLastDate.mockResolvedValue("2026-10-20");
+    const html = render(await section());
+    expect(html).toContain("Dane z Search Console są nieaktualne");
+    expect(html).toContain("ostatnie dane: 20.10. Sprawdź synchronizację na stronie Google.");
+    expect(html).toContain("W górę: AI. W dół: AI Overviews. Brak danych: Google.");
+  });
+
   it("bez usługi Search Console nie pyta o dane Google i podpowiada podłączenie", async () => {
     for (const gscProperty of [null, "", "   "]) {
       vi.clearAllMocks();
       m.getDirectionRows.mockResolvedValue(rows);
-      const html = render(await DirectionSection({ projectId: "p", gscProperty }));
+      const html = render(await DirectionSection({ projectId: "p", gscProperty, now }));
       expect(q.getGscLastDate).not.toHaveBeenCalled();
+      expect(q.getGscFirstDate).not.toHaveBeenCalled();
       expect(q.getGscTotals).not.toHaveBeenCalled();
       expect(html).toContain("Podłącz Search Console");
       expect(html).toContain("W górę: AI. W dół: AI Overviews. Brak danych: Google.");
@@ -149,7 +184,7 @@ describe("DirectionSection", () => {
 
   it("usługa wpisana, ale jeszcze bez żadnej synchronizacji: „Brak danych z Search Console”", async () => {
     q.getGscLastDate.mockResolvedValue(null);
-    const html = render(await DirectionSection({ projectId: "p", gscProperty: "sc-domain:polskaszkola.ai" }));
+    const html = render(await section());
     expect(q.getGscTotals).not.toHaveBeenCalled();
     expect(html).toContain("Brak danych z Search Console");
   });
@@ -157,7 +192,7 @@ describe("DirectionSection", () => {
   it("błąd odczytu z Search Console nie psuje przeglądu: kafel Google pokazuje brak danych, reszta działa", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
     q.getGscLastDate.mockRejectedValue(new Error("Nie udało się pobrać ostatniej daty z Search Console: boom"));
-    const html = render(await DirectionSection({ projectId: "p", gscProperty: "sc-domain:polskaszkola.ai" }));
+    const html = render(await section());
     expect(html).toContain("Brak danych z Search Console");
     expect(html).toContain("Score 54, +6 pkt");
     expect(error).toHaveBeenCalledOnce();
@@ -167,7 +202,7 @@ describe("DirectionSection", () => {
   it("bez żadnych pomiarów AI zdanie mówi o braku danych", async () => {
     m.getDirectionRows.mockResolvedValue([]);
     q.getGscLastDate.mockResolvedValue(null);
-    const html = render(await DirectionSection({ projectId: "p", gscProperty: null }));
+    const html = render(await section(null));
     expect(html).toContain("Za mało danych, żeby ocenić kierunek. Potrzebne są co najmniej dwa pomiary.");
     expect(html.match(/<span class="sr-only">brak danych<\/span>/g)).toHaveLength(3);
   });

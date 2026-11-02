@@ -1,7 +1,8 @@
 import { getDirectionRows } from "@/lib/metrics/queries";
-import { getGscLastDate, getGscTotals, type GscTotals } from "@/lib/seo/queries";
-import { gscWindows } from "@/lib/seo/overview";
+import { getGscFirstDate, getGscLastDate, getGscTotals, type GscTotals } from "@/lib/seo/queries";
+import { gscWindows, hasPreviousWindow } from "@/lib/seo/overview";
 import { aiSummary, aioSummary, googleSummary, overallHeadline, type ChannelSummary, type Direction } from "@/lib/trends/direction";
+import { fmtDayMonth } from "@/lib/format/number";
 import { Eyebrow, Meta, SectionHead, Tile } from "@/components/psai";
 
 /** Colour never carries the verdict alone: every arrow has a text for screen readers, and the shapes differ. */
@@ -12,12 +13,9 @@ const ARROW: Record<Direction, { glyph: string; text: string; color: string }> =
   unknown: { glyph: "○", text: "brak danych", color: "text-t2" },
 };
 
-/** "2026-10-01" as "01.10". */
-const dayMonth = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
-
 function DirectionCard({ s }: { s: ChannelSummary }) {
   const arrow = ARROW[s.direction];
-  const footer = s.since ? `od ${dayMonth(s.since)}` : s.period;
+  const footer = s.since ? `od ${fmtDayMonth(s.since)}` : s.period;
   return (
     <Tile href={s.href}>
       <div className="flex items-start justify-between gap-4">
@@ -45,31 +43,39 @@ export function DirectionCards({ summaries, headline }: { summaries: ChannelSumm
   );
 }
 
-const NO_GSC: { cur: GscTotals | null; prev: GscTotals | null } = { cur: null, prev: null };
+interface GscWindowData { cur: GscTotals | null; prev: GscTotals | null; lastDate: string | null; firstDate: string | null }
+
+const NO_GSC: GscWindowData = { cur: null, prev: null, lastDate: null, firstDate: null };
 
 /**
- * Site totals of the latest 28 days and of the 28 before. A failed read must not take the whole overview down:
- * it is logged and the Google card says there is no data (the Google page shows the real error).
+ * Site totals of the latest 28 days and of the 28 before, with the first and the last day of data. When the history
+ * does not reach back to the start of the previous window, `prev` is null (a half-empty window would inflate every
+ * change). A failed read must not take the whole overview down: it is logged and the Google card says there is no data
+ * (the Google page shows the real error).
  */
-async function loadGscWindows(projectId: string): Promise<{ cur: GscTotals | null; prev: GscTotals | null }> {
+async function loadGscWindows(projectId: string): Promise<GscWindowData> {
   try {
-    const lastDate = await getGscLastDate(projectId);
+    const [lastDate, firstDate] = await Promise.all([getGscLastDate(projectId), getGscFirstDate(projectId)]);
     if (!lastDate) return NO_GSC;
     const w = gscWindows(lastDate);
     const [cur, prev] = await Promise.all([
       getGscTotals(projectId, w.cur.from, w.cur.to),
-      getGscTotals(projectId, w.prev.from, w.prev.to),
+      hasPreviousWindow(firstDate, w) ? getGscTotals(projectId, w.prev.from, w.prev.to) : null,
     ]);
-    return { cur, prev };
+    return { cur, prev, lastDate, firstDate };
   } catch (e) {
     console.error(`DirectionSection: nie udało się pobrać danych z Search Console: ${e instanceof Error ? e.message : String(e)}`);
     return NO_GSC;
   }
 }
 
-export async function DirectionSection({ projectId, gscProperty }: { projectId: string; gscProperty: string | null }) {
+export async function DirectionSection({ projectId, gscProperty, now }: { projectId: string; gscProperty: string | null; now?: Date }) {
   const configured = Boolean(gscProperty?.trim());
   const [rows, gsc] = await Promise.all([getDirectionRows(projectId), configured ? loadGscWindows(projectId) : NO_GSC]);
-  const summaries = [aiSummary(rows), aioSummary(rows), googleSummary(gsc.cur, gsc.prev, configured)];
+  const summaries = [
+    aiSummary(rows),
+    aioSummary(rows),
+    googleSummary(gsc.cur, gsc.prev, configured, { lastDate: gsc.lastDate, firstDate: gsc.firstDate, now }),
+  ];
   return <DirectionCards summaries={summaries} headline={overallHeadline(summaries)} />;
 }

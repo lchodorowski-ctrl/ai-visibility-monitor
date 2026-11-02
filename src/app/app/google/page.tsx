@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { getCurrentProject } from "@/lib/workspace";
-import { getGscLastDate, getSeoStatus } from "@/lib/seo/queries";
+import { getGscFirstDate, getGscLastDate, getSeoStatus } from "@/lib/seo/queries";
 import { overviewState } from "@/lib/seo/overview";
 import { PageHero, TileSkeleton, EmptyState } from "@/components/psai";
 import { buttonVariants } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import {
 
 export default async function GooglePage() {
   const project = await getCurrentProject();
-  const [lastDate, { lastSync }] = await Promise.all([getGscLastDate(project.id), getSeoStatus(project.id)]);
+  const [lastDate, firstDate, { lastSync }] = await Promise.all([getGscLastDate(project.id), getGscFirstDate(project.id), getSeoStatus(project.id)]);
   const state = overviewState({ gscProperty: project.gsc_property, lastDate, lastJob: lastSync });
   return (
     <div className="space-y-20">
@@ -31,16 +31,22 @@ export default async function GooglePage() {
       {state === "no_data" && (
         <EmptyState title="Brak danych z Search Console" description="Kliknij Synchronizuj. Pierwsze pobranie obejmuje 16 miesięcy." />
       )}
+      {state === "syncing" && (
+        <EmptyState title="Brak danych z Search Console" description="Synchronizacja w toku… Pierwsze pobranie obejmuje 16 miesięcy, więc odśwież stronę za kilka minut." />
+      )}
+      {state === "empty_result" && (
+        <EmptyState title="Brak danych z Search Console" description="Search Console nie zwróciło jeszcze danych dla tej usługi." />
+      )}
       {state === "error" && (
         <EmptyState tone="error" title="Synchronizacja nie powiodła się" description={lastSync?.error || "Nie udało się pobrać danych z Search Console."} />
       )}
       {state === "ok" && lastDate && (
         <>
           <Suspense fallback={<div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4"><TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton /></div>}>
-            <GscStatsSection projectId={project.id} lastDate={lastDate} />
+            <GscStatsSection projectId={project.id} lastDate={lastDate} firstDate={firstDate} />
           </Suspense>
           <Suspense fallback={<TileSkeleton lines={6} />}><GscTrendSection projectId={project.id} /></Suspense>
-          <Suspense fallback={<TileSkeleton lines={6} />}><OpportunitiesSection projectId={project.id} lastDate={lastDate} /></Suspense>
+          <Suspense fallback={<TileSkeleton lines={6} />}><OpportunitiesSection projectId={project.id} lastDate={lastDate} firstDate={firstDate} /></Suspense>
           <Suspense fallback={<TileSkeleton lines={5} />}><TopQueriesSection projectId={project.id} lastDate={lastDate} /></Suspense>
           <Suspense fallback={<TileSkeleton lines={5} />}><TopPagesSection projectId={project.id} lastDate={lastDate} /></Suspense>
         </>

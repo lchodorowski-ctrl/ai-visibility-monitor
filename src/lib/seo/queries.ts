@@ -39,6 +39,15 @@ export const getGscLastDate = cache(async (projectId: string): Promise<string | 
   return data?.date ?? null;
 });
 
+/** Earliest day with data in `gsc_site_daily` (how far back the history reaches), or null before the first sync. */
+export const getGscFirstDate = cache(async (projectId: string): Promise<string | null> => {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from("gsc_site_daily").select("date").eq("project_id", projectId).order("date", { ascending: true }).limit(1).maybeSingle();
+  if (error) throw new Error(`Nie udało się pobrać pierwszej daty z Search Console: ${error.message}`);
+  return data?.date ?? null;
+});
+
 /** Site totals in a date window; all null when there is no data. */
 export const getGscTotals = cache(async (projectId: string, from: string, to: string): Promise<GscTotals> => {
   const supabase = await createServerSupabase();

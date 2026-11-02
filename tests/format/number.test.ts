@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { plainSpaces, fmtDecimal, fmtNumber, fmtCompact, fmtSignedNumber, fmtSignedPercent, positionChangeText } from "@/lib/format/number";
+import {
+  plainSpaces, fmtDecimal, fmtNumber, fmtCompact, fmtSignedNumber, fmtSignedPercent, positionChange, positionChangeText, fmtDayMonth,
+} from "@/lib/format/number";
 
 const NO_BREAK = /[\u00a0\u202f]/;
 
@@ -112,5 +114,39 @@ describe("positionChangeText", () => {
     expect(positionChangeText(null, 9)).toBeNull();
     expect(positionChangeText(9, null)).toBeNull();
     expect(positionChangeText(null, null)).toBeNull();
+  });
+});
+
+describe("positionChange", () => {
+  it("zmiana pozycji w miejscach zaokrąglona do 0,1, z minusem, gdy jest lepiej (liczba spadła)", () => {
+    expect(positionChange(9.4, 12)).toBeCloseTo(-2.6, 10);
+    expect(positionChange(12, 9.4)).toBeCloseTo(2.6, 10);
+    expect(positionChange(9, 9.48)).toBeCloseTo(-0.5, 10);
+  });
+
+  it("zmiana poniżej 0,05 to 0, a brak pozycji to null", () => {
+    expect(positionChange(9.4, 9.42)).toBe(0);
+    expect(positionChange(9.42, 9.4)).toBe(0);
+    expect(positionChange(null, 9)).toBeNull();
+    expect(positionChange(9, null)).toBeNull();
+  });
+
+  it("zaokrągla zmianę, a nie obie pozycje: 9,06 → 9,54 to 0,48, czyli 0,5 (po zaokrągleniu pozycji byłoby 0,4)", () => {
+    expect(positionChange(9.06, 9.54)).toBeCloseTo(-0.5, 10);
+    expect(positionChange(9.04, 9.46)).toBeCloseTo(-0.4, 10);
+  });
+
+  it("zgadza się z tekstem: wartość bezwzględna to liczba w „lepiej o X poz.”", () => {
+    for (const [cur, prev] of [[9.06, 9.54], [9.04, 9.46], [9, 9.48], [20.2, 8], [9.4, 9.5]] as const) {
+      const shown = positionChange(cur, prev)!;
+      expect(positionChangeText(cur, prev)).toBe(`${shown < 0 ? "lepiej" : "gorzej"} o ${fmtDecimal(Math.abs(shown))} poz.`);
+    }
+  });
+});
+
+describe("fmtDayMonth", () => {
+  it("data ISO jako DD.MM", () => {
+    expect(fmtDayMonth("2026-10-01")).toBe("01.10");
+    expect(fmtDayMonth("2026-12-31")).toBe("31.12");
   });
 });

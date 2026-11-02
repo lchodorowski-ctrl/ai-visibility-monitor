@@ -8,8 +8,8 @@
 import type { Tables } from "@/lib/db-types";
 import type { GscTotals } from "@/lib/seo/queries";
 import { shiftDate, WINDOW_DAYS } from "@/lib/seo/overview";
-import { fmtDecimal, fmtNumber, fmtSignedNumber, fmtSignedPercent, pct, positionChangeText } from "@/lib/format/number";
-import { pluralPl } from "@/lib/format/plural";
+import { fmtDayMonth, fmtDecimal, fmtNumber, fmtSignedNumber, fmtSignedPercent, pct, positionChange, positionChangeText } from "@/lib/format/number";
+import { pluralFmt } from "@/lib/format/plural";
 
 export type Direction = "up" | "down" | "flat" | "unknown";
 
@@ -24,8 +24,12 @@ export const DIRECTION_THRESHOLDS = {
   clicksMinBase: 20,
   /** Average position change in places. */
   positionPlaces: 0.5,
+  /** Relative rise in impressions that softens a worse average position from "down" to "flat" (0.1 = 10%). */
+  impressionsGrowth: 0.1,
   /** How far back the AI measurement used for comparison should be. */
   baselineDays: 28,
+  /** Search Console data whose latest day is more than this many days old is stale (the sync stopped or fails). */
+  staleDays: 7,
 } as const;
 
 const TH = DIRECTION_THRESHOLDS;
@@ -145,15 +149,35 @@ export function aioSummary(rows: Tables<"daily_metrics">[]): ChannelSummary {
 const CLICK_FORMS: [string, string, string] = ["kliknięcie", "kliknięcia", "kliknięć"];
 
 /** "142 kliknięcia", with the thousands separated like everywhere else in the app ("12 345 kliknięć"). */
-const clicksText = (n: number) => pluralPl(n, CLICK_FORMS).replace(String(n), fmtNumber(n));
+const clicksText = (n: number) => pluralFmt(n, CLICK_FORMS);
 
-export function googleSummary(cur: GscTotals | null, prev: GscTotals | null, configured: boolean): ChannelSummary {
+export interface GoogleSummaryContext {
+  /** Latest day with data: names the end of the compared period and enables the stale-data check. */
+  lastDate?: string | null;
+  /** Earliest day with data: named when the history is too short for a comparison. */
+  firstDate?: string | null;
+  /** Current time (UTC day decides staleness); injected by tests. */
+  now?: Date;
+}
+
+/**
+ * `prev` null means there is no comparable previous window (the history is shorter than two windows); a `prev` whose
+ * values are all null is a window with no data. Neither gives a percentage or a direction.
+ */
+export function googleSummary(cur: GscTotals | null, prev: GscTotals | null, configured: boolean, ctx: GoogleSummaryContext = {}): ChannelSummary {
   const id = { key: "google", label: "Google: wyniki wyszukiwania", href: "/app/google", since: null } as const;
   if (!configured) {
     return { ...id, direction: "unknown", headline: "Podłącz Search Console", detail: "Wpisz usługę w Ustawienia → Google." };
   }
   if (!cur || cur.clicks === null) {
     return { ...id, direction: "unknown", headline: "Brak danych z Search Console", detail: "Kliknij Synchronizuj na stronie Google." };
+  }
+  const { lastDate } = ctx;
+  if (lastDate && shiftDate((ctx.now ?? new Date()).toISOString().slice(0, 10), -TH.staleDays) > lastDate) {
+    return {
+      ...id, direction: "unknown", headline: "Dane z Search Console są nieaktualne",
+      detail: `ostatnie dane: ${fmtDayMonth(lastDate)}. Sprawdź synchronizację na stronie Google.`,
+    };
   }
 
   const clicks = Math.round(cur.clicks);
@@ -165,9 +189,18 @@ export function googleSummary(cur: GscTotals | null, prev: GscTotals | null, con
   const shownRel = rel === null ? null : Math.sign(rel) * Math.round(Math.abs(rel) * 100) / 100;
 
   const byClicks: Direction = shownRel === null ? "unknown" : higherIsBetter(shownRel, 0, TH.clicksRelative);
-  const byPosition: Direction = cur.position !== null && prev?.position != null ? lowerIsBetter(cur.position, prev.position, TH.positionPlaces) : "unknown";
+  // the change is rounded as the text "lepiej o X poz." shows it, so the verdict and the words cannot disagree
+  const shownPositionChange = positionChange(cur.position, prev?.position ?? null);
+  const byPosition: Direction = shownPositionChange === null ? "unknown" : lowerIsBetter(shownPositionChange, 0, TH.positionPlaces);
   // clear clicks decide; otherwise (no clear change or too small a base) the average position does
-  const direction = byClicks === "up" || byClicks === "down" ? byClicks : byPosition !== "unknown" ? byPosition : byClicks;
+  const decidedByPosition = byClicks !== "up" && byClicks !== "down" && byPosition !== "unknown";
+  let direction: Direction = decidedByPosition ? byPosition : byClicks;
+  // on a young site long-tail impressions worsen the average position while visibility grows: not a fall
+  const prevImpressions = prev?.impressions ?? 0;
+  if (decidedByPosition && direction === "down" && prevImpressions > 0 && cur.impressions !== null
+    && (cur.impressions - prevImpressions) / prevImpressions > TH.impressionsGrowth) {
+    direction = "flat";
+  }
 
   let headline: string;
   if (prevClicks === null) headline = clicksText(clicks);
@@ -176,13 +209,16 @@ export function googleSummary(cur: GscTotals | null, prev: GscTotals | null, con
 
   let detail: string;
   if (cur.position === null) detail = "brak danych o średniej pozycji";
+  else if (prev === null) detail = `średnia pozycja ${fmtDecimal(cur.position)}`;
   else if (prevClicks === null) detail = `średnia pozycja ${fmtDecimal(cur.position)}, brak poprzednich ${WINDOW_DAYS} dni do porównania`;
   else {
-    const positionChange = positionChangeText(cur.position, prev?.position ?? null);
-    detail = `średnia pozycja ${fmtDecimal(cur.position)}${positionChange ? ` (${positionChange})` : ""}`;
+    const positionText = positionChangeText(cur.position, prev.position);
+    detail = `średnia pozycja ${fmtDecimal(cur.position)}${positionText ? ` (${positionText})` : ""}`;
   }
+  if (prev === null) detail += `. Za krótka historia do porównania${ctx.firstDate ? ` (dane od ${fmtDayMonth(ctx.firstDate)})` : ""}`;
 
-  return { ...id, direction, headline, detail, period: prevClicks !== null ? `ostatnie ${WINDOW_DAYS} dni wobec poprzednich ${WINDOW_DAYS}` : `ostatnie ${WINDOW_DAYS} dni` };
+  const upTo = lastDate ? `${WINDOW_DAYS} dni do ${fmtDayMonth(lastDate)}` : `ostatnie ${WINDOW_DAYS} dni`;
+  return { ...id, direction, headline, detail, period: prevClicks !== null ? `${upTo} wobec poprzednich ${WINDOW_DAYS}` : upTo };
 }
 
 const SHORT_LABEL: Record<ChannelSummary["key"], string> = { ai: "AI", aio: "AI Overviews", google: "Google" };

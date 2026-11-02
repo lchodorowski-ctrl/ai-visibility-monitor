@@ -18,7 +18,8 @@ const pts = (...dates: string[]) => dates.map((date) => ({ date }));
 describe("DIRECTION_THRESHOLDS", () => {
   it("progi z założeń zadania", () => {
     expect(DIRECTION_THRESHOLDS).toEqual({
-      scorePoints: 3, ratePoints: 0.05, clicksRelative: 0.1, clicksMinBase: 20, positionPlaces: 0.5, baselineDays: 28,
+      scorePoints: 3, ratePoints: 0.05, clicksRelative: 0.1, clicksMinBase: 20, positionPlaces: 0.5, impressionsGrowth: 0.1,
+      baselineDays: 28, staleDays: 7,
     });
   });
 });
@@ -233,6 +234,7 @@ describe("aioSummary", () => {
 
 describe("googleSummary", () => {
   const t = (clicks: number | null, position: number | null, impressions: number | null = 1000) => ({ clicks, impressions, position });
+  const now = new Date("2026-11-02T10:00:00Z");
 
   it("kliknięcia 120 → 142: w górę, „+18%”, średnia pozycja ze zmianą słowami, link do Google", () => {
     const s = googleSummary(t(142, 9.4), t(120, 10.6), true);
@@ -304,10 +306,15 @@ describe("googleSummary", () => {
     expect(googleSummary(t(1, 9), t(30, 9), true).headline).toBe(`1 kliknięcie, ${MINUS}97%`);
   });
 
-  it("opis okresu porównania: ostatnie 28 dni wobec poprzednich 28, bez daty bazy", () => {
-    const s = googleSummary(t(142, 9.4), t(120, 10.6), true);
+  it("opis okresu porównania: 28 dni do ostatniej daty danych wobec poprzednich 28, bez daty bazy", () => {
+    const s = googleSummary(t(142, 9.4), t(120, 10.6), true, { lastDate: "2026-10-31", now });
     expect(s.since).toBeNull();
-    expect(s.period).toBe("ostatnie 28 dni wobec poprzednich 28");
+    expect(s.period).toBe("28 dni do 31.10 wobec poprzednich 28");
+  });
+
+  it("bez poprzedniego okna opis okresu nie obiecuje porównania; bez daty ostatnich danych jest ogólny", () => {
+    expect(googleSummary(t(142, 9.4), null, true, { lastDate: "2026-10-31", now }).period).toBe("28 dni do 31.10");
+    expect(googleSummary(t(142, 9.4), t(120, 10.6), true).period).toBe("ostatnie 28 dni wobec poprzednich 28");
   });
 
   it("nieskonfigurowane Search Console: „Podłącz Search Console”, nieznany kierunek, link do Google", () => {
@@ -326,17 +333,116 @@ describe("googleSummary", () => {
     }
   });
 
-  it("brak poprzedniego okna: bieżące liczby bez kierunku", () => {
-    for (const prev of [null, t(null, null, null)]) {
-      const s = googleSummary(t(142, 9.4), prev, true);
-      expect(s.direction).toBe("unknown");
-      expect(s.headline).toBe("142 kliknięcia");
-      expect(s.detail).toBe("średnia pozycja 9,4, brak poprzednich 28 dni do porównania");
-    }
+  it("poprzednie okno bez danych (dziura w danych): bieżące liczby bez kierunku", () => {
+    const s = googleSummary(t(142, 9.4), t(null, null, null), true);
+    expect(s.direction).toBe("unknown");
+    expect(s.headline).toBe("142 kliknięcia");
+    expect(s.detail).toBe("średnia pozycja 9,4, brak poprzednich 28 dni do porównania");
+  });
+
+  it("za krótka historia (prev = null): kierunek nieznany, liczby bez procentu, jasny komunikat z datą pierwszych danych", () => {
+    const s = googleSummary(t(142, 9.4), null, true, { lastDate: "2026-10-31", firstDate: "2026-09-21", now });
+    expect(s.direction).toBe("unknown");
+    expect(s.headline).toBe("142 kliknięcia");
+    expect(s.detail).toBe("średnia pozycja 9,4. Za krótka historia do porównania (dane od 21.09)");
+    expect(s.headline + s.detail).not.toContain("%");
+  });
+
+  it("za krótka historia bez znanej pierwszej daty i bez średniej pozycji", () => {
+    expect(googleSummary(t(142, 9.4), null, true, { lastDate: "2026-10-31", now }).detail).toBe("średnia pozycja 9,4. Za krótka historia do porównania");
+    expect(googleSummary(t(142, null), null, true, { lastDate: "2026-10-31", firstDate: "2026-09-21", now }).detail)
+      .toBe("brak danych o średniej pozycji. Za krótka historia do porównania (dane od 21.09)");
   });
 
   it("brak średniej pozycji w bieżącym oknie", () => {
     expect(googleSummary(t(142, null), t(120, 10), true).detail).toBe("brak danych o średniej pozycji");
+  });
+});
+
+describe("googleSummary: zaokrąglona zmiana pozycji i ruch wyświetleń", () => {
+  const t = (clicks: number | null, position: number | null, impressions: number | null = 1000) => ({ clicks, impressions, position });
+
+  it("strzałka zgadza się z tekstem: 0,48 pokazane jako „lepiej o 0,5 poz.” to już kierunek w górę", () => {
+    const exact = googleSummary(t(125, 9), t(120, 9.48), true);
+    expect(exact.detail).toBe("średnia pozycja 9,0 (lepiej o 0,5 poz.)");
+    expect(exact.direction).toBe("up");
+    // po zaokrągleniu samych pozycji (9,1 i 9,5) wyszłoby 0,4, a tekst mówi 0,5
+    const rounded = googleSummary(t(125, 9.06), t(120, 9.54), true);
+    expect(rounded.detail).toBe("średnia pozycja 9,1 (lepiej o 0,5 poz.)");
+    expect(rounded.direction).toBe("up");
+  });
+
+  it("0,42 pokazane jako „lepiej o 0,4 poz.” to jeszcze bez zmian (po zaokrągleniu samych pozycji wyszłoby 0,5)", () => {
+    const s = googleSummary(t(125, 9.04), t(120, 9.46), true);
+    expect(s.detail).toContain("lepiej o 0,4 poz.");
+    expect(s.direction).toBe("flat");
+  });
+
+  it("w drugą stronę: gorzej o 0,5 poz. to już spadek", () => {
+    const s = googleSummary(t(125, 9.54), t(120, 9.06), true);
+    expect(s.detail).toContain("gorzej o 0,5 poz.");
+    expect(s.direction).toBe("down");
+  });
+
+  it("pozycja gorsza, ale wyświetleń o ponad 10% więcej (mała baza kliknięć): bez zmian zamiast spadku", () => {
+    const s = googleSummary(t(9, 12, 1150), t(15, 9.4, 1000), true);
+    expect(s.detail).toBe("średnia pozycja 12,0 (gorzej o 2,6 poz.)");
+    expect(s.direction).toBe("flat");
+  });
+
+  it("to samo, gdy kliknięcia są bez wyraźnej zmiany i rozstrzyga pozycja", () => {
+    expect(googleSummary(t(125, 12.5, 1200), t(120, 9.4, 1000), true).direction).toBe("flat");
+  });
+
+  it("wzrost wyświetleń o równe 10% albo mniej nie łagodzi spadku; spadek wyświetleń tym bardziej", () => {
+    expect(googleSummary(t(9, 12, 1100), t(15, 9.4, 1000), true).direction).toBe("down");
+    expect(googleSummary(t(9, 12, 900), t(15, 9.4, 1000), true).direction).toBe("down");
+    expect(googleSummary(t(9, 12, 1101), t(15, 9.4, 1000), true).direction).toBe("flat");
+  });
+
+  it("brak wyświetleń w poprzednim oknie (null albo 0) nie zmienia werdyktu", () => {
+    expect(googleSummary(t(9, 12, 1150), t(15, 9.4, null), true).direction).toBe("down");
+    expect(googleSummary(t(9, 12, 1150), t(15, 9.4, 0), true).direction).toBe("down");
+  });
+
+  it("wyraźny spadek kliknięć wygrywa i nie jest łagodzony wzrostem wyświetleń", () => {
+    expect(googleSummary(t(100, 12, 2000), t(150, 9, 1000), true).direction).toBe("down");
+  });
+
+  it("poprawa pozycji zostaje w górę niezależnie od wyświetleń", () => {
+    expect(googleSummary(t(9, 9.4, 1150), t(15, 12, 1000), true).direction).toBe("up");
+  });
+});
+
+describe("googleSummary: nieaktualne dane", () => {
+  const t = (clicks: number | null, position: number | null, impressions: number | null = 1000) => ({ clicks, impressions, position });
+  const now = new Date("2026-11-02T10:00:00Z");
+
+  it("ostatnie dane starsze niż 7 dni: nieznany kierunek, komunikat o nieaktualnych danych z datą", () => {
+    const s = googleSummary(t(142, 9.4), t(120, 10.6), true, { lastDate: "2026-10-25", now });
+    expect(s).toMatchObject({
+      key: "google", direction: "unknown", headline: "Dane z Search Console są nieaktualne", since: null, href: "/app/google",
+      detail: "ostatnie dane: 25.10. Sprawdź synchronizację na stronie Google.",
+    });
+  });
+
+  it("dokładnie 7 dni to jeszcze świeże dane; 8 dni to już nieaktualne", () => {
+    expect(googleSummary(t(142, 9.4), t(120, 10.6), true, { lastDate: "2026-10-26", now }).direction).toBe("up");
+    expect(googleSummary(t(142, 9.4), t(120, 10.6), true, { lastDate: "2026-10-25", now }).direction).toBe("unknown");
+  });
+
+  it("dzień liczy się w UTC, niezależnie od godziny", () => {
+    expect(googleSummary(t(142, 9.4), t(120, 10.6), true, { lastDate: "2026-10-26", now: new Date("2026-11-02T23:59:59Z") }).direction).toBe("up");
+    expect(googleSummary(t(142, 9.4), t(120, 10.6), true, { lastDate: "2026-10-26", now: new Date("2026-11-03T00:00:00Z") }).direction).toBe("unknown");
+  });
+
+  it("bez wstrzykniętego czasu używa bieżącego: dane sprzed lat są nieaktualne", () => {
+    expect(googleSummary(t(142, 9.4), t(120, 10.6), true, { lastDate: "2020-01-01" }).headline).toBe("Dane z Search Console są nieaktualne");
+  });
+
+  it("nieaktualność nie przesłania stanów „Podłącz” i „Brak danych”", () => {
+    expect(googleSummary(null, null, false, { lastDate: "2026-01-01", now }).headline).toBe("Podłącz Search Console");
+    expect(googleSummary(null, null, true, { lastDate: "2026-01-01", now }).headline).toBe("Brak danych z Search Console");
   });
 });
 

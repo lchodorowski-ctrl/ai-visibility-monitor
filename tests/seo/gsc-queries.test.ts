@@ -19,7 +19,7 @@ function table(name: string) {
 const rpc = vi.fn(async (name: string, args: unknown) => { calls.push(`rpc.${name}(${JSON.stringify(args)})`); return rpcs[name] ?? { data: [], error: null }; });
 vi.mock("@/lib/supabase/server", () => ({ createServerSupabase: async () => ({ from: (n: string) => table(n), rpc }) }));
 
-import { getGscLastDate, getGscTotals, getGscSeries, getQueryWindows, getTopPages, getQueryPages, getSeoStatus } from "@/lib/seo/queries";
+import { getGscFirstDate, getGscLastDate, getGscTotals, getGscSeries, getQueryWindows, getTopPages, getQueryPages, getSeoStatus } from "@/lib/seo/queries";
 
 beforeEach(() => {
   calls.length = 0;
@@ -36,6 +36,19 @@ describe("getGscLastDate", () => {
     expect(calls).toContain('gsc_site_daily.order("date",{"ascending":false})');
     tables.gsc_site_daily = [];
     expect(await getGscLastDate("p2")).toBeNull();
+  });
+});
+
+describe("getGscFirstDate", () => {
+  it("najstarsza data z gsc_site_daily projektu (rosnąco, limit 1) albo null", async () => {
+    tables.gsc_site_daily = [{ date: "2026-09-21" }];
+    expect(await getGscFirstDate("p1")).toBe("2026-09-21");
+    expect(calls).toContain('gsc_site_daily.select("date")');
+    expect(calls).toContain('gsc_site_daily.eq("project_id","p1")');
+    expect(calls).toContain('gsc_site_daily.order("date",{"ascending":true})');
+    expect(calls).toContain("gsc_site_daily.limit(1)");
+    tables.gsc_site_daily = [];
+    expect(await getGscFirstDate("p2")).toBeNull();
   });
 });
 

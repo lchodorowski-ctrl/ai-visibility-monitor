@@ -267,8 +267,20 @@ describe("newAndLost", () => {
     const rows = [win("obie", m(1, 30, 5), m(1, 30, 5)), win("żadne", empty, empty), win("prawie", m(1, 30, 5), m(0, 1, 40))];
     expect(newAndLost(rows)).toEqual([]);
   });
-  it("sortuje malejąco po potencjale", () => {
-    const rows = [win("a", m(1, 20, 8), empty), win("b", empty, m(9, 50, 4)), win("c", m(4, 40, 6), empty)];
-    expect(newAndLost(rows).map((o) => o.kind !== "cannibal" && o.query)).toEqual(["b", "c", "a"]);
+  it("sortuje malejąco po wyświetleniach w oknie, w którym fraza istnieje (nie po kliknięciach)", () => {
+    const rows = [
+      win("mało wyświetleń, dużo klików", m(9, 20, 8), empty),
+      win("dużo wyświetleń, zero klików", m(0, 200, 8), empty),
+      win("utracona", empty, m(1, 60, 4)),
+    ];
+    expect(newAndLost(rows).map((o) => o.kind !== "cannibal" && o.query)).toEqual([
+      "dużo wyświetleń, zero klików",
+      "utracona",
+      "mało wyświetleń, dużo klików",
+    ]);
+  });
+  it("zwraca też frazy bez kliknięć (nie odfiltrowuje ich po potencjale)", () => {
+    const ops = newAndLost([win("nowa", m(0, 30, 9), empty), win("stara", empty, m(0, 25, 7))]);
+    expect(ops.map((o) => [o.kind, o.potentialClicks])).toEqual([["new", 0], ["lost", 0]]);
   });
 });
