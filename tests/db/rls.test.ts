@@ -275,47 +275,106 @@ describe.skipIf(!url)("RLS", () => {
     it("GSC: anon i nie-członek nie widzą danych ani agregatów, członek widzi", async () => {
       const c = await connect();
 
-      const read = (role: "anon" | "authenticated", claims: object) =>
+      const calls = {
+        totals: { sql: `select * from gsc_totals($1, $2, $3)`, params: [PROJECT, PREV_DAY, CUR_DAY] },
+        topPages: { sql: `select * from gsc_top_pages($1, $2, $3, 10)`, params: [PROJECT, PREV_DAY, CUR_DAY] },
+        windows: {
+          sql: `select * from gsc_query_windows($1, $2, $3, $4, $5, 10)`,
+          params: [PROJECT, CUR_DAY, CUR_DAY, PREV_DAY, PREV_DAY],
+        },
+        queryPages: { sql: `select * from gsc_query_pages($1, $2, $3, 0)`, params: [PROJECT, PREV_DAY, CUR_DAY] },
+      };
+
+      const countTables = (role: "anon" | "authenticated", claims: object) =>
         asRole(c, role, claims, async () => {
-          const rows = await c.query(
+          const res = await c.query(
             `select (select count(*) from gsc_site_daily where project_id = $1 and date = any($2::date[]))::int as site,
                     (select count(*) from gsc_page_daily where project_id = $1 and date = any($2::date[]))::int as pages,
                     (select count(*) from gsc_query_daily where project_id = $1 and date = any($2::date[]))::int as queries`,
             [PROJECT, DAYS],
           );
-          const totals = await c.query(`select * from gsc_totals($1, $2, $3)`, [PROJECT, PREV_DAY, CUR_DAY]);
-          const topPages = await c.query(`select * from gsc_top_pages($1, $2, $3, 10)`, [PROJECT, PREV_DAY, CUR_DAY]);
-          const windows = await c.query(`select * from gsc_query_windows($1, $2, $3, $4, $5, 10)`, [
-            PROJECT, CUR_DAY, CUR_DAY, PREV_DAY, PREV_DAY,
-          ]);
-          const queryPages = await c.query(`select * from gsc_query_pages($1, $2, $3, 0)`, [PROJECT, PREV_DAY, CUR_DAY]);
-          return { counts: rows.rows[0], totals: totals.rows, topPages: topPages.rows, windows: windows.rows, queryPages: queryPages.rows };
+          return res.rows[0] as { site: number; pages: number; queries: number };
         });
+
+      const callAs = (role: "anon" | "authenticated", claims: object, name: keyof typeof calls) =>
+        asRole(c, role, claims, async () => (await c.query(calls[name].sql, calls[name].params)).rows);
+
+      const read = async (role: "anon" | "authenticated", claims: object) => ({
+        counts: await countTables(role, claims),
+        totals: await callAs(role, claims, "totals"),
+        topPages: await callAs(role, claims, "topPages"),
+        windows: await callAs(role, claims, "windows"),
+        queryPages: await callAs(role, claims, "queryPages"),
+      });
 
       try {
         await prepareUsers(c);
         await seed(c);
 
-        const anon = await read("anon", {});
+        // Funkcje działają jako security definer, więc anon nie ma do nich EXECUTE (revoke), tabele dalej chroni RLS.
+        expect(await countTables("anon", {})).toEqual({ site: 0, pages: 0, queries: 0 });
+        for (const name of Object.keys(calls) as (keyof typeof calls)[]) {
+          await expect(callAs("anon", {}, name)).rejects.toMatchObject({ code: "42501" });
+        }
+
         const outsider = await read("authenticated", OUTSIDER_CLAIMS);
         const member = await read("authenticated", MEMBER_CLAIMS);
 
-        for (const hidden of [anon, outsider]) {
-          expect(hidden.counts).toEqual({ site: 0, pages: 0, queries: 0 });
-          expect(hidden.totals).toHaveLength(1);
-          expect(hidden.totals[0].clicks).toBeNull();
-          expect(hidden.totals[0].impressions).toBeNull();
-          expect(hidden.totals[0].position).toBeNull();
-          expect(hidden.topPages).toEqual([]);
-          expect(hidden.windows).toEqual([]);
-          expect(hidden.queryPages).toEqual([]);
-        }
+        expect(outsider.counts).toEqual({ site: 0, pages: 0, queries: 0 });
+        expect(outsider.totals).toHaveLength(1);
+        expect(outsider.totals[0].clicks).toBeNull();
+        expect(outsider.totals[0].impressions).toBeNull();
+        expect(outsider.totals[0].position).toBeNull();
+        expect(outsider.topPages).toEqual([]);
+        expect(outsider.windows).toEqual([]);
+        expect(outsider.queryPages).toEqual([]);
 
         expect(member.counts).toEqual({ site: 2, pages: 5, queries: 5 });
         expect(Number(member.totals[0].clicks)).toBe(30);
         expect(member.windows.map((r) => r.query)).toContain(PHRASE);
         expect(member.queryPages.filter((r) => r.query === PHRASE)).toHaveLength(2);
       } finally {
+        await cleanup(c);
+      }
+    });
+
+    it("GSC: funkcje wpuszczają tylko członka organizacji projektu, także członka innej organizacji nie", async () => {
+      const c = await connect();
+      const OTHER_ORG = "33333333-3333-3333-3333-333333333333";
+      const OTHER_PROJECT = "44444444-4444-4444-4444-444444444444";
+      const totalsOf = (uid: string, project: string) =>
+        asRole(c, "authenticated", { sub: uid, role: "authenticated" }, async () => {
+          const res = await c.query(`select * from gsc_totals($1, $2, $3)`, [project, PREV_DAY, CUR_DAY]);
+          const pages = await c.query(`select * from gsc_top_pages($1, $2, $3, 10)`, [project, PREV_DAY, CUR_DAY]);
+          return { clicks: res.rows[0].clicks === null ? null : Number(res.rows[0].clicks), pages: pages.rows.length };
+        });
+
+      try {
+        await prepareUsers(c);
+        await c.query(`insert into organizations (id, name) values ($1, 'RLS test org') on conflict do nothing`, [OTHER_ORG]);
+        await c.query(
+          `insert into projects (id, org_id, name, brand_name) values ($1, $2, 'RLS test project', 'RLS test') on conflict do nothing`,
+          [OTHER_PROJECT, OTHER_ORG],
+        );
+        await c.query(`insert into memberships (org_id, user_id) values ($1, $2) on conflict do nothing`, [OTHER_ORG, OUTSIDER]);
+        await seed(c);
+        await c.query(`insert into gsc_site_daily (project_id, date, clicks, impressions, position) values ($1, $2, 7, 70, 3.00)`, [
+          OTHER_PROJECT, CUR_DAY,
+        ]);
+        await c.query(`insert into gsc_page_daily (project_id, date, page, clicks, impressions, position) values ($1, $2, '/x', 7, 70, 3.00)`, [
+          OTHER_PROJECT, CUR_DAY,
+        ]);
+
+        // każdy widzi swój projekt i nic z cudzego, mimo że obaj są zalogowanymi członkami jakiejś organizacji
+        expect(await totalsOf(MEMBER, PROJECT)).toEqual({ clicks: 30, pages: 3 });
+        expect(await totalsOf(MEMBER, OTHER_PROJECT)).toEqual({ clicks: null, pages: 0 });
+        expect(await totalsOf(OUTSIDER, OTHER_PROJECT)).toEqual({ clicks: 7, pages: 1 });
+        expect(await totalsOf(OUTSIDER, PROJECT)).toEqual({ clicks: null, pages: 0 });
+      } finally {
+        await c.query(`reset role`);
+        await c.query(`select set_config('request.jwt.claims', '', false)`);
+        await c.query(`delete from projects where id = $1`, [OTHER_PROJECT]);
+        await c.query(`delete from organizations where id = $1`, [OTHER_ORG]);
         await cleanup(c);
       }
     });
