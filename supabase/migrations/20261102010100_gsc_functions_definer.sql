@@ -2,8 +2,10 @@
 -- Przy security invoker polityka RLS (is_org_member(project_org(project_id))) była wywoływana dla każdego
 -- skanowanego wiersza, co przy dziesiątkach tysięcy wierszy dawało sekundy. Tutaj dostęp sprawdzamy raz na
 -- wywołanie: `(select is_org_member(project_org(p_project)))` nie zależy od wiersza, więc planer liczy go
--- jako InitPlan. Nie-członek i anon dostają to samo co wcześniej: zero wierszy z funkcji zwracających zbiory
--- i jeden wiersz z samymi nullami z gsc_totals. Tabele zachowują swoje polityki RLS bez zmian.
+-- jako InitPlan. Członek innej organizacji (zalogowany, ale nie członek tego projektu) dostaje to samo co wcześniej:
+-- zero wierszy z funkcji zwracających zbiory i jeden wiersz z samymi nullami z gsc_totals. Rola anon nie ma prawa
+-- wykonywania tych funkcji (revoke na dole pliku), więc dostaje błąd uprawnień (42501), a nie puste wyniki.
+-- Tabele zachowują swoje polityki RLS bez zmian.
 
 create or replace function gsc_totals(p_project uuid, p_from date, p_to date)
 returns table(clicks bigint, impressions bigint, "position" numeric)
