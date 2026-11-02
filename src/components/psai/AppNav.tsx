@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 export const NAV = [
   ["/app", "Przegląd"], ["/app/prompts", "Prompty"], ["/app/recommendations", "Rekomendacje"],
-  ["/app/responses", "Odpowiedzi"], ["/app/settings", "Ustawienia"],
+  ["/app/google", "Google"], ["/app/responses", "Odpowiedzi"], ["/app/settings", "Ustawienia"],
 ] as const;
 
 export function AppNav() {

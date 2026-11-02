@@ -66,13 +66,34 @@ export default async function SettingsPage() {
               <div className="grid content-start gap-2">
                 <Label htmlFor="site_url">Adres strony do analizy</Label>
                 <Input id="site_url" name="site_url" type="url" required defaultValue={project.site_url} placeholder="https://" />
-                <Meta>Dziś wersja robocza na Netlify; po przepięciu domeny wpisz https://www.polskaszkola.ai</Meta>
+                <Meta>Adres produkcyjny strony, np. https://polskaszkola.ai</Meta>
                 <Meta>Po zmianie adresu mapa strony odświeża się automatycznie.</Meta>
               </div>
               <div className="grid content-start gap-2">
                 <Label htmlFor="low_visibility_threshold">Próg niskiej widoczności (0–1)</Label>
                 <Input id="low_visibility_threshold" name="low_visibility_threshold" type="number" step="0.01" min="0" max="1" required defaultValue={String(project.low_visibility_threshold)} />
                 <Meta>Pytania z widocznością poniżej progu trafiają do rekomendacji.</Meta>
+              </div>
+            </div>
+          </Tile>
+        </section>
+
+        <section>
+          <SectionHead title="Google" />
+          <Tile>
+            <div className="grid gap-5 md:grid-cols-2">
+              <div className="grid content-start gap-2">
+                <Label htmlFor="gsc_property">Usługa Search Console</Label>
+                <Input id="gsc_property" name="gsc_property" defaultValue={project.gsc_property ?? ""} placeholder="sc-domain:polskaszkola.ai" />
+                <Meta>Konto usługi dodajesz w Search Console → Ustawienia → Użytkownicy i uprawnienia.</Meta>
+              </div>
+              <div className="grid content-start gap-2">
+                <Label htmlFor="seo_budget_usd">Miesięczny limit SEO (USD)</Label>
+                <Input id="seo_budget_usd" name="seo_budget_usd" type="number" step="1" min="0" defaultValue={String(project.seo_budget_usd)} />
+              </div>
+              <div className="grid content-start gap-2">
+                <Label htmlFor="trends_anchor">Fraza-kotwica Google Trends</Label>
+                <Input id="trends_anchor" name="trends_anchor" defaultValue={project.trends_anchor ?? ""} />
               </div>
             </div>
           </Tile>
