@@ -1,13 +1,9 @@
 import type { EngineAdapter, EngineResult, Citation } from "./types";
 import { toCitation, dedupeCitations } from "./domain";
 import { ENGINE_COST_USD } from "./costs";
-import { withRetry, TransientError, isTransientStatus } from "./retry";
+import { dfsRequest, dfsLocationCode } from "@/lib/dataforseo/client";
 
 type AnyRecord = Record<string, unknown>;
-const ENDPOINT = "https://api.dataforseo.com/v3/serp/google/organic/live/advanced";
-// HTTP 402 / zadanie 40200: na przedpłaconym koncie skończyło się saldo.
-const PAYMENT_REQUIRED_MESSAGE =
-  "DataForSEO: brak środków na koncie (Payment Required). Doładuj saldo na app.dataforseo.com i uruchom pomiar ponownie.";
 
 function pushRefs(list: unknown, out: Citation[]) {
   for (const ref of (list ?? []) as AnyRecord[]) {
@@ -47,44 +43,14 @@ export function parseDataForSeoResponse(raw: unknown): { text: string; citations
 export const googleAiOverviewAdapter: EngineAdapter = {
   id: "google_ai_overview",
   async query(prompt): Promise<EngineResult> {
-    const login = process.env.DATAFORSEO_LOGIN, password = process.env.DATAFORSEO_PASSWORD;
-    if (!login || !password) throw new Error("Brak DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD");
-    const parsedLocation = Number(process.env.DATAFORSEO_LOCATION_CODE);
-    const location_code = Number.isInteger(parsedLocation) && parsedLocation > 0 ? parsedLocation : 2616;
     const body = [{
       keyword: prompt.slice(0, 700),
-      location_code,
+      location_code: dfsLocationCode(),
       language_code: "pl",
       device: "desktop",
       load_async_ai_overview: true,
     }];
-    const raw = await withRetry(async () => {
-      const res = await fetch(ENDPOINT, {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${Buffer.from(`${login}:${password}`).toString("base64")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-      if (res.status === 402) throw new Error(PAYMENT_REQUIRED_MESSAGE);
-      if (!res.ok) {
-        const message = `DataForSEO HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`;
-        throw isTransientStatus(res.status) ? new TransientError(message) : new Error(message);
-      }
-      const data = (await res.json()) as AnyRecord;
-      if (data.status_code !== 20000) throw new Error(`DataForSEO status ${data.status_code}: ${data.status_message}`);
-      const taskStatus = ((data.tasks as AnyRecord[])?.[0]?.status_code) as number | undefined;
-      if (taskStatus === 40101) {
-        // Błąd serwera po stronie DataForSEO (przejściowy) — ponawiamy.
-        throw new TransientError(`DataForSEO task ${taskStatus}: ${(data.tasks as AnyRecord[])[0].status_message}`);
-      }
-      if (taskStatus === 40200) throw new Error(PAYMENT_REQUIRED_MESSAGE);
-      if (taskStatus && taskStatus !== 20000) {
-        throw new Error(`DataForSEO task ${taskStatus}: ${(data.tasks as AnyRecord[])[0].status_message}`);
-      }
-      return data;
-    });
+    const raw = await dfsRequest("POST", "/serp/google/organic/live/advanced", body);
     const { text, citations, noAnswer } = parseDataForSeoResponse(raw);
     const cost = typeof raw.cost === "number" ? raw.cost : ENGINE_COST_USD.google_ai_overview;
     return { text, citations, raw, model: "google_ai_overview", costUsd: cost, noAnswer };

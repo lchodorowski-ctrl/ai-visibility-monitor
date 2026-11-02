@@ -159,6 +159,66 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"gsc_page_daily": {
+                  Row: {
+                    "clicks": number,"date": string,"impressions": number,"page": string,"position": number | null,"project_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "clicks": number,"date": string,"impressions": number,"page": string,"position"?: number | null,"project_id": string
+                  }
+                  Update: {
+                    "clicks"?: number,"date"?: string,"impressions"?: number,"page"?: string,"position"?: number | null,"project_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "gsc_page_daily_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"gsc_query_daily": {
+                  Row: {
+                    "clicks": number,"date": string,"device": string,"impressions": number,"page": string,"position": number | null,"project_id": string,"query": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "clicks": number,"date": string,"device": string,"impressions": number,"page": string,"position"?: number | null,"project_id": string,"query": string
+                  }
+                  Update: {
+                    "clicks"?: number,"date"?: string,"device"?: string,"impressions"?: number,"page"?: string,"position"?: number | null,"project_id"?: string,"query"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "gsc_query_daily_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"gsc_site_daily": {
+                  Row: {
+                    "clicks": number,"date": string,"impressions": number,"position": number | null,"project_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "clicks": number,"date": string,"impressions": number,"position"?: number | null,"project_id": string
+                  }
+                  Update: {
+                    "clicks"?: number,"date"?: string,"impressions"?: number,"position"?: number | null,"project_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "gsc_site_daily_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"memberships": {
                   Row: {
                     "org_id": string,"role": string,"user_id": string
@@ -247,14 +307,14 @@ isOneToOne: false
                   ]
                 },"projects": {
                   Row: {
-                    "brand_aliases": (string)[],"brand_name": string,"country": string,"created_at": string,"domains": (string)[],"facts": NonNullable<Json>,"id": string,"locale": string,"low_visibility_threshold": number,"monthly_budget_usd": number,"name": string,"org_id": string,"schedule": string,"site_url": string
+                    "brand_aliases": (string)[],"brand_name": string,"country": string,"created_at": string,"domains": (string)[],"facts": NonNullable<Json>,"gsc_property": string | null,"id": string,"locale": string,"low_visibility_threshold": number,"monthly_budget_usd": number,"name": string,"org_id": string,"schedule": string,"seo_budget_usd": number,"site_url": string,"trends_anchor": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "brand_aliases"?: (string)[],"brand_name": string,"country"?: string,"created_at"?: string,"domains"?: (string)[],"facts"?: NonNullable<Json>,"id"?: string,"locale"?: string,"low_visibility_threshold"?: number,"monthly_budget_usd"?: number,"name": string,"org_id": string,"schedule"?: string,"site_url"?: string
+                    "brand_aliases"?: (string)[],"brand_name": string,"country"?: string,"created_at"?: string,"domains"?: (string)[],"facts"?: NonNullable<Json>,"gsc_property"?: string | null,"id"?: string,"locale"?: string,"low_visibility_threshold"?: number,"monthly_budget_usd"?: number,"name": string,"org_id": string,"schedule"?: string,"seo_budget_usd"?: number,"site_url"?: string,"trends_anchor"?: string | null
                   }
                   Update: {
-                    "brand_aliases"?: (string)[],"brand_name"?: string,"country"?: string,"created_at"?: string,"domains"?: (string)[],"facts"?: NonNullable<Json>,"id"?: string,"locale"?: string,"low_visibility_threshold"?: number,"monthly_budget_usd"?: number,"name"?: string,"org_id"?: string,"schedule"?: string,"site_url"?: string
+                    "brand_aliases"?: (string)[],"brand_name"?: string,"country"?: string,"created_at"?: string,"domains"?: (string)[],"facts"?: NonNullable<Json>,"gsc_property"?: string | null,"id"?: string,"locale"?: string,"low_visibility_threshold"?: number,"monthly_budget_usd"?: number,"name"?: string,"org_id"?: string,"schedule"?: string,"seo_budget_usd"?: number,"site_url"?: string,"trends_anchor"?: string | null
                   }
                   Relationships: [
                     {
@@ -375,6 +435,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"seo_jobs": {
+                  Row: {
+                    "cost_usd": number,"error": string | null,"finished_at": string | null,"id": string,"kind": string,"project_id": string,"started_at": string,"stats": NonNullable<Json>,"status": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cost_usd"?: number,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"kind": string,"project_id": string,"started_at"?: string,"stats"?: NonNullable<Json>,"status"?: string
+                  }
+                  Update: {
+                    "cost_usd"?: number,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"kind"?: string,"project_id"?: string,"started_at"?: string,"stats"?: NonNullable<Json>,"status"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "seo_jobs_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"site_pages": {
                   Row: {
                     "description": string | null,"excerpt": string | null,"fetched_at": string,"h1": string | null,"id": string,"path": string,"project_id": string,"status": number,"title": string | null,"url": string
@@ -421,7 +501,27 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "is_org_member":
+            "gsc_query_pages":
+{ Args: { "p_from": string,"p_min_impressions": number,"p_project": string,"p_to": string }; Returns: {
+              "clicks": number,"impressions": number,"page": string,"position": number,"query": string
+            }[]
+                           },
+"gsc_query_windows":
+{ Args: { "p_cur_from": string,"p_cur_to": string,"p_limit": number,"p_prev_from": string,"p_prev_to": string,"p_project": string }; Returns: {
+              "cur_clicks": number,"cur_impressions": number,"cur_position": number,"prev_clicks": number,"prev_impressions": number,"prev_position": number,"query": string
+            }[]
+                           },
+"gsc_top_pages":
+{ Args: { "p_from": string,"p_limit": number,"p_project": string,"p_to": string }; Returns: {
+              "clicks": number,"impressions": number,"page": string,"position": number
+            }[]
+                           },
+"gsc_totals":
+{ Args: { "p_from": string,"p_project": string,"p_to": string }; Returns: {
+              "clicks": number,"impressions": number,"position": number
+            }[]
+                           },
+"is_org_member":
 { Args: { "org": string }; Returns: boolean
                            },
 "project_org":

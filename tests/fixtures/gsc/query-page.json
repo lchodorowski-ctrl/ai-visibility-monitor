@@ -1,0 +1,19 @@
+{
+  "_comment": "Odpowiedzi Search Console (searchAnalytics.query) dla trzech zestawów wymiarów; strony to pełne adresy, urządzenia wielkimi literami.",
+  "site": [
+    { "keys": ["2026-10-30"], "clicks": 14, "impressions": 520, "ctr": 0.0269, "position": 6.4 },
+    { "keys": ["2026-10-31"], "clicks": 9, "impressions": 410, "ctr": 0.022, "position": 7.1 }
+  ],
+  "page": [
+    { "keys": ["2026-10-30", "https://polskaszkola.ai/kontakt.html"], "clicks": 10, "impressions": 100, "ctr": 0.1, "position": 4 },
+    { "keys": ["2026-10-30", "https://www.polskaszkola.ai/kontakt.html"], "clicks": 2, "impressions": 300, "ctr": 0.0067, "position": 8 },
+    { "keys": ["2026-10-30", "https://polskaszkola.ai/szkolenia/wroclaw?utm_source=newsletter"], "clicks": 2, "impressions": 120, "ctr": 0.0167, "position": 5.5 },
+    { "keys": ["2026-10-31", "https://polskaszkola.ai/"], "clicks": 9, "impressions": 410, "ctr": 0.022, "position": 7.1 }
+  ],
+  "query": [
+    { "keys": ["2026-10-30", "szkolenia ai wrocław", "https://polskaszkola.ai/szkolenia/wroclaw?utm_source=newsletter", "MOBILE"], "clicks": 1, "impressions": 60, "ctr": 0.0167, "position": 5 },
+    { "keys": ["2026-10-30", "szkolenia ai wrocław", "https://polskaszkola.ai/szkolenia/wroclaw", "MOBILE"], "clicks": 1, "impressions": 60, "ctr": 0.0167, "position": 6 },
+    { "keys": ["2026-10-30", "polska szkoła ai", "https://polskaszkola.ai/", "DESKTOP"], "clicks": 5, "impressions": 80, "ctr": 0.0625, "position": 1.2 },
+    { "keys": ["2026-10-31", "kurs prompt engineering", "https://www.polskaszkola.ai/kontakt.html", "TABLET"], "clicks": 0, "impressions": 12, "ctr": 0, "position": 11.5 }
+  ]
+}

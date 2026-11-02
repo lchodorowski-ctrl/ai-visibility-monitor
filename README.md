@@ -185,6 +185,29 @@ npx tsx --env-file=.env.local scripts/crawl-now.ts [projectId]
 - Dla każdej strony zapisywane są ścieżka, status HTTP, tytuł, H1, opis i fragment treści. Strony, które zniknęły z sitemapy, dostają status 410. Pusty wynik crawla nie wygasza istniejących wierszy.
 - `recommend-project` sam crawluje stronę (bez osobnego taska), gdy mapa jest pusta albo najnowszy wpis ma ponad 7 dni. Błąd crawla jest logowany i nie blokuje rekomendacji. Zmiana `site_url` w Ustawieniach uruchamia crawl automatycznie (błąd uruchomienia nie blokuje zapisu); po dużej zmianie treści uruchom crawl skryptem od razu.
 
+## Google (Search Console, PageSpeed)
+
+Moduł Google (klasyczne SEO) czyta dane z Search Console (zapytania, strony, inspekcja URL) po stronie serwera, przez konto usługi Google Cloud. Logowania OAuth w aplikacji nie ma, a klucz trafia wyłącznie do zmiennych środowiskowych. Konfiguracja jednorazowa:
+
+1. **Projekt Google Cloud.** W Google Cloud Console utwórz projekt (albo wybierz istniejący) i włącz dwa API: Google Search Console API oraz PageSpeed Insights API.
+2. **Konto usługi.** IAM i administracja → Konta usługi → Utwórz konto usługi, bez żadnych ról IAM. W zakładce Klucze dodaj klucz typu JSON. Zakoduj plik do jednej linii i wklej wynik jako `GOOGLE_SERVICE_ACCOUNT_JSON` do `.env.local` oraz `.env.prod.local`, a potem usuń plik z kluczem z dysku:
+
+   ```bash
+   base64 -i klucz.json | tr -d '\n'
+   ```
+
+   Zmienna przyjmuje też surowy JSON, ale base64 jest bezpieczniejsze w plikach `.env`.
+3. **Dostęp w Search Console.** Wejdź w Search Console → `sc-domain:polskaszkola.ai` → Ustawienia → Użytkownicy i uprawnienia i dodaj adres e-mail konta usługi (`...@....iam.gserviceaccount.com`) z uprawnieniem „Ograniczone”. Jeśli inspekcja URL zwróci 403, nadaj uprawnienie „Pełne”.
+4. **Klucz PageSpeed.** W Google Cloud Console → Interfejsy API i usługi → Dane logowania utwórz klucz API, ogranicz go do PageSpeed Insights API i wpisz jako `GOOGLE_PAGESPEED_API_KEY` w `.env.local` i `.env.prod.local`.
+
+Obie zmienne są sekretami tasków: przy `trigger.dev deploy` trafiają z `.env.prod.local` do Trigger.dev (prod). Sprawdzenie konfiguracji (nie wypisuje klucza):
+
+```bash
+npx tsx --env-file=.env.local scripts/check-google.ts [property]
+```
+
+Skrypt wypisuje adres konta usługi, listę usług Search Console z poziomem uprawnień i kończy się kodem 1, gdy `property` (domyślnie `sc-domain:polskaszkola.ai`) nie ma na liście. Błąd 403 oznacza, że adres z kroku 3 nie został dodany albo API z kroku 1 jest wyłączone; komunikat podaje szczegóły od Google.
+
 ## Skrypty
 
 | Skrypt | Do czego |
@@ -196,6 +219,7 @@ npx tsx --env-file=.env.local scripts/crawl-now.ts [projectId]
 | `scripts/crawl-now.ts` | crawl mapy strony (patrz „Mapa strony”) |
 | `scripts/recommend-now.ts` | generowanie rekomendacji (patrz „Rekomendacje”) |
 | `scripts/check-anthropic.ts` | sprawdzenie klucza Anthropic (5-tokenowe wywołanie, patrz „Znane ograniczenie”) |
+| `scripts/check-google.ts` | sprawdzenie konta usługi Google i dostępu do Search Console (patrz „Google (Search Console, PageSpeed)”) |
 | `scripts/measure-ttfb.ts` | pomiar TTFB ekranów (patrz „Szybkość: dev vs prod”) |
 | `scripts/try-engine.ts` | pojedyncze zapytanie do silnika, `npm run try:engine` |
 
@@ -230,7 +254,7 @@ npx trigger.dev@latest login
 npx trigger.dev@latest deploy --project-ref proj_sitwivdlindrogesffbq
 ```
 
-Rozszerzenie `syncEnvVars` w `trigger.config.ts` przy deployu czyta `.env.prod.local` i wysyła do środowiska **prod** tylko zmienne tasków: `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, klucze i modele silników (`OPENAI_*`, `PERPLEXITY_*`, `GEMINI_*`, `DATAFORSEO_*`) oraz `ANTHROPIC_*`. Klucze są wysyłane jako sekretne. Bez pliku deploy przejdzie, ale wypisze ostrzeżenie i zmienne nie zostaną ustawione. Zmiana wartości w pliku wymaga ponownego deployu.
+Rozszerzenie `syncEnvVars` w `trigger.config.ts` przy deployu czyta `.env.prod.local` i wysyła do środowiska **prod** tylko zmienne tasków: `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, klucze i modele silników (`OPENAI_*`, `PERPLEXITY_*`, `GEMINI_*`, `DATAFORSEO_*`) oraz `ANTHROPIC_*` i `GOOGLE_*`. Klucze są wysyłane jako sekretne. Bez pliku deploy przejdzie, ale wypisze ostrzeżenie i zmienne nie zostaną ustawione. Zmiana wartości w pliku wymaga ponownego deployu.
 
 **4. Vercel (aplikacja i cron)**
 

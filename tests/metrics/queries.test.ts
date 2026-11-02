@@ -40,6 +40,16 @@ describe("queries", () => {
     expect(calls).toContain("daily_metrics.eq(project_id,p1)");
   });
 
+  it("getDirectionRows czyta wiersze ogólne (prompt_id null) z ostatnich 90 dni dla projektu", async () => {
+    const { getDirectionRows } = await import("@/lib/metrics/queries");
+    const since = new Date(); since.setUTCDate(since.getUTCDate() - 90);
+    const rows = await getDirectionRows("p4");
+    expect(rows).toHaveLength(1);
+    expect(calls).toContain("daily_metrics.eq(project_id,p4)");
+    expect(calls).toContain("daily_metrics.is(prompt_id,null)");
+    expect(calls).toContain(`daily_metrics.gte(date,${since.toISOString().slice(0, 10)})`);
+  });
+
   it("getLatestMetrics zwraca overall i byEngine", async () => {
     const { getLatestMetrics } = await import("@/lib/metrics/queries");
     const m = await getLatestMetrics("p2");
