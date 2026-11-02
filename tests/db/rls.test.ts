@@ -149,4 +149,49 @@ describe.skipIf(!url)("RLS", () => {
       await c.end();
     }
   });
+
+  it("anon i nie-członek nie widzą zadań SEO, członek org widzi", async () => {
+    const c = new Client({ connectionString: url });
+    await c.connect();
+
+    const countSeoJobsAs = async (role: "anon" | "authenticated", claims: object, jobId: string) => {
+      try {
+        await c.query(`set role ${role}`);
+        await c.query(`select set_config('request.jwt.claims', $1, false)`, [JSON.stringify(claims)]);
+        const res = await c.query(`select count(*)::int as n from seo_jobs where id = $1`, [jobId]);
+        return res.rows[0].n as number;
+      } finally {
+        await c.query(`reset role`);
+        await c.query(`select set_config('request.jwt.claims', '', false)`);
+      }
+    };
+
+    let jobId: string | undefined;
+    try {
+      for (const uid of [MEMBER, OUTSIDER]) {
+        await c.query(`insert into auth.users (id, email) values ($1, $2) on conflict do nothing`, [uid, `${uid}@rls.test.local`]);
+      }
+      await c.query(`insert into memberships (org_id, user_id) values ($1, $2) on conflict do nothing`, [ORG, MEMBER]);
+
+      const job = await c.query(`insert into seo_jobs (project_id, kind) values ($1, 'gsc_sync') returning id`, [PROJECT]);
+      jobId = job.rows[0].id as string;
+
+      const anon = await countSeoJobsAs("anon", {}, jobId);
+      const outsider = await countSeoJobsAs("authenticated", { sub: OUTSIDER, role: "authenticated" }, jobId);
+      const member = await countSeoJobsAs("authenticated", { sub: MEMBER, role: "authenticated" }, jobId);
+
+      expect(anon).toBe(0);
+      expect(outsider).toBe(0);
+      expect(member).toBe(1);
+    } finally {
+      await c.query(`reset role`);
+      await c.query(`select set_config('request.jwt.claims', '', false)`);
+      if (jobId) {
+        await c.query(`delete from seo_jobs where id = $1`, [jobId]);
+      }
+      await c.query(`delete from memberships where user_id = any($1::uuid[])`, [[MEMBER, OUTSIDER]]);
+      await c.query(`delete from auth.users where id = any($1::uuid[])`, [[MEMBER, OUTSIDER]]);
+      await c.end();
+    }
+  });
 });

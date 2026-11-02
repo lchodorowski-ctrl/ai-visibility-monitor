@@ -247,14 +247,14 @@ isOneToOne: false
                   ]
                 },"projects": {
                   Row: {
-                    "brand_aliases": (string)[],"brand_name": string,"country": string,"created_at": string,"domains": (string)[],"facts": NonNullable<Json>,"id": string,"locale": string,"low_visibility_threshold": number,"monthly_budget_usd": number,"name": string,"org_id": string,"schedule": string,"site_url": string
+                    "brand_aliases": (string)[],"brand_name": string,"country": string,"created_at": string,"domains": (string)[],"facts": NonNullable<Json>,"gsc_property": string | null,"id": string,"locale": string,"low_visibility_threshold": number,"monthly_budget_usd": number,"name": string,"org_id": string,"schedule": string,"seo_budget_usd": number,"site_url": string,"trends_anchor": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "brand_aliases"?: (string)[],"brand_name": string,"country"?: string,"created_at"?: string,"domains"?: (string)[],"facts"?: NonNullable<Json>,"id"?: string,"locale"?: string,"low_visibility_threshold"?: number,"monthly_budget_usd"?: number,"name": string,"org_id": string,"schedule"?: string,"site_url"?: string
+                    "brand_aliases"?: (string)[],"brand_name": string,"country"?: string,"created_at"?: string,"domains"?: (string)[],"facts"?: NonNullable<Json>,"gsc_property"?: string | null,"id"?: string,"locale"?: string,"low_visibility_threshold"?: number,"monthly_budget_usd"?: number,"name": string,"org_id": string,"schedule"?: string,"seo_budget_usd"?: number,"site_url"?: string,"trends_anchor"?: string | null
                   }
                   Update: {
-                    "brand_aliases"?: (string)[],"brand_name"?: string,"country"?: string,"created_at"?: string,"domains"?: (string)[],"facts"?: NonNullable<Json>,"id"?: string,"locale"?: string,"low_visibility_threshold"?: number,"monthly_budget_usd"?: number,"name"?: string,"org_id"?: string,"schedule"?: string,"site_url"?: string
+                    "brand_aliases"?: (string)[],"brand_name"?: string,"country"?: string,"created_at"?: string,"domains"?: (string)[],"facts"?: NonNullable<Json>,"gsc_property"?: string | null,"id"?: string,"locale"?: string,"low_visibility_threshold"?: number,"monthly_budget_usd"?: number,"name"?: string,"org_id"?: string,"schedule"?: string,"seo_budget_usd"?: number,"site_url"?: string,"trends_anchor"?: string | null
                   }
                   Relationships: [
                     {
@@ -369,6 +369,26 @@ isOneToOne: false
                   Relationships: [
                     {
       foreignKeyName: "runs_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"seo_jobs": {
+                  Row: {
+                    "cost_usd": number,"error": string | null,"finished_at": string | null,"id": string,"kind": string,"project_id": string,"started_at": string,"stats": NonNullable<Json>,"status": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cost_usd"?: number,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"kind": string,"project_id": string,"started_at"?: string,"stats"?: NonNullable<Json>,"status"?: string
+                  }
+                  Update: {
+                    "cost_usd"?: number,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"kind"?: string,"project_id"?: string,"started_at"?: string,"stats"?: NonNullable<Json>,"status"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "seo_jobs_project_id_fkey"
       columns: ["project_id"]
 isOneToOne: false
       referencedRelation: "projects"
