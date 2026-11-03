@@ -10,6 +10,7 @@ import { getGscLastDate, getQueryWindows } from "@/lib/seo/queries";
 import { gscWindows } from "@/lib/seo/overview";
 import { MAX_KEYWORD_LENGTH, normalizeKeyword, parseKeywordList } from "@/lib/seo/keywords";
 import { MAX_SEEDS } from "@/lib/seo/keyword-research";
+import { MAX_TRACKED } from "@/lib/seo/keyword-volumes";
 
 /*
  * Every action takes the project from the session (`getCurrentProject`) and writes through the session client, so RLS
@@ -49,13 +50,29 @@ const fail = (what: string, error: { message: string }): never => {
 /** Phrases that are already in `keywords` are left as they are: the unique key `(project_id, key)` ignores the repeat. */
 const IGNORE_DUPLICATES = { onConflict: "project_id,key", ignoreDuplicates: true } as const;
 
+type Supabase = Awaited<ReturnType<typeof createServerSupabase>>;
+
+/**
+ * Keys of every phrase of the project, active or not: what a new phrase must not repeat and what counts against
+ * `MAX_TRACKED`. PostgREST caps a read at 1000 rows, twice the limit, so a project at the limit is always seen as full.
+ */
+async function trackedKeys(supabase: Supabase, projectId: string): Promise<Set<string>> {
+  const { data, error } = await supabase.from("keywords").select("key").eq("project_id", projectId);
+  if (error) fail("Nie udało się wczytać fraz", error);
+  return new Set((data ?? []).map((r) => r.key));
+}
+
 export async function addKeywords(formData: FormData) {
   const project = await getCurrentProject();
   const keys = parseKeywordList(text(formData, "keywords"));
   if (keys.length === 0) return;
   const supabase = await createServerSupabase();
+  // a phrase that is tracked already takes no room; the rest goes in only as far as `MAX_TRACKED` allows
+  const taken = await trackedKeys(supabase, project.id);
+  const fresh = keys.filter((key) => !taken.has(key)).slice(0, Math.max(0, MAX_TRACKED - taken.size));
+  if (fresh.length === 0) return;
   const { error } = await supabase.from("keywords").upsert(
-    keys.map((key) => ({ project_id: project.id, text: key, key, source: "manual" })),
+    fresh.map((key) => ({ project_id: project.id, text: key, key, source: "manual" })),
     IGNORE_DUPLICATES,
   );
   if (error) fail("Nie udało się dodać fraz", error);
@@ -102,6 +119,10 @@ export async function setTargetPath(formData: FormData) {
  * Tracks a suggested phrase and marks the suggestion `accepted`. The phrase goes first: if the second write fails,
  * the suggestion stays in the inbox next to a tracked phrase (and is hidden there) rather than vanishing without one.
  * The volume and CPC the suggestion carries come along, so the phrase does not show "brak danych" until the next measurement.
+ * Only a `new` suggestion can be accepted, so a stale form cannot revive one dismissed or accepted in another tab;
+ * the exception is `ranked`, whose list shows every row whatever its status (a phrase accepted and later deleted
+ * from the tracked list is offered again there). Nothing is added for a key longer than a phrase may be, or
+ * once `MAX_TRACKED` phrases are tracked (a phrase that is already tracked only gets its status).
  */
 export async function acceptSuggestion(formData: FormData) {
   const project = await getCurrentProject();
@@ -109,11 +130,15 @@ export async function acceptSuggestion(formData: FormData) {
   if (!id) return;
   const supabase = await createServerSupabase();
   const { data: s, error } = await supabase.from("keyword_suggestions")
-    .select("id, key, text, source, search_volume, cpc").eq("id", id).eq("project_id", project.id).maybeSingle();
+    .select("id, key, text, source, status, search_volume, cpc").eq("id", id).eq("project_id", project.id).maybeSingle();
   if (error) fail("Nie udało się wczytać podpowiedzi", error);
   if (!s) return;
   const source = KEYWORD_SOURCE[s.source as keyof typeof KEYWORD_SOURCE];
   if (!source) return;
+  if (s.status !== "new" && s.source !== "ranked") return;
+  if (s.key.length > MAX_KEYWORD_LENGTH) return;
+  const taken = await trackedKeys(supabase, project.id);
+  if (!taken.has(s.key) && taken.size >= MAX_TRACKED) return;
 
   const { error: insertError } = await supabase.from("keywords").upsert(
     { project_id: project.id, key: s.key, text: s.text, source, search_volume: s.search_volume, cpc: s.cpc },
@@ -138,8 +163,8 @@ export async function dismissSuggestion(formData: FormData) {
 }
 
 /**
- * Takes the 50 queries with the most impressions in the last 28 days of Search Console data that are not tracked yet.
- * Does nothing before the first sync. Queries are compared by `normalizeKeyword`; one that is empty or longer than a
+ * Takes the 50 queries with the most impressions in the last 28 days of Search Console data that are not tracked yet
+ * (fewer when less room is left under `MAX_TRACKED`). Does nothing before the first sync. Queries are compared by `normalizeKeyword`; one that is empty or longer than a
  * phrase may be is skipped. Not `parseKeywordList`: it splits on commas, and a query may contain one.
  */
 export async function importFromGsc() {
@@ -149,15 +174,13 @@ export async function importFromGsc() {
   const rows = await getQueryWindows(project.id, gscWindows(lastDate), GSC_QUERY_LIMIT);
 
   const supabase = await createServerSupabase();
-  // PostgREST caps a read at 1000 rows; a phrase beyond that is still safe: the unique key ignores the repeat
-  const { data: trackedRows, error } = await supabase.from("keywords").select("key").eq("project_id", project.id);
-  if (error) fail("Nie udało się wczytać fraz", error);
-  const taken = new Set((trackedRows ?? []).map((r) => r.key));
+  const taken = await trackedKeys(supabase, project.id);
+  const room = Math.min(IMPORT_LIMIT, MAX_TRACKED - taken.size);
 
   const keys: string[] = [];
   const byImpressions = [...rows].sort((a, b) => b.cur.impressions - a.cur.impressions);
   for (const r of byImpressions) {
-    if (keys.length >= IMPORT_LIMIT) break;
+    if (keys.length >= room) break;
     if (r.cur.impressions <= 0) continue;
     const key = normalizeKeyword(r.query);
     if (key === "" || key.length > MAX_KEYWORD_LENGTH || taken.has(key)) continue;

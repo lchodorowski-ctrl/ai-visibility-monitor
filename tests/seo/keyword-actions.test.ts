@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { fakeAdmin, filterValue, type Call, type Handled } from "./fake-admin";
+import { MAX_TRACKED } from "@/lib/seo/keyword-volumes";
 
 const h = vi.hoisted(() => ({
   trigger: vi.fn(),
@@ -36,6 +37,10 @@ const form = (fields: Record<string, string>) => {
   return f;
 };
 const writes = (table: string) => calls.filter((c) => c.table === table && c.op !== "select");
+/** Atrapa listy fraz projektu (`keywords.key`); reszta zapytań zwraca `rest`. */
+const withTracked = (keys: string[], rest: (c: Call) => Handled = () => ({ data: null })) =>
+  setDb((c) => (c.table === "keywords" && c.op === "select" ? { data: keys.map((key) => ({ key })) } : rest(c)));
+const manyKeys = (n: number, prefix = "fraza") => Array.from({ length: n }, (_, i) => `${prefix} ${i}`);
 
 beforeEach(() => {
   h.trigger.mockReset().mockResolvedValue({ id: "run_1" });
@@ -75,9 +80,32 @@ describe("addKeywords", () => {
   });
 
   it("błąd bazy rzuca", async () => {
-    setDb(() => ({ error: { message: "boom" } }));
+    setDb((c) => (c.op === "select" ? { data: [] } : { error: { message: "boom" } }));
     await expect(addKeywords(form({ keywords: "kurs ai" }))).rejects.toThrow("Nie udało się dodać fraz: boom");
     expect(h.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("limit śledzonych fraz: dopisuje tylko tyle, ile zostało miejsca (frazy już śledzone, także wstrzymane, liczą się do limitu)", async () => {
+    withTracked(manyKeys(MAX_TRACKED - 2));
+    await addKeywords(form({ keywords: "nowa 1\nnowa 2\nnowa 3\nnowa 4" }));
+    const [call] = writes("keywords");
+    expect((call.payload as { key: string }[]).map((r) => r.key)).toEqual(["nowa 1", "nowa 2"]);
+    const read = calls.find((c) => c.table === "keywords" && c.op === "select")!;
+    expect(read.cols).toBe("key");
+    expect(filterValue(read, "eq", "project_id")).toBe("p1");
+    expect(h.revalidatePath).toHaveBeenCalledWith(PATH);
+  });
+
+  it("przy pełnym limicie niczego nie dopisuje", async () => {
+    withTracked(manyKeys(MAX_TRACKED));
+    await addKeywords(form({ keywords: "nowa 1" }));
+    expect(writes("keywords")).toHaveLength(0);
+  });
+
+  it("fraza już śledzona nie zajmuje miejsca: z jednym wolnym miejscem wchodzi pierwsza nowa, a powtórzona jest pomijana", async () => {
+    withTracked([...manyKeys(MAX_TRACKED - 2), "kurs ai"]); // 499 fraz, jedno wolne miejsce
+    await addKeywords(form({ keywords: "kurs ai\nnowa 1\nnowa 2" }));
+    expect((writes("keywords")[0].payload as { key: string }[]).map((r) => r.key)).toEqual(["nowa 1"]);
   });
 });
 
@@ -189,9 +217,60 @@ describe("acceptSuggestion", () => {
   });
 
   it("błąd zapisu frazy przerywa przed zmianą statusu podpowiedzi", async () => {
-    setDb((c) => (c.table === "keyword_suggestions" && c.op === "select" ? { data: suggestion("labs") } : { error: { message: "boom" } }));
+    setDb((c) => {
+      if (c.table === "keyword_suggestions" && c.op === "select") return { data: suggestion("labs") };
+      if (c.op === "select") return { data: [] };
+      return { error: { message: "boom" } };
+    });
     await expect(acceptSuggestion(form({ id: SUGGESTION_ID }))).rejects.toThrow("boom");
     expect(writes("keyword_suggestions")).toHaveLength(0);
+  });
+
+  it("podpowiedź odrzucona albo już przyjęta (nieaktualny formularz) nie dodaje frazy: tylko status new przechodzi", async () => {
+    for (const status of ["dismissed", "accepted"]) {
+      for (const source of ["labs", "gap"]) {
+        withSuggestion(suggestion(source, { status }));
+        await acceptSuggestion(form({ id: SUGGESTION_ID }));
+        expect(writes("keywords")).toHaveLength(0);
+        expect(writes("keyword_suggestions")).toHaveLength(0);
+      }
+    }
+  });
+
+  it("własna pozycja (widok „Gdzie już jesteście”) pokazuje wiersze każdego statusu, więc „Śledź” działa dla niej też po wcześniejszym przyjęciu i usunięciu frazy", async () => {
+    withSuggestion(suggestion("ranked", { status: "accepted" }));
+    await acceptSuggestion(form({ id: SUGGESTION_ID }));
+    expect((writes("keywords")[0].payload as { source: string }).source).toBe("ranked");
+    expect(writes("keyword_suggestions")[0].payload).toMatchObject({ status: "accepted" });
+  });
+
+  it("fraza dłuższa niż 80 znaków nie jest śledzona (jak przy dodawaniu i imporcie), podpowiedź zostaje bez zmian", async () => {
+    withSuggestion(suggestion("labs", { key: "x".repeat(81), text: "x".repeat(81) }));
+    await acceptSuggestion(form({ id: SUGGESTION_ID }));
+    expect(writes("keywords")).toHaveLength(0);
+    expect(writes("keyword_suggestions")).toHaveLength(0);
+    withSuggestion(suggestion("labs", { key: "x".repeat(80), text: "x".repeat(80) }));
+    await acceptSuggestion(form({ id: SUGGESTION_ID }));
+    expect(writes("keywords")).toHaveLength(1);
+  });
+
+  it("przy pełnym limicie nowa fraza nie jest dodawana, a podpowiedź zostaje na liście; już śledzona dostaje tylko status", async () => {
+    const row = (key: string) => suggestion("labs", { key, text: key });
+    const full = manyKeys(MAX_TRACKED);
+    withTracked(full, (c) => (c.table === "keyword_suggestions" && c.op === "select" ? { data: row("nowa fraza") } : { data: null }));
+    await acceptSuggestion(form({ id: SUGGESTION_ID }));
+    expect(writes("keywords")).toHaveLength(0);
+    expect(writes("keyword_suggestions")).toHaveLength(0);
+
+    withTracked(full, (c) => (c.table === "keyword_suggestions" && c.op === "select" ? { data: row("fraza 7") } : { data: null }));
+    await acceptSuggestion(form({ id: SUGGESTION_ID }));
+    expect(writes("keyword_suggestions")[0].payload).toMatchObject({ status: "accepted" });
+  });
+
+  it("z ostatnim wolnym miejscem fraza jeszcze wchodzi", async () => {
+    withTracked(manyKeys(MAX_TRACKED - 1), (c) => (c.table === "keyword_suggestions" && c.op === "select" ? { data: suggestion("labs") } : { data: null }));
+    await acceptSuggestion(form({ id: SUGGESTION_ID }));
+    expect(writes("keywords")).toHaveLength(1);
   });
 });
 
@@ -271,6 +350,21 @@ describe("importFromGsc", () => {
     expect(writes("keywords")[0].payload).toEqual([
       { project_id: "p1", text: "ai, chatgpt i prompty", key: "ai, chatgpt i prompty", source: "gsc" },
     ]);
+  });
+
+  it("limit śledzonych fraz: importuje tylko tyle, ile zostało miejsca, a przy pełnym limicie nic", async () => {
+    const many = Array.from({ length: 60 }, (_, i) => q(`nowa ${i}`, 1000 - i));
+    h.getQueryWindows.mockResolvedValue(many);
+    tracked(...manyKeys(MAX_TRACKED - 20));
+    await importFromGsc();
+    const rows = writes("keywords")[0].payload as { key: string }[];
+    expect(rows).toHaveLength(20);
+    expect(rows[0].key).toBe("nowa 0");
+
+    calls.length = 0;
+    tracked(...manyKeys(MAX_TRACKED));
+    await importFromGsc();
+    expect(writes("keywords")).toHaveLength(0);
   });
 
   it("gdy wszystkie frazy są już śledzone, nic nie zapisuje", async () => {
