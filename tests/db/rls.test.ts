@@ -8,6 +8,39 @@ const MEMBER = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const OUTSIDER = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 const PROJECT = "22222222-2222-2222-2222-222222222222";
 
+const MEMBER_CLAIMS = { sub: MEMBER, role: "authenticated" };
+const OUTSIDER_CLAIMS = { sub: OUTSIDER, role: "authenticated" };
+
+const connect = async () => {
+  const c = new Client({ connectionString: url });
+  await c.connect();
+  return c;
+};
+
+// Wykonuje `run` jako rola `anon` albo `authenticated` z podanymi claimami JWT, po czym przywraca superusera.
+const asRole = async <T>(
+  c: Client,
+  role: "anon" | "authenticated",
+  claims: object,
+  run: () => Promise<T>,
+): Promise<T> => {
+  try {
+    await c.query(`set role ${role}`);
+    await c.query(`select set_config('request.jwt.claims', $1, false)`, [JSON.stringify(claims)]);
+    return await run();
+  } finally {
+    await c.query(`reset role`);
+    await c.query(`select set_config('request.jwt.claims', '', false)`);
+  }
+};
+
+const prepareUsers = async (c: Client) => {
+  for (const uid of [MEMBER, OUTSIDER]) {
+    await c.query(`insert into auth.users (id, email) values ($1, $2) on conflict do nothing`, [uid, `${uid}@rls.test.local`]);
+  }
+  await c.query(`insert into memberships (org_id, user_id) values ($1, $2) on conflict do nothing`, [ORG, MEMBER]);
+};
+
 describe.skipIf(!url)("RLS", () => {
   it("anon i nie-członek nie widzą promptów, członek org widzi", async () => {
     const c = new Client({ connectionString: url });
@@ -259,35 +292,6 @@ describe.skipIf(!url)("RLS", () => {
     const CUR_DAY = "2020-01-02";
     const DAYS = [PREV_DAY, CUR_DAY];
 
-    const connect = async () => {
-      const c = new Client({ connectionString: url });
-      await c.connect();
-      return c;
-    };
-
-    const asRole = async <T>(
-      c: Client,
-      role: "anon" | "authenticated",
-      claims: object,
-      run: () => Promise<T>,
-    ): Promise<T> => {
-      try {
-        await c.query(`set role ${role}`);
-        await c.query(`select set_config('request.jwt.claims', $1, false)`, [JSON.stringify(claims)]);
-        return await run();
-      } finally {
-        await c.query(`reset role`);
-        await c.query(`select set_config('request.jwt.claims', '', false)`);
-      }
-    };
-
-    const prepareUsers = async (c: Client) => {
-      for (const uid of [MEMBER, OUTSIDER]) {
-        await c.query(`insert into auth.users (id, email) values ($1, $2) on conflict do nothing`, [uid, `${uid}@rls.test.local`]);
-      }
-      await c.query(`insert into memberships (org_id, user_id) values ($1, $2) on conflict do nothing`, [ORG, MEMBER]);
-    };
-
     const cleanup = async (c: Client) => {
       await c.query(`reset role`);
       await c.query(`select set_config('request.jwt.claims', '', false)`);
@@ -326,9 +330,6 @@ describe.skipIf(!url)("RLS", () => {
         [PROJECT, PREV_DAY, CUR_DAY, PHRASE],
       );
     };
-
-    const MEMBER_CLAIMS = { sub: MEMBER, role: "authenticated" };
-    const OUTSIDER_CLAIMS = { sub: OUTSIDER, role: "authenticated" };
 
     it("GSC: anon i nie-członek nie widzą danych ani agregatów, członek widzi", async () => {
       const c = await connect();
@@ -518,37 +519,6 @@ describe.skipIf(!url)("RLS", () => {
     const KEYS = ["rls rank test a", "rls rank test b", "rls rank test c"];
     const DETAIL_PHRASE = "rls rank detail fraza";
     const DETAIL_DAYS = ["2020-02-01", "2020-02-02", "2020-02-03"];
-    const MEMBER_CLAIMS = { sub: MEMBER, role: "authenticated" };
-    const OUTSIDER_CLAIMS = { sub: OUTSIDER, role: "authenticated" };
-
-    const connect = async () => {
-      const c = new Client({ connectionString: url });
-      await c.connect();
-      return c;
-    };
-
-    const asRole = async <T>(
-      c: Client,
-      role: "anon" | "authenticated",
-      claims: object,
-      run: () => Promise<T>,
-    ): Promise<T> => {
-      try {
-        await c.query(`set role ${role}`);
-        await c.query(`select set_config('request.jwt.claims', $1, false)`, [JSON.stringify(claims)]);
-        return await run();
-      } finally {
-        await c.query(`reset role`);
-        await c.query(`select set_config('request.jwt.claims', '', false)`);
-      }
-    };
-
-    const prepareUsers = async (c: Client) => {
-      for (const uid of [MEMBER, OUTSIDER]) {
-        await c.query(`insert into auth.users (id, email) values ($1, $2) on conflict do nothing`, [uid, `${uid}@rls.test.local`]);
-      }
-      await c.query(`insert into memberships (org_id, user_id) values ($1, $2) on conflict do nothing`, [ORG, MEMBER]);
-    };
 
     // Usunięcie fraz kasuje kaskadowo ich pomiary (rank_checks).
     const cleanup = async (c: Client) => {
