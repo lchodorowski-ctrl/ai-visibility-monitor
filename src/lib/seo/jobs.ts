@@ -22,21 +22,26 @@ export async function startJob(admin: SupabaseClient<Database>, projectId: strin
   return data.id;
 }
 
-/** Closes a ledger entry: final status, cost, stats and `finished_at`. */
+/**
+ * Closes a ledger entry: final status, stats and `finished_at`. `cost_usd` is written only when `costUsd`
+ * is given, so a cost already recorded on the row is never overwritten with 0. Throws when no row matched.
+ */
 export async function finishJob(
   admin: SupabaseClient<Database>,
   jobId: string,
   r: { status: SeoJobStatus; stats?: Record<string, unknown>; error?: string; costUsd?: number },
 ): Promise<void> {
-  const { error } = await admin
+  const { data, error } = await admin
     .from("seo_jobs")
     .update({
       status: r.status,
-      cost_usd: r.costUsd ?? 0,
+      ...(r.costUsd === undefined ? {} : { cost_usd: r.costUsd }),
       stats: (r.stats ?? {}) as NonNullable<Json>,
       error: r.error ?? null,
       finished_at: new Date().toISOString(),
     })
-    .eq("id", jobId);
+    .eq("id", jobId)
+    .select("id");
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error(`seo_jobs: brak zadania ${jobId}`);
 }

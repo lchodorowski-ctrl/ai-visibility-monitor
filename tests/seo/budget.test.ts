@@ -39,4 +39,9 @@ describe("decideSeoSpend", () => {
   it("pozwala dokładnie na granicy budżetu", () => {
     expect(decideSeoSpend(10, 0, 10)).toEqual({ kind: "go" });
   });
+  it("NaN w dowolnym argumencie to budget_exceeded (brama zamknięta)", () => {
+    expect(decideSeoSpend(NaN, 1, 10).kind).toBe("budget_exceeded");
+    expect(decideSeoSpend(1, NaN, 10).kind).toBe("budget_exceeded");
+    expect(decideSeoSpend(1, 1, NaN).kind).toBe("budget_exceeded");
+  });
 });

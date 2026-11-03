@@ -139,6 +139,8 @@ function world(w: World = {}) {
   return fakeAdmin((c) => {
     if (c.table === "projects") return { data: { gsc_property: property } };
     if (c.table === "seo_jobs" && c.op === "insert") return { data: { id: "job-1" } };
+    // finishJob dopisuje .select("id") i sprawdza, że zaktualizowano wiersz
+    if (c.table === "seo_jobs" && c.op === "update") return { data: [{ id: "job-1" }] };
     if (c.table === "gsc_site_daily" && c.op === "select") return { data: w.lastDate ? { date: w.lastDate } : null };
     if (c.op === "upsert" && c.table === w.failOn) return { error: { message: `boom ${c.table}` } };
     return {};

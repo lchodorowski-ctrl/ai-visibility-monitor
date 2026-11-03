@@ -13,7 +13,10 @@ export async function seoMonthSpend(admin: SupabaseClient<Database>, projectId: 
 
 export type SeoSpendDecision = { kind: "go" } | { kind: "budget_exceeded"; spent: number; estimate: number };
 
-/** Gate before a paid SEO call: refuse when already spent plus the estimate would exceed the monthly budget. */
+/**
+ * Gate before a paid SEO call. Fails closed: goes only when spent plus the estimate is provably within
+ * the monthly budget, so NaN in any argument (a comparison with NaN is always false) refuses the call.
+ */
 export function decideSeoSpend(spent: number, estimate: number, budget: number): SeoSpendDecision {
-  return spent + estimate > budget ? { kind: "budget_exceeded", spent, estimate } : { kind: "go" };
+  return spent + estimate <= budget ? { kind: "go" } : { kind: "budget_exceeded", spent, estimate };
 }

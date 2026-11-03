@@ -49,7 +49,7 @@ export default async function SettingsPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="monthly_budget_usd">Miesięczny budżet API (USD)</Label>
-                <Input id="monthly_budget_usd" name="monthly_budget_usd" type="number" step="1" min="0" defaultValue={String(project.monthly_budget_usd)} />
+                <Input id="monthly_budget_usd" name="monthly_budget_usd" type="number" step="any" min="0" required defaultValue={String(project.monthly_budget_usd)} />
               </div>
               <div className="grid gap-2 md:col-span-2">
                 <Label htmlFor="facts">Karta faktów (JSON)</Label>
@@ -89,7 +89,7 @@ export default async function SettingsPage() {
               </div>
               <div className="grid content-start gap-2">
                 <Label htmlFor="seo_budget_usd">Miesięczny limit SEO (USD)</Label>
-                <Input id="seo_budget_usd" name="seo_budget_usd" type="number" step="1" min="0" defaultValue={String(project.seo_budget_usd)} />
+                <Input id="seo_budget_usd" name="seo_budget_usd" type="number" step="any" min="0" required defaultValue={String(project.seo_budget_usd)} />
               </div>
               <div className="grid content-start gap-2">
                 <Label htmlFor="trends_anchor">Fraza-kotwica Google Trends</Label>

@@ -4,16 +4,16 @@ import { renderToStaticMarkup } from "react-dom/server";
 const nav = vi.hoisted(() => ({ pathname: "/app/google" }));
 vi.mock("next/navigation", () => ({ usePathname: () => nav.pathname }));
 
-import { GoogleSubNav, GOOGLE_NAV } from "@/app/app/google/GoogleSubNav";
+import { GoogleSubNav } from "@/app/app/google/GoogleSubNav";
 
+const one = [["/app/google", "Przegląd"]] as const;
 const two = [["/app/google", "Przegląd"], ["/app/google/phrases", "Frazy"]] as const;
 
 describe("GoogleSubNav", () => {
   beforeEach(() => { nav.pathname = "/app/google"; });
 
   it("jedna pozycja: podmenu się nie renderuje", () => {
-    expect(GOOGLE_NAV).toEqual([["/app/google", "Przegląd"]]);
-    expect(renderToStaticMarkup(<GoogleSubNav />)).toBe("");
+    expect(renderToStaticMarkup(<GoogleSubNav items={one} />)).toBe("");
   });
 
   it("aktywna pozycja ma aria-current", () => {
