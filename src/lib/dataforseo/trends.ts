@@ -19,7 +19,7 @@ export interface TrendSeries {
 interface RawTrendsItem {
   type: string;
   keywords?: string[];
-  data?: { date_from: string; values: (number | null)[] }[] | null;
+  data?: { date_from: string; values?: (number | null)[] | null }[] | null;
 }
 
 /**
@@ -39,7 +39,7 @@ export async function trendsExplore(keywords: string[]): Promise<{ series: Trend
   // `values[j]` odpowiada `graph.keywords[j]`.
   const series: TrendSeries[] = (graph?.keywords ?? []).map((keyword, j) => ({
     keyword,
-    points: (graph?.data ?? []).map((d) => ({ week: d.date_from, value: d.values[j] ?? null })),
+    points: (graph?.data ?? []).map((d) => ({ week: d.date_from, value: d.values?.[j] ?? null })),
   }));
   return { series, costUsd: res.cost ?? 0 };
 }

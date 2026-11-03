@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/db-types";
+import type { Database, TablesUpdate } from "@/lib/db-types";
 import { createAdminSupabase } from "@/lib/supabase/admin";
-import { searchVolume as defaultSearchVolume } from "@/lib/dataforseo/keywords-data";
+import { searchVolume as defaultSearchVolume, type VolumeItem } from "@/lib/dataforseo/keywords-data";
 import { trendsExplore as defaultTrendsExplore, trendBatches, normalizeTrends, type TrendSeries } from "@/lib/dataforseo/trends";
 import { DEFAULT_TRENDS_ANCHOR, normalizeKeyword } from "./keywords";
 import { estimateVolumesCost } from "./costs";
@@ -14,6 +14,8 @@ type Admin = SupabaseClient<Database>;
 export const TRENDS_MIN_VOLUME = 50;
 /** Najwięcej aktywnych fraz mierzonych w jednym zadaniu (górna granica kosztu). */
 export const MAX_TRACKED = 500;
+/** Google Ads nie przyjmuje fraz dłuższych niż 10 słów, więc takich nie wysyłamy (płacilibyśmy za odpowiedź bez danych). */
+export const MAX_VOLUME_WORDS = 10;
 export const NO_KEYWORDS_MESSAGE = "Brak aktywnych fraz";
 
 const WEEK_MS = 7 * 86_400_000;
@@ -29,12 +31,33 @@ export interface RunKeywordVolumesDeps {
 
 export interface KeywordVolumesResult {
   status: SeoJobStatus;
-  /** Frazy, którym zapisano wolumen. */
+  /** Frazy, którym zapisano dane z Google Ads (przynajmniej jedno pole). */
   keywords: number;
   /** Frazy, którym zapisano trend Google Trends. */
   trends: number;
   /** Faktyczny koszt DataForSEO (suma pól `cost` odpowiedzi). */
   costUsd: number;
+}
+
+const wordCount = (key: string) => key.split(/\s+/).filter(Boolean).length;
+
+/**
+ * Pola frazy do zapisu z odpowiedzi Google Ads. Znana wartość nigdy nie jest nadpisywana pustą (Google potrafi
+ * nie zwrócić danych dla frazy, która miała je miesiąc wcześniej), więc w zapisie są tylko pola z odpowiedzią,
+ * a data pomiaru rusza wyłącznie wraz z wolumenem. Pusty wynik oznacza: nie ma czego zapisać.
+ */
+function volumeFields(item: VolumeItem, measuredAt: string): TablesUpdate<"keywords"> {
+  const fields: TablesUpdate<"keywords"> = {};
+  if (item.searchVolume !== null) {
+    fields.search_volume = item.searchVolume;
+    fields.volume_updated_at = measuredAt;
+  }
+  if (item.competition !== null) fields.competition = item.competition;
+  if (item.competitionIndex !== null) fields.competition_index = item.competitionIndex;
+  // Google Ads oddaje szum float32 (2.4000000953674316), a kolumna to numeric(10,2).
+  if (item.cpc !== null) fields.cpc = round2(item.cpc);
+  if (item.monthlySearches.length > 0) fields.monthly_searches = item.monthlySearches;
+  return fields;
 }
 
 /**
@@ -49,8 +72,10 @@ function completeWeeks(points: { week: string; value: number | null }[], now: Da
 
 /**
  * Miesięczny pomiar śledzonych fraz: wolumeny z Google Ads dla wszystkich aktywnych fraz (do `MAX_TRACKED`),
- * potem Google Trends dla tych z wolumenem od `TRENDS_MIN_VOLUME`. Płatne, więc przed pierwszym wywołaniem
- * sprawdza budżet SEO projektu (górny szacunek: każda fraza ma wolumen i trend), a w rejestrze zapisuje faktyczny koszt.
+ * potem Google Trends dla tych z wolumenem od `TRENDS_MIN_VOLUME` (z odpowiedzi albo, gdy Google go nie zwrócił,
+ * zapisanego wcześniej). Frazy dłuższe niż `MAX_VOLUME_WORDS` słów zostają nietknięte. Płatne, więc przed pierwszym
+ * wywołaniem sprawdza budżet SEO projektu (górny szacunek: każda wysyłana fraza ma wolumen i trend), a w rejestrze
+ * zapisuje faktyczny koszt.
  * Wyjątek zamyka zadanie jako `failed` z kosztem poniesionym do tego momentu i leci dalej.
  */
 export async function runKeywordVolumes(payload: { projectId: string }, deps: RunKeywordVolumesDeps = {}): Promise<KeywordVolumesResult> {
@@ -68,7 +93,7 @@ export async function runKeywordVolumes(payload: { projectId: string }, deps: Ru
   const jobId = await startJob(admin, projectId, "keyword_volumes");
   let spent = 0;
   try {
-    const trackedRes = await admin.from("keywords").select("id, key").eq("project_id", projectId).eq("active", true)
+    const trackedRes = await admin.from("keywords").select("id, key, search_volume").eq("project_id", projectId).eq("active", true)
       .order("created_at", { ascending: true }).limit(MAX_TRACKED);
     if (trackedRes.error) throw new Error(trackedRes.error.message);
     const tracked = trackedRes.data ?? [];
@@ -77,7 +102,9 @@ export async function runKeywordVolumes(payload: { projectId: string }, deps: Ru
       return { status: "skipped", keywords: 0, trends: 0, costUsd: 0 };
     }
 
-    const estimate = estimateVolumesCost(tracked.length, tracked.length);
+    const sendable = tracked.filter((k) => wordCount(k.key) <= MAX_VOLUME_WORDS);
+    const tooLong = tracked.length - sendable.length;
+    const estimate = estimateVolumesCost(sendable.length, sendable.length);
     const monthSpent = await seoMonthSpend(admin, projectId, now());
     const decision = decideSeoSpend(monthSpent, estimate, budget);
     if (decision.kind === "budget_exceeded") {
@@ -90,27 +117,27 @@ export async function runKeywordVolumes(payload: { projectId: string }, deps: Ru
     }
 
     // 1. Wolumeny. Odpowiedź parujemy z frazami po znormalizowanym kluczu; fraza bez odpowiedzi zostaje nietknięta.
-    const volumeRes = await volumes(tracked.map((k) => k.key));
+    const volumeRes = sendable.length > 0 ? await volumes(sendable.map((k) => k.key)) : { items: [], costUsd: 0 };
     spent += volumeRes.costUsd;
     const byKey = new Map(volumeRes.items.map((item) => [normalizeKeyword(item.keyword), item]));
     const measuredAt = now().toISOString();
     const trendTargets: { id: string; key: string }[] = [];
     let updated = 0;
-    for (const k of tracked) {
+    let noData = 0;
+    for (const k of sendable) {
       const item = byKey.get(k.key);
       if (!item) continue;
-      const { error } = await admin.from("keywords").update({
-        search_volume: item.searchVolume,
-        competition: item.competition,
-        competition_index: item.competitionIndex,
-        // Google Ads oddaje szum float32 (2.4000000953674316), a kolumna to numeric(10,2).
-        cpc: item.cpc === null ? null : round2(item.cpc),
-        monthly_searches: item.monthlySearches,
-        volume_updated_at: measuredAt,
-      }).eq("id", k.id).eq("project_id", projectId);
-      if (error) throw new Error(error.message);
-      updated += 1;
-      if (item.searchVolume !== null && item.searchVolume >= TRENDS_MIN_VOLUME) trendTargets.push(k);
+      const fields = volumeFields(item, measuredAt);
+      if (Object.keys(fields).length === 0) {
+        noData += 1;
+      } else {
+        const { error } = await admin.from("keywords").update(fields).eq("id", k.id).eq("project_id", projectId);
+        if (error) throw new Error(error.message);
+        updated += 1;
+      }
+      // Gdy Google nie zwrócił wolumenu, zostaje ten sprzed pomiaru: wystarczy do decyzji o Trends.
+      const volume = item.searchVolume ?? k.search_volume;
+      if (volume !== null && volume >= TRENDS_MIN_VOLUME) trendTargets.push(k);
     }
 
     // 2. Google Trends: paczki po 4 frazy i kotwica; koszt doliczamy po każdej paczce, żeby awaria nie zgubiła wydanego.
@@ -131,8 +158,11 @@ export async function runKeywordVolumes(payload: { projectId: string }, deps: Ru
       for (const k of trendTargets) {
         const points = normalized.get(k.key);
         if (!points) continue;
+        const trend = completeWeeks(points, trendedAt);
+        // same null (kotwica bez ruchu w paczce) to brak danych, a nie trend: nie nadpisujemy nim poprzedniego
+        if (trend.every((p) => p.value === null)) continue;
         const { error } = await admin.from("keywords").update({
-          trend: completeWeeks(points, trendedAt),
+          trend,
           trend_updated_at: trendedAt.toISOString(),
         }).eq("id", k.id).eq("project_id", projectId);
         if (error) throw new Error(error.message);
@@ -144,8 +174,8 @@ export async function runKeywordVolumes(payload: { projectId: string }, deps: Ru
       status: "done",
       costUsd: spent,
       stats: {
-        keywords: updated, trendCandidates: trendTargets.length, trends, trendRequests: batches.length,
-        missing: tracked.length - updated, estimateUsd: estimate,
+        keywords: updated, noData, tooLong, trendCandidates: trendTargets.length, trends, trendRequests: batches.length,
+        missing: sendable.length - updated - noData, estimateUsd: estimate,
       },
     });
     return { status: "done", keywords: updated, trends, costUsd: spent };

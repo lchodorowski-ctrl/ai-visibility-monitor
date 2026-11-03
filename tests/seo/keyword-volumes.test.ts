@@ -9,7 +9,7 @@ const PROJECT = "proj-1";
 const now = () => new Date("2026-11-03T05:00:00Z");
 const NOW_ISO = "2026-11-03T05:00:00.000Z";
 
-interface World { budget?: number; anchor?: string | null; spent?: number; keywords?: { id: string; key: string }[]; failUpdate?: string }
+interface World { budget?: number; anchor?: string | null; spent?: number; keywords?: { id: string; key: string; search_volume?: number | null }[]; failUpdate?: string }
 
 function world(w: World = {}) {
   const keywords = w.keywords ?? [];
@@ -27,7 +27,9 @@ function world(w: World = {}) {
   });
 }
 
-const tracked = (...keys: string[]) => keys.map((key, i) => ({ id: `k${i + 1}`, key }));
+const tracked = (...keys: string[]) => keys.map((key, i) => ({ id: `k${i + 1}`, key, search_volume: null as number | null }));
+/** Frazy z już zapisanym wolumenem (kolejność jak w `tracked`). */
+const trackedWithVolume = (...entries: [string, number | null][]) => entries.map(([key, search_volume], i) => ({ id: `k${i + 1}`, key, search_volume }));
 
 const vol = (keyword: string, searchVolume: number | null, extra: Partial<VolumeItem> = {}): VolumeItem => ({
   keyword, searchVolume, competition: null, competitionIndex: null, cpc: null, monthlySearches: [], ...extra,
@@ -49,6 +51,10 @@ function trendsFake(weeks: string[], values: Record<string, (number | null)[]>, 
 
 const keywordUpdates = (calls: Call[], id?: string) =>
   calls.filter((c) => c.table === "keywords" && c.op === "update" && (id === undefined || filterValue(c, "eq", "id") === id));
+
+/** Aktualizacja wolumenowa frazy (taka, która nie zapisuje trendu). */
+const volumeUpdate = (calls: Call[], id: string) =>
+  keywordUpdates(calls, id).map((c) => c.payload as Record<string, unknown>).find((p) => !("trend" in p));
 
 const WEEKS = ["2026-10-11", "2026-10-18", "2026-10-25", "2026-11-01"];
 
@@ -83,7 +89,7 @@ describe("runKeywordVolumes: bez płatnych wywołań", () => {
     await runKeywordVolumes({ projectId: PROJECT }, { admin: client, searchVolume: vi.fn(), trendsExplore: vi.fn(), now });
 
     const read = calls.find((c) => c.table === "keywords" && c.op === "select")!;
-    expect(read.cols).toBe("id, key");
+    expect(read.cols).toBe("id, key, search_volume");
     expect(read.filters).toEqual([
       ["eq", "project_id", PROJECT],
       ["eq", "active", true],
@@ -163,25 +169,66 @@ describe("runKeywordVolumes: szczęśliwa ścieżka", () => {
     expect(searchVolume.mock.calls).toEqual([[["kurs prompt engineering", "kurs ai dla firm", "szkolenie chatgpt", "ai act"]]]);
   });
 
-  it("zapisuje wolumen każdej frazy: null zostaje null, cpc zaokrąglone do 2 miejsc, miesięczne wyszukiwania bez zmian", async () => {
+  it("zapisuje wolumen frazy: tylko pola, które Google zwróciło; cpc zaokrąglone do 2 miejsc, miesięczne wyszukiwania bez zmian", async () => {
     const { client, calls } = world({ keywords: tracked("kurs prompt engineering", "kurs ai dla firm", "szkolenie chatgpt", "ai act") });
     await runKeywordVolumes({ projectId: PROJECT }, { admin: client, searchVolume: volumesFake(items), trendsExplore: trendsFake(WEEKS, trendValues), now });
 
-    const volumeUpdate = (id: string) => keywordUpdates(calls, id).map((c) => c.payload).find((p) => "search_volume" in (p as object));
-    expect(volumeUpdate("k1")).toEqual({
+    expect(volumeUpdate(calls, "k1")).toEqual({
       search_volume: 500, competition: "MEDIUM", competition_index: 42, cpc: 2.4,
       monthly_searches: [{ year: 2026, month: 9, searchVolume: 480 }, { year: 2026, month: 8, searchVolume: null }],
       volume_updated_at: NOW_ISO,
     });
-    expect(volumeUpdate("k2")).toEqual({
-      search_volume: null, competition: null, competition_index: null, cpc: null, monthly_searches: [], volume_updated_at: NOW_ISO,
+    // zero to prawdziwa wartość (cpc 0), a pusta lista miesięcy nie trafia do zapisu
+    expect(volumeUpdate(calls, "k4")).toEqual({
+      search_volume: 49, competition: "HIGH", competition_index: 80, cpc: 0, volume_updated_at: NOW_ISO,
     });
-    expect(volumeUpdate("k4")).toMatchObject({ search_volume: 49, cpc: 0 });
     // aktualizacja zawsze po id i projekcie
-    for (const c of keywordUpdates(calls).filter((u) => "search_volume" in (u.payload as object))) {
+    for (const c of keywordUpdates(calls).filter((u) => !("trend" in (u.payload as object)))) {
       expect(c.filters.map((f) => f.slice(0, 2).join(":"))).toEqual(["eq:id", "eq:project_id"]);
       expect(filterValue(c, "eq", "project_id")).toBe(PROJECT);
     }
+  });
+
+  it("odpowiedź bez żadnych danych nie zmienia frazy: brak zapisu, a fraza liczy się jako bez danych", async () => {
+    const { client, calls } = world({ keywords: tracked("kurs ai dla firm") });
+    const res = await runKeywordVolumes({ projectId: PROJECT }, { admin: client, searchVolume: volumesFake([vol("kurs ai dla firm", null)]), trendsExplore: vi.fn(), now });
+
+    expect(keywordUpdates(calls)).toHaveLength(0);
+    expect(res).toMatchObject({ status: "done", keywords: 0 });
+    expect(jobUpdate(calls)).toMatchObject({ stats: { keywords: 0, noData: 1, missing: 0 } });
+  });
+
+  it("nigdy nie nadpisuje znanej wartości pustą: null z Google Ads pomija pole, a data pomiaru rusza tylko wraz z wolumenem", async () => {
+    const { client, calls } = world({ keywords: trackedWithVolume(["szkolenie chatgpt", 300], ["kurs ai", 120], ["ai act", 80]) });
+    await runKeywordVolumes({ projectId: PROJECT }, {
+      admin: client, trendsExplore: trendsFake(WEEKS, {}), now,
+      searchVolume: volumesFake([
+        // bez wolumenu, ale z konkurencją: zapisuje się tylko ona
+        vol("szkolenie chatgpt", null, { competition: "LOW" }),
+        // wolumen jest, cpc i konkurencji brak: wolumen i data, bez pól z nullem
+        vol("kurs ai", 140, { cpc: null, competition: null, competitionIndex: null }),
+        // pusta odpowiedź: nic nie jest zapisywane
+        vol("ai act", null),
+      ]),
+    });
+
+    const withoutVolume = volumeUpdate(calls, "k1");
+    expect(withoutVolume).toEqual({ competition: "LOW" });
+    expect(withoutVolume).not.toHaveProperty("search_volume");
+    expect(withoutVolume).not.toHaveProperty("volume_updated_at");
+    const withVolume = volumeUpdate(calls, "k2");
+    expect(withVolume).toEqual({ search_volume: 140, volume_updated_at: NOW_ISO });
+    expect(keywordUpdates(calls, "k3")).toHaveLength(0);
+  });
+
+  it("miesięczne wyszukiwania zapisuje tylko, gdy lista nie jest pusta", async () => {
+    const { client, calls } = world({ keywords: tracked("a", "b") });
+    await runKeywordVolumes({ projectId: PROJECT }, {
+      admin: client, trendsExplore: vi.fn(), now,
+      searchVolume: volumesFake([vol("a", 10, { monthlySearches: [{ year: 2026, month: 9, searchVolume: 10 }] }), vol("b", 10, { monthlySearches: [] })]),
+    });
+    expect(volumeUpdate(calls, "k1")).toHaveProperty("monthly_searches");
+    expect(volumeUpdate(calls, "k2")).not.toHaveProperty("monthly_searches");
   });
 
   it("Trends tylko dla fraz od 50 wyszukiwań, z domyślną kotwicą na końcu paczki", async () => {
@@ -215,10 +262,11 @@ describe("runKeywordVolumes: szczęśliwa ścieżka", () => {
     const res = await runKeywordVolumes({ projectId: PROJECT }, { admin: client, searchVolume: volumesFake(items, 0.09), trendsExplore: trendsFake(WEEKS, trendValues, 0.011), now });
 
     expect(res.status).toBe("done");
-    expect(res.keywords).toBe(4);
+    // "kurs ai dla firm" Google zwrócił bez żadnych danych, więc nie ma w nim zapisu
+    expect(res.keywords).toBe(3);
     expect(res.costUsd).toBeCloseTo(0.101, 6);
     const job = jobUpdate(calls);
-    expect(job).toMatchObject({ status: "done", error: null, stats: { keywords: 4, trendCandidates: 2, trends: 2, trendRequests: 1, missing: 0 } });
+    expect(job).toMatchObject({ status: "done", error: null, stats: { keywords: 3, noData: 1, trendCandidates: 2, trends: 2, trendRequests: 1, missing: 0, tooLong: 0 } });
     expect(job.cost_usd as number).toBeCloseTo(0.101, 6);
   });
 
@@ -239,6 +287,38 @@ describe("runKeywordVolumes: szczęśliwa ścieżka", () => {
     expect(trendsExplore.mock.calls.flat(2)).not.toContain("fraza czterdzieści dziewięć");
   });
 
+  it("o Trends decyduje wolumen z Google, a gdy Google go nie zwróci, wolumen zapisany wcześniej", async () => {
+    const { client } = world({
+      keywords: trackedWithVolume(["stara wysoka", 300], ["stara niska", 10], ["spadek poniżej progu", 300], ["pusta", null]),
+    });
+    const trendsExplore = trendsFake(WEEKS, {});
+    await runKeywordVolumes({ projectId: PROJECT }, {
+      admin: client, trendsExplore, now,
+      searchVolume: volumesFake([vol("stara wysoka", null), vol("stara niska", null), vol("spadek poniżej progu", 20), vol("pusta", null)]),
+    });
+    expect(trendsExplore.mock.calls).toEqual([[["stara wysoka", "szkolenia ai"]]]);
+  });
+
+  it("trend złożony z samych null (kotwica bez ruchu) nie jest zapisywany, choć zapytanie kosztuje", async () => {
+    const { client, calls } = world({ keywords: tracked("szkolenie chatgpt") });
+    const trendsExplore = trendsFake(WEEKS, { "szkolenie chatgpt": [1, 2, 3, 4], "szkolenia ai": [0, 0, 0, 0] });
+    const res = await runKeywordVolumes({ projectId: PROJECT }, { admin: client, searchVolume: volumesFake([vol("szkolenie chatgpt", 90)]), trendsExplore, now });
+
+    expect(trendsExplore).toHaveBeenCalledTimes(1);
+    expect(keywordUpdates(calls).filter((c) => "trend" in (c.payload as object) || "trend_updated_at" in (c.payload as object))).toHaveLength(0);
+    expect(res.trends).toBe(0);
+    expect(res.costUsd).toBeCloseTo(0.101, 6);
+    expect(jobUpdate(calls)).toMatchObject({ stats: { trendCandidates: 1, trends: 0, trendRequests: 1 } });
+  });
+
+  it("prawdziwe zera trendu (kotwica bez ruchu, ale z danymi) zapisują się: to wartość, nie brak danych", async () => {
+    const { client, calls } = world({ keywords: tracked("szkolenia ai") });
+    const trendsExplore = trendsFake(WEEKS, { "szkolenia ai": [0, 0, 0, 0] });
+    await runKeywordVolumes({ projectId: PROJECT }, { admin: client, searchVolume: volumesFake([vol("szkolenia ai", 1900)]), trendsExplore, now });
+    const trend = keywordUpdates(calls, "k1").map((c) => c.payload).find((p) => "trend" in (p as object)) as { trend: { value: number | null }[] };
+    expect(trend.trend.map((p) => p.value)).toEqual([0, 0, 0]);
+  });
+
   it("bez fraz od 50 wyszukiwań nie woła Trends", async () => {
     const { client } = world({ keywords: tracked("ai act", "kurs ai dla firm") });
     const trendsExplore = vi.fn();
@@ -246,7 +326,8 @@ describe("runKeywordVolumes: szczęśliwa ścieżka", () => {
       admin: client, searchVolume: volumesFake([vol("ai act", 49), vol("kurs ai dla firm", null)]), trendsExplore, now,
     });
     expect(trendsExplore).not.toHaveBeenCalled();
-    expect(res).toMatchObject({ status: "done", keywords: 2, trends: 0 });
+    // "kurs ai dla firm" bez danych z Google nic nie zapisuje
+    expect(res).toMatchObject({ status: "done", keywords: 1, trends: 0 });
     expect(res.costUsd).toBeCloseTo(0.09, 6);
   });
 
@@ -319,6 +400,41 @@ describe("runKeywordVolumes: szczęśliwa ścieżka", () => {
     expect(keywordUpdates(calls, "k2")).toHaveLength(0);
     expect(res).toMatchObject({ status: "done", keywords: 1 });
     expect(jobUpdate(calls)).toMatchObject({ stats: { keywords: 1, missing: 1 } });
+  });
+});
+
+describe("runKeywordVolumes: frazy dłuższe niż 10 słów", () => {
+  const TEN = "jak wybrać dobre szkolenie z ai dla małej firmy usługowej";
+  const ELEVEN = `${TEN} dzisiaj`;
+
+  it("fraza z 10 słowami jedzie do Google Ads, z 11 nie: wiersz zostaje nietknięty, a liczba takich fraz jest w statystykach", async () => {
+    const { client, calls } = world({ keywords: tracked(TEN, ELEVEN, "szkolenia ai") });
+    const searchVolume = volumesFake([vol(TEN, 60), vol("szkolenia ai", 100)]);
+    const res = await runKeywordVolumes({ projectId: PROJECT }, { admin: client, searchVolume, trendsExplore: trendsFake(WEEKS, {}), now });
+
+    expect(searchVolume.mock.calls).toEqual([[[TEN, "szkolenia ai"]]]);
+    expect(keywordUpdates(calls, "k2")).toHaveLength(0);
+    expect(res).toMatchObject({ status: "done", keywords: 2 });
+    expect(jobUpdate(calls)).toMatchObject({ stats: { keywords: 2, tooLong: 1, missing: 0 } });
+  });
+
+  it("szacunek kosztu liczy tylko frazy wysyłane do Google (4 z 5), więc budżet na dokładnie tyle jeszcze przepuszcza", async () => {
+    const keys = tracked("a1", "a2", "a3", "a4", ELEVEN);
+    const estimate = estimateVolumesCost(4, 4);
+    expect(estimate).toBeLessThan(estimateVolumesCost(5, 5));
+    const { client, calls } = world({ keywords: keys, budget: 1 + estimate, spent: 1 });
+    const res = await runKeywordVolumes({ projectId: PROJECT }, { admin: client, searchVolume: volumesFake([]), trendsExplore: vi.fn(), now });
+    expect(res.status).toBe("done");
+    expect(jobUpdate(calls)).toMatchObject({ stats: { estimateUsd: estimate, tooLong: 1 } });
+  });
+
+  it("same za długie frazy: żadnego wywołania Google, zadanie zakończone z zerowym kosztem", async () => {
+    const { client, calls } = world({ keywords: tracked(ELEVEN) });
+    const searchVolume = vi.fn();
+    const res = await runKeywordVolumes({ projectId: PROJECT }, { admin: client, searchVolume, trendsExplore: vi.fn(), now });
+    expect(searchVolume).not.toHaveBeenCalled();
+    expect(res).toEqual({ status: "done", keywords: 0, trends: 0, costUsd: 0 });
+    expect(jobUpdate(calls)).toMatchObject({ status: "done", stats: { tooLong: 1, keywords: 0, missing: 0 } });
   });
 });
 

@@ -70,6 +70,22 @@ describe("trendsExplore", () => {
     expect(series).toHaveLength(4);
   });
 
+  it("punkt wykresu bez tablicy values (null albo brak pola) daje null w każdej serii, bez wyjątku", async () => {
+    const body = structuredClone(fixture);
+    const data = body.tasks[0].result[0].items[0].data as unknown as { values?: unknown }[];
+    data[0].values = null;
+    delete data[1].values;
+    vi.stubGlobal("fetch", respondWith(body));
+    const { series } = await trendsExplore(keywords);
+    expect(series).toHaveLength(4);
+    for (const s of series) {
+      expect(s.points).toHaveLength(53);
+      expect(s.points[0].value).toBeNull();
+      expect(s.points[1].value).toBeNull();
+    }
+    expect(series[0].points[2]).toEqual({ week: "2025-11-16", value: expect.any(Number) });
+  });
+
   it("odpowiedź bez wykresu to brak serii, a koszt zostaje", async () => {
     const body = structuredClone(fixture);
     (body.tasks[0].result[0].items as unknown[]) = [];
