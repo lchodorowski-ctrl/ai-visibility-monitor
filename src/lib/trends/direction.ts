@@ -10,6 +10,7 @@ import type { Tables } from "@/lib/db-types";
 import type { GscTotals } from "@/lib/seo/queries";
 import type { RankDirectionRow } from "@/lib/seo/rank-queries";
 import { shiftDate, WINDOW_DAYS } from "@/lib/seo/overview";
+import { rankWeekStart } from "@/lib/seo/rank-check";
 import { fmtDayMonth, fmtDecimal, fmtNumber, fmtSignedNumber, fmtSignedPercent, pct, positionChange, positionChangeText } from "@/lib/format/number";
 import { pluralFmt } from "@/lib/format/plural";
 
@@ -236,16 +237,28 @@ const TOP_10 = 10;
 export interface RankSummaryContext {
   /** Active tracked phrases: tells "add phrases" from "run the check" when there are no positions yet. */
   activeKeywords: number;
+  /** The read of the measurements failed: the card says so instead of hinting to add phrases. */
+  readFailed?: boolean;
+  /** Current time (the Warsaw week decides staleness); injected by tests. */
+  now?: Date;
 }
+
+/** Weeks of the check are weekly: a newest week older than the previous one means the weekly check has stopped. */
+const RANK_STALE_DAYS = 7;
 
 /**
  * Direction of the tracked phrases: of the phrases checked both in the latest week and in the baseline week (28 days
  * earlier, or the oldest earlier one), count those that got at least `rankPlaces` places better and worse. The verdict
  * needs the net count (better minus worse) to reach `rankShare` of the compared phrases (at least one phrase), so the
  * counts in the text decide it and a lone phrase cannot swing a large list. The headline is the latest top 10 count.
+ * A newest week older than the previous measurement week (7 days before the current one) is stale, like Search Console
+ * data: no verdict, only the date of the last measurement.
  */
 export function rankSummary(rows: RankDirectionRow[], ctx: RankSummaryContext): ChannelSummary {
   const id = { key: "rank", label: "Google: pozycje fraz", href: "/app/google/keywords" } as const;
+  if (ctx.readFailed) {
+    return { ...id, direction: "unknown", headline: "Brak danych o pozycjach", detail: "Nie udało się wczytać pomiarów pozycji.", since: null };
+  }
   if (rows.length === 0) {
     return {
       ...id, direction: "unknown", headline: "Brak pomiarów pozycji", since: null,
@@ -260,6 +273,12 @@ export function rankSummary(rows: RankDirectionRow[], ctx: RankSummaryContext): 
     weeks.set(r.weekStart, week);
   }
   const latestWeek = [...weeks.keys()].reduce((a, b) => (a > b ? a : b));
+  if (latestWeek < shiftDate(rankWeekStart(ctx.now ?? new Date()), -RANK_STALE_DAYS)) {
+    return {
+      ...id, direction: "unknown", headline: "Pozycje fraz są nieaktualne", since: null,
+      detail: `ostatni pomiar: ${fmtDayMonth(latestWeek)}. Sprawdź pozycje w Google → Frazy.`,
+    };
+  }
   const latest = weeks.get(latestWeek)!;
   const inTop10 = [...latest.values()].filter((p) => p !== null && p <= TOP_10).length;
   const headline = `${fmtNumber(inTop10)} z ${fmtNumber(latest.size)} ${latest.size === 1 ? "frazy" : "fraz"} w top 10`;

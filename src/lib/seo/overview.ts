@@ -3,6 +3,7 @@
  * CTR, the page state and the list shaping used by the sections.
  */
 import type { Opportunity, QueryWindow } from "./opportunities";
+import { MAX_POLLS, POLL_INTERVAL_MS } from "./rank-check";
 
 export const WINDOW_DAYS = 28;
 
@@ -43,9 +44,20 @@ export function hasPreviousWindow(firstDate: string | null, w: GscWindows): bool
 /** A sync still `running` after this long has died without closing its ledger entry (the task limit is far shorter). */
 const RUNNING_JOB_MAX_MS = 45 * 60_000;
 
-/** A `running` job older than 45 minutes: it was interrupted, no result will come. Unreadable `started_at` is not an alarm. */
-export function isInterruptedJob(job: { status: string; started_at: string }, now: Date): boolean {
-  return job.status === "running" && now.getTime() - Date.parse(job.started_at) > RUNNING_JOB_MAX_MS;
+/**
+ * A rank check legitimately runs for the whole polling time (`MAX_POLLS` polls, one per `POLL_INTERVAL_MS`) plus the
+ * time to post the tasks and to wait for the queue, so its limit is that polling time and 30 minutes of slack.
+ */
+const RANK_CHECK_MAX_MS = MAX_POLLS * POLL_INTERVAL_MS + 30 * 60_000;
+
+const maxRunningMs = (kind: string | undefined): number => (kind === "rank_check" ? RANK_CHECK_MAX_MS : RUNNING_JOB_MAX_MS);
+
+/**
+ * A `running` job that outlived its limit (45 minutes; a rank check: the polling time plus 30 minutes): it was
+ * interrupted, no result will come. Unreadable `started_at` is not an alarm.
+ */
+export function isInterruptedJob(job: { status: string; started_at: string; kind?: string }, now: Date): boolean {
+  return job.status === "running" && now.getTime() - Date.parse(job.started_at) > maxRunningMs(job.kind);
 }
 
 export type OverviewState = "no_property" | "no_data" | "syncing" | "empty_result" | "error" | "ok";

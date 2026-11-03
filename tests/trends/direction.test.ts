@@ -501,7 +501,9 @@ describe("rankSummary", () => {
     positions.map((position, i) => ({ keywordId: `k${i + 1}`, weekStart, position }));
   /** Dwa tygodnie: pozycje fraz k1..kn w starym i w nowym tygodniu. */
   const twoWeeks = (before: (number | null)[], after: (number | null)[]) => [...rk(OLD, ...before), ...rk(NEW, ...after)];
-  const none = { activeKeywords: 0 };
+  /** Środa 4.11: bieżący tydzień pomiaru zaczyna się 2026-11-02. */
+  const NOW = new Date("2026-11-04T09:00:00Z");
+  const none = { activeKeywords: 0, now: NOW };
 
   it("brak wierszy bez fraz: nieznany kierunek, zachęta do dodania fraz, link do fraz", () => {
     expect(rankSummary([], none)).toEqual({
@@ -600,6 +602,59 @@ describe("rankSummary", () => {
   it("kolejność wierszy nie ma znaczenia", () => {
     const rows = twoWeeks([50, 8], [40, 30]);
     expect(rankSummary([...rows].reverse(), none)).toEqual(rankSummary(rows, none));
+  });
+
+  it("nieudany odczyt pomiarów: nieznany kierunek i komunikat o błędzie, a nie zachęta do dodania fraz", () => {
+    for (const activeKeywords of [0, 12]) {
+      expect(rankSummary([], { activeKeywords, now: NOW, readFailed: true })).toEqual({
+        key: "rank", label: "Google: pozycje fraz", direction: "unknown",
+        headline: "Brak danych o pozycjach", detail: "Nie udało się wczytać pomiarów pozycji.", since: null, href: "/app/google/keywords",
+      });
+    }
+  });
+
+  describe("nieaktualne pomiary", () => {
+    const STALE = "2026-10-19"; // dwa tygodnie przed bieżącym tygodniem 2026-11-02
+    const PREVIOUS = "2026-10-26"; // poprzedni tydzień: jeszcze aktualny
+    const stale = (latest: string) => [...rk("2026-09-21", 50, 50), ...rk(latest, 40, 50)];
+
+    it("najnowszy tydzień sprzed dwóch tygodni: kierunek nieznany, nagłówek i opis o nieaktualnych pomiarach", () => {
+      expect(rankSummary(stale(STALE), none)).toEqual({
+        key: "rank", label: "Google: pozycje fraz", direction: "unknown",
+        headline: "Pozycje fraz są nieaktualne", detail: "ostatni pomiar: 19.10. Sprawdź pozycje w Google → Frazy.", since: null, href: "/app/google/keywords",
+      });
+    });
+
+    it("świeży pomiar (bieżący tydzień) daje zwykły werdykt", () => {
+      expect(rankSummary(twoWeeks([30, 50], [20, 50]), none)).toMatchObject({ direction: "up", headline: "0 z 2 fraz w top 10", detail: "lepiej: 1, gorzej: 0, bez zmian: 1" });
+    });
+
+    it("pomiar z poprzedniego tygodnia jest jeszcze aktualny (tygodniowe sprawdzenie mogło się spóźnić), starszy już nie", () => {
+      expect(rankSummary(stale(PREVIOUS), none)).toMatchObject({ direction: "up", headline: "0 z 2 fraz w top 10" });
+      // dzień przed progiem (poniedziałek 2026-10-26) to już nieaktualny pomiar
+      expect(rankSummary(stale("2026-10-25"), none).headline).toBe("Pozycje fraz są nieaktualne");
+    });
+
+    it("jeden stary tydzień też jest nieaktualny, a data to najnowszy tydzień pomiaru", () => {
+      expect(rankSummary(rk(STALE, 3, 10), none)).toMatchObject({ direction: "unknown", headline: "Pozycje fraz są nieaktualne", detail: "ostatni pomiar: 19.10. Sprawdź pozycje w Google → Frazy." });
+    });
+
+    it("tydzień pomiaru liczy się według kalendarza warszawskiego: w niedzielę wieczorem poprzedni poniedziałek jest jeszcze bieżący", () => {
+      // niedziela 8.11, 23:30 w Warszawie: tydzień pomiaru to nadal 2026-11-02, więc 2026-10-26 jest poprzednim
+      const sundayNight = { activeKeywords: 0, now: new Date("2026-11-08T22:30:00Z") };
+      expect(rankSummary(stale(PREVIOUS), sundayNight).direction).toBe("up");
+      // minutę po północy w poniedziałek zaczyna się tydzień 2026-11-09, więc 2026-10-26 jest już nieaktualny
+      expect(rankSummary(stale(PREVIOUS), { activeKeywords: 0, now: new Date("2026-11-08T23:30:00Z") }).headline).toBe("Pozycje fraz są nieaktualne");
+    });
+
+    it("bez podanego czasu liczy od teraz (pomiar sprzed lat jest nieaktualny)", () => {
+      expect(rankSummary(rk("2020-01-06", 3), { activeKeywords: 0 }).headline).toBe("Pozycje fraz są nieaktualne");
+    });
+
+    it("tekst nie zawiera półpauz ani pauz", () => {
+      const s = rankSummary(stale(STALE), none);
+      expect(`${s.label} ${s.headline} ${s.detail}`).not.toMatch(/[\u2013\u2014]/);
+    });
   });
 
   it("teksty nie zawierają półpauz ani pauz", () => {
