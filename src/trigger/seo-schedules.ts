@@ -2,8 +2,10 @@ import { schedules } from "@trigger.dev/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db-types";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { rankWeekStart } from "@/lib/seo/rank-check";
 import { gscSyncTask, type GscSyncPayload } from "./gsc-sync";
 import { keywordVolumesTask, type KeywordVolumesPayload } from "./keyword-volumes";
+import { rankCheckTask, type RankCheckPayload } from "./rank-check";
 
 /** Uruchamia zadanie dla każdego projektu osobno: błąd jednego nie zatrzymuje pozostałych, ale kończy całość błędem. */
 async function triggerEach(label: string, what: string, ids: string[], run: (id: string) => Promise<unknown>): Promise<number> {
@@ -74,4 +76,32 @@ export const keywordVolumesMonthly = schedules.task({
   id: "keyword-volumes-monthly",
   cron: { pattern: "0 5 2 * *", timezone: "Europe/Warsaw", environments: ["PRODUCTION"] },
   run: (payload) => runKeywordVolumesMonthly(payload),
+});
+
+export interface RankCheckWeeklyDeps {
+  admin?: SupabaseClient<Database>;
+  /** Uruchamia sprawdzenie pozycji dla jednego projektu; wstrzykiwane w testach. */
+  trigger?: (payload: RankCheckPayload, options: { idempotencyKey: string }) => Promise<unknown>;
+}
+
+/** Cotygodniowe sprawdzenie pozycji: osobne zadanie dla każdego projektu z co najmniej jedną aktywną frazą. */
+export async function runRankCheckWeekly(payload: { timestamp: Date | string }, deps: RankCheckWeeklyDeps = {}) {
+  const admin = deps.admin ?? createAdminSupabase();
+  const trigger = deps.trigger ?? ((p, options) => rankCheckTask.trigger(p, options));
+  // Klucz to poniedziałek tygodnia według daty warszawskiej: ten sam tydzień nie uruchomi pomiaru dwa razy.
+  const week = rankWeekStart(new Date(payload.timestamp));
+
+  const { data, error } = await admin.from("projects").select("id, keywords!inner(id)").eq("keywords.active", true);
+  if (error) throw new Error(error.message);
+  const projects = data ?? [];
+
+  const triggered = await triggerEach("rank-check-weekly", "sprawdzenia pozycji", projects.map((p) => p.id),
+    (id) => trigger({ projectId: id }, { idempotencyKey: `rank-check:${id}:${week}` }));
+  return { triggered };
+}
+
+export const rankCheckWeekly = schedules.task({
+  id: "rank-check-weekly",
+  cron: { pattern: "0 4 * * 1", timezone: "Europe/Warsaw", environments: ["PRODUCTION"] },
+  run: (payload) => runRankCheckWeekly(payload),
 });
