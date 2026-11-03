@@ -45,3 +45,29 @@ export async function finishJob(
   if (error) throw new Error(error.message);
   if (!data || data.length === 0) throw new Error(`seo_jobs: brak zadania ${jobId}`);
 }
+
+export const errorMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err));
+
+/**
+ * Reserves the estimated cost of a paid job on its own row, once the budget gate has passed: the spend of the month
+ * (`seoMonthSpend`) then already counts it for any job that starts meanwhile. The closing write replaces the
+ * reservation with the actual cost. Throws when the write fails or no row matched, so a paid call never starts
+ * without its reservation.
+ */
+export async function reserveJobCost(admin: SupabaseClient<Database>, jobId: string, costUsd: number): Promise<void> {
+  const { data, error } = await admin.from("seo_jobs").update({ cost_usd: costUsd }).eq("id", jobId).select("id");
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error(`seo_jobs: brak zadania ${jobId}`);
+}
+
+/**
+ * Closes a ledger entry as `failed` with the error message and the cost incurred so far. Never throws: the original
+ * error matters more than a failed write to the ledger, so that one is only logged under `label`.
+ */
+export async function failJob(admin: SupabaseClient<Database>, jobId: string, err: unknown, costUsd: number, label: string): Promise<void> {
+  try {
+    await finishJob(admin, jobId, { status: "failed", error: errorMessage(err), costUsd });
+  } catch (finishErr) {
+    console.error(`${label}: nie udało się zamknąć zadania w rejestrze:`, errorMessage(finishErr));
+  }
+}

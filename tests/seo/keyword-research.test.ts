@@ -528,6 +528,35 @@ describe("runKeywordResearch: budżet, koszt, błędy", () => {
     });
   });
 
+  it("kolejność: rezerwacja szacunku w cost_usd, potem klienci DataForSEO, na końcu zamknięcie z kosztem faktycznym", async () => {
+    const w = world();
+    const seen: Call[][] = [];
+    const c = clients({ labs: { "szkolenia ai": [lab("kurs ai")] }, cost: 0.0144 });
+    c.keywordSuggestions.mockImplementation(async () => { seen.push([...w.calls]); return { items: [lab("kurs ai")], costUsd: 0.0144 }; });
+    c.rankedKeywords.mockImplementation(async () => { seen.push([...w.calls]); return { items: [], costUsd: 0.0144 }; });
+
+    const res = await run(w, c, { seeds: ["szkolenia ai"], competitors: false });
+
+    const estimate = estimateResearchCost({ seeds: 1, domains: 1 });
+    const jobWrites = (list: Call[]) => list.filter((x) => x.table === "seo_jobs" && x.op === "update").map((x) => x.payload as Record<string, unknown>);
+    expect(seen).toHaveLength(2);
+    for (const atCall of seen) expect(jobWrites(atCall)).toEqual([{ cost_usd: estimate }]);
+    const writes = jobWrites(w.calls);
+    expect(writes).toHaveLength(2);
+    expect(writes[1]).toMatchObject({ status: "done" });
+    expect(writes[1].cost_usd as number).toBeCloseTo(2 * 0.0144, 6);
+    expect(res.costUsd).toBeCloseTo(2 * 0.0144, 6);
+  });
+
+  it("przekroczenie limitu niczego nie rezerwuje: jedyny zapis zadania to budget_exceeded bez cost_usd", async () => {
+    const w = world({ budget: 10, spent: 9.95 });
+    await run(w, clients(), { seeds: ["szkolenia ai"], competitors: true });
+    const writes = w.calls.filter((x) => x.table === "seo_jobs" && x.op === "update").map((x) => x.payload as Record<string, unknown>);
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toMatchObject({ status: "budget_exceeded" });
+    expect(writes[0]).not.toHaveProperty("cost_usd");
+  });
+
   it("ten sam budżet przepuszcza badanie bez konkurentów, które kosztuje mniej", async () => {
     const spent = 10 - estimateResearchCost({ seeds: 1, domains: 1 }) - 0.001;
     const w = world({ budget: 10, spent });

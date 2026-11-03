@@ -9,8 +9,8 @@ import {
 import { normalizeDomainInput } from "@/lib/validation/settings";
 import { normalizeKeyword, parseKeywordList } from "./keywords";
 import { estimateResearchCost } from "./costs";
-import { seoMonthSpend, decideSeoSpend, budgetExceededMessage } from "./budget";
-import { startJob, finishJob, type SeoJobStatus } from "./jobs";
+import { passSeoBudget } from "./budget";
+import { startJob, finishJob, failJob, type SeoJobStatus } from "./jobs";
 
 type Admin = SupabaseClient<Database>;
 
@@ -36,7 +36,6 @@ const RANKED_LIMIT = 100;
 const KEY_CHUNK = 100;
 const UPSERT_CHUNK = 500;
 
-const errorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 function chunks<T>(list: T[], size: number): T[][] {
@@ -148,7 +147,7 @@ async function removeStale(admin: Admin, projectId: string, source: "ranked" | "
  * są pomijane, z jednym wyjątkiem: własne pozycje (`ranked`) zapisujemy zawsze, bo widok „Gdzie już jesteście w Google”
  * pokazuje wszystkie frazy, na które rankujemy. Po udanym zapisie znikają nowe (`new`) wiersze `ranked` (gdy sprawdzono
  * własną domenę) i `gap` (gdy sprawdzono konkurencję), których to badanie nie odświeżyło: ich dane są już nieaktualne.
- * Płatne, więc najpierw bramka budżetu SEO; w rejestrze zostaje faktyczny koszt, także gdy zadanie padnie w trakcie.
+ * Płatne, więc najpierw bramka budżetu SEO (po niej szacunek trafia do rejestru jako rezerwacja); na końcu w rejestrze zostaje faktyczny koszt, także gdy zadanie padnie w trakcie.
  */
 export async function runKeywordResearch(
   payload: { projectId: string; seeds: string[]; competitors: boolean },
@@ -186,13 +185,7 @@ export async function runKeywordResearch(
     }
 
     const estimate = estimateResearchCost({ seeds: seeds.length, domains });
-    const decision = decideSeoSpend(await seoMonthSpend(admin, projectId, now()), estimate, budget);
-    if (decision.kind === "budget_exceeded") {
-      await finishJob(admin, jobId, {
-        status: "budget_exceeded",
-        error: budgetExceededMessage(decision.spent, decision.estimate, budget),
-        stats: { spentUsd: decision.spent, estimateUsd: decision.estimate, budgetUsd: budget },
-      });
+    if (!(await passSeoBudget(admin, { projectId, jobId, estimate, budget, now: now() }))) {
       return { status: "budget_exceeded", suggestions: 0, costUsd: 0 };
     }
 
@@ -286,12 +279,7 @@ export async function runKeywordResearch(
     });
     return { status: "done", suggestions: rows.length, costUsd: spent };
   } catch (err) {
-    try {
-      await finishJob(admin, jobId, { status: "failed", error: errorMessage(err), costUsd: spent });
-    } catch (finishErr) {
-      // oryginalny błąd jest ważniejszy niż nieudany zapis do rejestru
-      console.error("keyword-research: nie udało się zamknąć zadania w rejestrze:", errorMessage(finishErr));
-    }
+    await failJob(admin, jobId, err, spent, "keyword-research");
     throw err;
   }
 }

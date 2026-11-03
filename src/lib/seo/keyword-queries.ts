@@ -106,16 +106,9 @@ function parseCompetitors(json: unknown): CompetitorPosition[] {
   return rivals.sort((a, b) => a.position - b.position);
 }
 
-/** Tracked phrases, largest monthly volume first and the ones without a volume last (at most `MAX_TRACKED`). */
-export const getKeywords = cache(async (projectId: string): Promise<KeywordRow[]> => {
-  const supabase = await createServerSupabase();
-  const { data, error } = await supabase
-    .from("keywords").select("*").eq("project_id", projectId)
-    .order("search_volume", { ascending: false, nullsFirst: false })
-    .order("text", { ascending: true })
-    .limit(MAX_TRACKED);
-  if (error) throw new Error(`Nie udało się pobrać fraz: ${error.message}`);
-  return (data ?? []).map((r) => ({
+/** A `keywords` row as the pages read it (numbers from text, jsonb parsed); shared by the list and the phrase detail. */
+export function toKeywordRow(r: Tables<"keywords">): KeywordRow {
+  return {
     id: r.id,
     text: r.text,
     key: r.key,
@@ -130,7 +123,19 @@ export const getKeywords = cache(async (projectId: string): Promise<KeywordRow[]
     trend: parseTrend(r.trend),
     volumeUpdatedAt: r.volume_updated_at,
     trendUpdatedAt: r.trend_updated_at,
-  }));
+  };
+}
+
+/** Tracked phrases, largest monthly volume first and the ones without a volume last (at most `MAX_TRACKED`). */
+export const getKeywords = cache(async (projectId: string): Promise<KeywordRow[]> => {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from("keywords").select("*").eq("project_id", projectId)
+    .order("search_volume", { ascending: false, nullsFirst: false })
+    .order("text", { ascending: true })
+    .limit(MAX_TRACKED);
+  if (error) throw new Error(`Nie udało się pobrać fraz: ${error.message}`);
+  return (data ?? []).map(toKeywordRow);
 });
 
 /** The default row cap of PostgREST; a longer list of phrases is cut here. */
@@ -186,16 +191,35 @@ export const getSuggestions = cache(async (projectId: string, source: Suggestion
     }));
 });
 
-/** The latest volume measurement and the latest phrase research of a project (null before the first run). */
-export const getKeywordJobs = cache(async (projectId: string): Promise<{ volumes: Tables<"seo_jobs"> | null; research: Tables<"seo_jobs"> | null }> => {
+/**
+ * The latest volume measurement, the latest phrase research and the latest rank check of a project (null before the
+ * first run), plus `researchDoneAt`: when the newest research that finished (status `done`) ended. A research that failed or hit the
+ * budget did not complete, so it never moves that date; neither do clicks on "Śledź" or "Odrzuć" (they only touch
+ * suggestion rows).
+ */
+export const getKeywordJobs = cache(async (projectId: string): Promise<{
+  volumes: Tables<"seo_jobs"> | null;
+  research: Tables<"seo_jobs"> | null;
+  ranks: Tables<"seo_jobs"> | null;
+  researchDoneAt: string | null;
+}> => {
   const supabase = await createServerSupabase();
-  const latest = (kind: "keyword_volumes" | "keyword_research") =>
+  const latest = (kind: "keyword_volumes" | "keyword_research" | "rank_check") =>
     supabase.from("seo_jobs").select("*").eq("project_id", projectId).eq("kind", kind)
       .order("started_at", { ascending: false }).limit(1).maybeSingle();
-  const [volumes, research] = await Promise.all([latest("keyword_volumes"), latest("keyword_research")]);
-  if (volumes.error) throw new Error(`Nie udało się pobrać zadań fraz: ${volumes.error.message}`);
-  if (research.error) throw new Error(`Nie udało się pobrać zadań fraz: ${research.error.message}`);
-  return { volumes: volumes.data ?? null, research: research.data ?? null };
+  const latestDone = supabase.from("seo_jobs").select("finished_at").eq("project_id", projectId)
+    .eq("kind", "keyword_research").eq("status", "done")
+    .order("started_at", { ascending: false }).limit(1).maybeSingle();
+  const [volumes, research, ranks, done] = await Promise.all([
+    latest("keyword_volumes"), latest("keyword_research"), latest("rank_check"), latestDone,
+  ]);
+  for (const res of [volumes, research, ranks, done]) {
+    if (res.error) throw new Error(`Nie udało się pobrać zadań fraz: ${res.error.message}`);
+  }
+  return {
+    volumes: volumes.data ?? null, research: research.data ?? null, ranks: ranks.data ?? null,
+    researchDoneAt: done.data?.finished_at ?? null,
+  };
 });
 
 /**

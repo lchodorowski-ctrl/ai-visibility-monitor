@@ -1,8 +1,13 @@
+import Link from "next/link";
 import type { Tables } from "@/lib/db-types";
 import { getKeywordJobs, getKeywords, getResearchTargets, getSuggestions, type KeywordRow, type SuggestionRow } from "@/lib/seo/keyword-queries";
 import { COMPETITION_LABEL, DEFAULT_SEEDS } from "@/lib/seo/keywords";
 import { MAX_SEEDS } from "@/lib/seo/keyword-research";
-import { estimateResearchCost, estimateVolumesCost } from "@/lib/seo/costs";
+import { DEVICES, MAX_RANK_KEYWORDS } from "@/lib/seo/rank-check";
+import { getLatestRanks, type RankView } from "@/lib/seo/rank-queries";
+import { featureBadges, nearTop3, positionText, rankChange, rankChangeText, rankedElsewhere, type RankChange } from "@/lib/seo/rank-view";
+import type { Device } from "@/lib/dataforseo/serp";
+import { estimateRankCost, estimateResearchCost, estimateVolumesCost } from "@/lib/seo/costs";
 import { isInterruptedJob } from "@/lib/seo/overview";
 import { fmtDate, fmtDay, fmtDayShort, fmtDecimal, fmtNumber } from "@/lib/format/number";
 import { pluralFmt, pluralPl } from "@/lib/format/plural";
@@ -13,7 +18,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Meta, Row, Rows, SectionHead, Tile } from "@/components/psai";
 import { Sparkline } from "@/components/Sparkline";
 import {
-  acceptSuggestion, addKeywords, deleteKeyword, dismissSuggestion, importFromGsc, refreshVolumes, runResearch, setTargetPath, toggleKeyword,
+  acceptSuggestion, addKeywords, checkRanks, deleteKeyword, dismissSuggestion, importFromGsc, refreshVolumes, runResearch, setTargetPath,
+  toggleKeyword,
 } from "./actions";
 
 /** Rows read for each suggestion list. */
@@ -23,6 +29,11 @@ const SPARKLINE_MONTHS = 12;
 const NO_DATA = "brak danych";
 
 const usd = (n: number) => `${fmtDecimal(n, 2)} USD`;
+/**
+ * An upper bound ("najwyżej") rounded up to the cent, never down: 0,132 is "0,14", not "0,13". The float noise of a sum
+ * of prices (0,15 as 15,000000000000002 cents) is cut off before the rounding, or it would add a cent.
+ */
+const usdUpTo = (n: number) => usd(Math.ceil(Number((n * 100).toFixed(6))) / 100);
 /** Costs of one more seed or domain are a few cents: three decimals keep 0,018 from rounding to 0,02. */
 const usdPrecise = (n: number) => `${fmtDecimal(n, 3)} USD`;
 const volumeText = (v: number | null) => (v === null ? NO_DATA : `${fmtNumber(v)} / mies.`);
@@ -38,7 +49,7 @@ const figure = "font-mono text-sm tabular-nums";
 const JOB_STATUS: Record<string, string> = {
   running: "w toku", done: "zakończone", failed: "nieudane", skipped: "pominięte", budget_exceeded: "limit SEO wyczerpany",
 };
-/** A job `running` for more than 45 minutes will never finish: the task died without closing its entry. */
+/** A job `running` past its limit (`isInterruptedJob`) will never finish: the task died without closing its entry. */
 const INTERRUPTED = "przerwane";
 /** Statuses whose `error` explains what happened (a finished job has none). */
 const EXPLAINED = new Set(["failed", "budget_exceeded", "skipped"]);
@@ -61,21 +72,50 @@ function JobLine({ label, none, job, now }: { label: string; none: string; job: 
   );
 }
 
+/**
+ * Results of the last rank check that DataForSEO had not returned when the run ended (`stats.pending`): the next check
+ * collects them without paying again. 0 when the job has no such count (a malformed `stats` counts as none).
+ */
+function pendingResults(job: Tables<"seo_jobs"> | null): number {
+  const stats = job?.stats;
+  if (typeof stats !== "object" || stats === null || Array.isArray(stats)) return 0;
+  const n = Number(stats.pending);
+  return Number.isInteger(n) && n > 0 ? n : 0;
+}
+
 export async function KeywordStatusSection({ projectId, now = new Date() }: { projectId: string; now?: Date }) {
-  const [{ volumes, research }, keywords] = await Promise.all([getKeywordJobs(projectId), getKeywords(projectId)]);
+  const [{ volumes, research, ranks }, keywords] = await Promise.all([getKeywordJobs(projectId), getKeywords(projectId)]);
   const active = keywords.filter((k) => k.active).length;
-  // an upper bound (every active phrase has a volume and a trend), so the label says "najwyżej", never "ok."
-  const estimate = estimateVolumesCost(active, active);
+  // upper bounds (every active phrase has a volume and a trend; every phrase is still to be checked on both devices),
+  // so the labels say "najwyżej", never "ok."
+  const volumesEstimate = estimateVolumesCost(active, active);
+  const ranksEstimate = estimateRankCost(Math.min(active, MAX_RANK_KEYWORDS) * DEVICES.length);
+  const pending = pendingResults(ranks);
   return (
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div className="space-y-1">
         <JobLine label="Wolumeny i trendy" none="Jeszcze nie odświeżano wolumenów." job={volumes} now={now} />
         <JobLine label="Wyszukiwanie fraz" none="Jeszcze nie szukano fraz." job={research} now={now} />
+        <JobLine label="Pozycje" none="Jeszcze nie sprawdzano pozycji." job={ranks} now={now} />
+        {pending > 0 && (
+          <Meta className="block normal-case tracking-normal">
+            {`${pluralFmt(pending, ["wynik", "wyniki", "wyników"])} w kolejce DataForSEO, odbierze ${pending === 1 ? "go" : "je"} następne sprawdzenie`}
+          </Meta>
+        )}
       </div>
-      <div className="space-y-1 sm:text-right">
+      <div className="space-y-3 sm:text-right">
         <form action={refreshVolumes}>
-          <Button type="submit" disabled={active === 0}>{`Odśwież wolumeny i trendy (najwyżej ${usd(estimate)})`}</Button>
+          <Button type="submit" disabled={active === 0}>{`Odśwież wolumeny i trendy (najwyżej ${usdUpTo(volumesEstimate)})`}</Button>
         </form>
+        <div className="space-y-1">
+          <form action={checkRanks}>
+            <Button type="submit" disabled={active === 0}>{`Sprawdź pozycje (najwyżej ${usdUpTo(ranksEstimate)})`}</Button>
+          </form>
+          <Meta className="block normal-case tracking-normal">Frazy sprawdzone w tym tygodniu nie są sprawdzane drugi raz.</Meta>
+          {active > MAX_RANK_KEYWORDS && (
+            <Meta className="block normal-case tracking-normal">{`Co tydzień sprawdzamy ${MAX_RANK_KEYWORDS} fraz z największym wolumenem.`}</Meta>
+          )}
+        </div>
         {active === 0 && <Meta className="block normal-case tracking-normal">Dodaj albo włącz frazy, żeby je mierzyć.</Meta>}
       </div>
     </div>
@@ -103,23 +143,13 @@ function SuggestionActions({ id, text, dismissible }: { id: string; text: string
 
 // --- Gdzie już jesteście w Google ---------------------------------------------------------------------------------
 
-/** The newest of the timestamps (ISO, Postgres may write the offset differently, so compare as instants), or null. */
-function latestStamp(stamps: string[]): string | null {
-  let best: number | null = null;
-  for (const stamp of stamps) {
-    const t = Date.parse(stamp);
-    if (Number.isFinite(t) && (best === null || t > best)) best = t;
-  }
-  return best === null ? null : new Date(best).toISOString();
-}
-
 /**
  * Every phrase our own domain ranks for (tracked ones too: they carry a muted label instead of the "Śledź" button).
- * The rows are refreshed together by a research run, so the newest refresh is the date of the last research.
+ * The "stan na" date is the end of the last research that finished (`researchDoneAt`), not the rows' `updated_at`,
+ * which a click on "Śledź" moves as well.
  */
 export async function RankedSection({ projectId }: { projectId: string }) {
-  const rows = await getSuggestions(projectId, "ranked", SUGGESTION_LIMIT);
-  const researchedAt = latestStamp(rows.map((s) => s.updatedAt));
+  const [rows, { researchDoneAt }] = await Promise.all([getSuggestions(projectId, "ranked", SUGGESTION_LIMIT), getKeywordJobs(projectId)]);
   return (
     <section>
       <SectionHead title="Gdzie już jesteście w Google" />
@@ -141,7 +171,7 @@ export async function RankedSection({ projectId }: { projectId: string }) {
               ))}
             </Rows>
             <Meta className="mt-3 block normal-case tracking-normal">
-              {researchedAt ? `według indeksu DataForSEO, stan na ${fmtDay(researchedAt)}` : "według indeksu DataForSEO"}
+              {researchDoneAt ? `według indeksu DataForSEO, stan na ${fmtDay(researchDoneAt)}` : "według indeksu DataForSEO"}
             </Meta>
           </>
         )}
@@ -171,18 +201,80 @@ function TrendCell({ caption, label, values }: { caption: string; label: string;
   );
 }
 
-function KeywordItem({ k }: { k: KeywordRow }) {
+// --- Pozycje fraz w Google ----------------------------------------------------------------------------------------
+
+const DEVICE_LABEL: Record<Device, string> = { desktop: "komputer", mobile: "telefon" };
+const CHANGE_TONE: Record<RankChange["kind"], string> = {
+  up: "text-teal", new: "text-teal", down: "text-red", lost: "text-red", same: "text-t2", none: "",
+};
+const PILL = "rounded-full border px-2 py-0.5 normal-case tracking-normal";
+
+interface Reading { device: Device; view: RankView }
+
+/** The checks a phrase has, computer first. */
+const readingsOf = (ranks: Partial<Record<Device, RankView>> | undefined): Reading[] =>
+  DEVICES.flatMap((device) => { const view = ranks?.[device]; return view ? [{ device, view }] : []; });
+
+/**
+ * Positions of a phrase and where it ranks. The computer is the reference, as in the "Kierunek" tile: the rival comes
+ * from it (from the phone only when the computer has no reading); the address is the first one known. Every reading
+ * says the week it comes from ("tydzień od"), so an old position never passes for the current one.
+ */
+function RankCell({ readings }: { readings: Reading[] }) {
+  if (readings.length === 0) return <Meta className="basis-52 normal-case tracking-normal">pozycja: jeszcze nie sprawdzano</Meta>;
+  const address = readings.map((r) => r.view.url ?? r.view.breadcrumb).find((a) => a !== null) ?? null;
+  const rival = readings[0].view.competitors[0];
+  return (
+    <div className="min-w-0 basis-52 space-y-1">
+      {readings.map(({ device, view }) => {
+        const change = rankChange(view);
+        return (
+          <p key={device} className="flex flex-wrap items-baseline gap-x-2">
+            <span className={`${figure} font-semibold`}>{`${DEVICE_LABEL[device]} ${positionText(view.position)}`}</span>
+            {change.kind !== "none" && <span className={`text-sm ${CHANGE_TONE[change.kind]}`}>{rankChangeText(change)}</span>}
+            <Meta className="normal-case tracking-normal">{`tydzień od ${fmtDayShort(view.weekStart)}`}</Meta>
+          </p>
+        );
+      })}
+      {address && <Meta className="block break-words normal-case tracking-normal">{address}</Meta>}
+      {rival && <Meta className="block normal-case tracking-normal">{`najlepszy konkurent: ${rival.name}, ${rival.position}.`}</Meta>}
+    </div>
+  );
+}
+
+/**
+ * Badges of the SERP features (of the reference reading) and the two signals, "blisko top 3" and "rankuje inna strona niż
+ * docelowa", which fire when either device qualifies.
+ */
+function RankMarks({ k, readings }: { k: KeywordRow; readings: Reading[] }) {
+  if (readings.length === 0) return null;
+  const near = readings.some((r) => nearTop3(r.view.position, k.searchVolume));
+  const elsewhere = readings.some((r) => rankedElsewhere(r.view.url, k.targetPath));
+  const badges = featureBadges(readings[0].view.features);
+  if (!near && !elsewhere && badges.length === 0) return null;
+  return (
+    <div className="flex basis-full flex-wrap items-center gap-2">
+      {near && <Meta className={`${PILL} border-teal text-teal`}>blisko top 3</Meta>}
+      {elsewhere && <Meta className={`${PILL} border-line-3 text-t0`}>rankuje inna strona niż docelowa</Meta>}
+      {badges.map((badge) => <Meta key={badge} className={`${PILL} border-line-2`}>{badge}</Meta>)}
+    </div>
+  );
+}
+
+function KeywordItem({ k, ranks }: { k: KeywordRow; ranks: Partial<Record<Device, RankView>> | undefined }) {
   const months = k.monthlySearches.slice(-SPARKLINE_MONTHS).map((m) => m.searchVolume);
   const competition = k.competition === null ? NO_DATA : (COMPETITION_LABEL[k.competition] ?? k.competition);
+  const readings = readingsOf(ranks);
   return (
     <Row className="items-start gap-y-3">
       <div className="min-w-0 flex-1 basis-60">
         <p className="break-words font-medium">
-          {k.text}
+          <Link href={`/app/google/keywords/${k.id}`} className="underline-offset-4 hover:underline">{k.text}</Link>
           {!k.active && <Meta className="ml-2">wstrzymana</Meta>}
         </p>
         <Meta className="mt-1 block">{SOURCE_LABEL[k.source] ?? k.source}</Meta>
       </div>
+      <RankCell readings={readings} />
       <div className="basis-44">
         <span className={`${figure} font-semibold`}>{volumeText(k.searchVolume)}</span>
         {k.volumeUpdatedAt && <Meta className="ml-2 normal-case tracking-normal">{`stan na ${fmtDayShort(k.volumeUpdatedAt)}`}</Meta>}
@@ -193,6 +285,7 @@ function KeywordItem({ k }: { k: KeywordRow }) {
         <TrendCell caption="12 mies." label={`Wolumen frazy „${k.text}” w ostatnich miesiącach`} values={months} />
         <TrendCell caption="Trends" label={`Google Trends dla frazy „${k.text}”`} values={k.trend.map((p) => p.value)} />
       </div>
+      <RankMarks k={k} readings={readings} />
       <div className="flex basis-full flex-wrap items-center gap-x-4 gap-y-2">
         <form action={setTargetPath} className="flex items-center gap-2">
           <input type="hidden" name="id" value={k.id} />
@@ -215,14 +308,14 @@ function KeywordItem({ k }: { k: KeywordRow }) {
 }
 
 export async function TrackedSection({ projectId, hasGscData }: { projectId: string; hasGscData: boolean }) {
-  const keywords = await getKeywords(projectId);
+  const [keywords, ranks] = await Promise.all([getKeywords(projectId), getLatestRanks(projectId)]);
   const importHint = "Najpierw zsynchronizuj Search Console na stronie Przegląd.";
   return (
     <section>
       <SectionHead title="Śledzone frazy" meta={<Meta>{pluralFmt(keywords.length, ["fraza", "frazy", "fraz"])}</Meta>} />
       {keywords.length === 0
         ? <EmptyList>Brak śledzonych fraz. Dodaj je poniżej, zaimportuj z Search Console albo uruchom wyszukiwanie fraz.</EmptyList>
-        : <Rows>{keywords.map((k) => <KeywordItem key={k.id} k={k} />)}</Rows>}
+        : <Rows>{keywords.map((k) => <KeywordItem key={k.id} k={k} ranks={ranks.get(k.id)} />)}</Rows>}
       <Tile className="mt-6">
         <form action={addKeywords} className="grid gap-3">
           <Label htmlFor="new-keywords">Dodaj frazy (każda w osobnej linii)</Label>
@@ -331,7 +424,7 @@ export async function ResearchSection({ projectId, ownDomain }: { projectId: str
           <div className="flex flex-wrap items-center gap-4">
             <Button type="submit">Szukaj fraz</Button>
             <Meta className="normal-case tracking-normal">
-              {`Koszt dla ustawień domyślnych: najwyżej ${usd(total)} (każde dodatkowe hasło najwyżej ${usdPrecise(perSeed)}, każda domena najwyżej ${usdPrecise(perDomain)}).`}
+              {`Koszt dla ustawień domyślnych: najwyżej ${usdUpTo(total)} (każde dodatkowe hasło najwyżej ${usdPrecise(perSeed)}, każda domena najwyżej ${usdPrecise(perDomain)}).`}
             </Meta>
           </div>
         </form>

@@ -1,0 +1,155 @@
+{
+ "version": "0.1.20261103",
+ "status_code": 20000,
+ "status_message": "Ok.",
+ "time": "0.0485 sec.",
+ "cost": 0.0264,
+ "tasks_count": 4,
+ "tasks_error": 0,
+ "tasks": [
+  {
+   "id": "11031320-2787-0066-0000-77a0b26226a0",
+   "status_code": 20100,
+   "status_message": "Task Created.",
+   "time": "0.0000 sec.",
+   "cost": 0.0066,
+   "result_count": 0,
+   "path": [
+    "v3",
+    "serp",
+    "google",
+    "organic",
+    "task_post"
+   ],
+   "data": {
+    "api": "serp",
+    "function": "task_post",
+    "se": "google",
+    "se_type": "organic",
+    "location_code": 2616,
+    "language_code": "pl",
+    "depth": 100,
+    "load_async_ai_overview": true,
+    "stop_crawl_on_match": [
+     {
+      "match_value": "polskaszkola.ai",
+      "match_type": "with_subdomains"
+     }
+    ],
+    "keyword": "polska szkoła ai",
+    "device": "desktop",
+    "tag": "brand-desktop",
+    "os": "windows"
+   },
+   "result": null
+  },
+  {
+   "id": "11031320-2787-0066-0000-859615c49f91",
+   "status_code": 20100,
+   "status_message": "Task Created.",
+   "time": "0.0000 sec.",
+   "cost": 0.0066,
+   "result_count": 0,
+   "path": [
+    "v3",
+    "serp",
+    "google",
+    "organic",
+    "task_post"
+   ],
+   "data": {
+    "api": "serp",
+    "function": "task_post",
+    "se": "google",
+    "se_type": "organic",
+    "location_code": 2616,
+    "language_code": "pl",
+    "depth": 100,
+    "load_async_ai_overview": true,
+    "stop_crawl_on_match": [
+     {
+      "match_value": "polskaszkola.ai",
+      "match_type": "with_subdomains"
+     }
+    ],
+    "keyword": "szkolenia ai",
+    "device": "desktop",
+    "tag": "szkolenia-desktop",
+    "os": "windows"
+   },
+   "result": null
+  },
+  {
+   "id": "11031320-2787-0066-0000-69b3669a60bd",
+   "status_code": 20100,
+   "status_message": "Task Created.",
+   "time": "0.0000 sec.",
+   "cost": 0.0066,
+   "result_count": 0,
+   "path": [
+    "v3",
+    "serp",
+    "google",
+    "organic",
+    "task_post"
+   ],
+   "data": {
+    "api": "serp",
+    "function": "task_post",
+    "se": "google",
+    "se_type": "organic",
+    "location_code": 2616,
+    "language_code": "pl",
+    "depth": 100,
+    "load_async_ai_overview": true,
+    "stop_crawl_on_match": [
+     {
+      "match_value": "polskaszkola.ai",
+      "match_type": "with_subdomains"
+     }
+    ],
+    "keyword": "szkolenia ai",
+    "device": "mobile",
+    "tag": "szkolenia-mobile",
+    "os": "android"
+   },
+   "result": null
+  },
+  {
+   "id": "11031320-2787-0066-0000-97aec1c82415",
+   "status_code": 20100,
+   "status_message": "Task Created.",
+   "time": "0.0080 sec.",
+   "cost": 0.0066,
+   "result_count": 0,
+   "path": [
+    "v3",
+    "serp",
+    "google",
+    "organic",
+    "task_post"
+   ],
+   "data": {
+    "api": "serp",
+    "function": "task_post",
+    "se": "google",
+    "se_type": "organic",
+    "location_code": 2616,
+    "language_code": "pl",
+    "depth": 100,
+    "load_async_ai_overview": true,
+    "stop_crawl_on_match": [
+     {
+      "match_value": "polskaszkola.ai",
+      "match_type": "with_subdomains"
+     }
+    ],
+    "keyword": "kurs ai z certyfikatem",
+    "device": "desktop",
+    "tag": "absent-desktop",
+    "os": "windows"
+   },
+   "result": null
+  }
+ ]
+}

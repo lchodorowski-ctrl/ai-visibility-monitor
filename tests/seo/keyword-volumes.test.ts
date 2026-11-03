@@ -117,6 +117,37 @@ describe("runKeywordVolumes: bez płatnych wywołań", () => {
     expect(spend.filters).toContainEqual(["gte", "started_at", "2026-11-01T00:00:00.000Z"]);
   });
 
+  it("kolejność: rezerwacja szacunku w cost_usd, potem klient DataForSEO, na końcu zamknięcie z kosztem faktycznym", async () => {
+    const { client, calls } = world({ keywords: tracked("a1", "a2"), budget: 10, spent: 1 });
+    let seenByClient: Call[] = [];
+    const searchVolume = vi.fn<typeof searchVolumeFn>(async () => {
+      seenByClient = [...calls];
+      return { items: [vol("a1", 10), vol("a2", 10)], costUsd: 0.09 };
+    });
+
+    const res = await runKeywordVolumes({ projectId: PROJECT }, { admin: client, searchVolume, trendsExplore: vi.fn(), now });
+
+    const estimate = estimateVolumesCost(2, 2);
+    const jobWrites = (list: Call[]) => list.filter((c) => c.table === "seo_jobs" && c.op === "update").map((c) => c.payload as Record<string, unknown>);
+    // w chwili wywołania klienta w rejestrze jest już tylko rezerwacja
+    expect(jobWrites(seenByClient)).toEqual([{ cost_usd: estimate }]);
+    // zamknięcie ma koszt faktyczny, nie szacunek
+    const writes = jobWrites(calls);
+    expect(writes).toHaveLength(2);
+    expect(writes[1]).toMatchObject({ status: "done", cost_usd: 0.09 });
+    expect(writes[1].cost_usd).not.toBe(estimate);
+    expect(res).toMatchObject({ status: "done", costUsd: 0.09 });
+  });
+
+  it("przekroczenie limitu niczego nie rezerwuje: jedyny zapis zadania to budget_exceeded bez cost_usd", async () => {
+    const { client, calls } = world({ keywords: tracked("szkolenia ai"), budget: 10, spent: 9.95 });
+    await runKeywordVolumes({ projectId: PROJECT }, { admin: client, searchVolume: vi.fn(), trendsExplore: vi.fn(), now });
+    const writes = calls.filter((c) => c.table === "seo_jobs" && c.op === "update").map((c) => c.payload as Record<string, unknown>);
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toMatchObject({ status: "budget_exceeded" });
+    expect(writes[0]).not.toHaveProperty("cost_usd");
+  });
+
   it("szacunek to estimateVolumesCost(n, n): budżet równy wydanym plus szacunek jeszcze przepuszcza, o grosz mniej już nie", async () => {
     const keys = tracked("a", "b", "c", "d", "e");
     const estimate = estimateVolumesCost(5, 5);
@@ -493,6 +524,23 @@ describe("runKeywordVolumes: błędy", () => {
     expect(jobUpdate(calls)).toMatchObject({ status: "failed", error: "boom keywords" });
   });
 
+  it("nieudana rezerwacja kosztu kończy zadanie jako failed i nie wywołuje DataForSEO", async () => {
+    const { client, calls } = fakeAdmin((c) => {
+      if (c.table === "projects") return { data: { seo_budget_usd: 10, trends_anchor: null } };
+      if (c.table === "keywords") return { data: [{ id: "k1", key: "a" }] };
+      if (c.table === "seo_jobs" && c.op === "insert") return { data: { id: "job-1" } };
+      if (c.table === "seo_jobs" && c.op === "select") return { data: [] };
+      if (c.table === "seo_jobs" && c.op === "update") {
+        return (c.payload as Record<string, unknown>).status === "failed" ? { data: [{ id: "job-1" }] } : { error: { message: "ledger down" } };
+      }
+      return {};
+    });
+    const searchVolume = vi.fn();
+    await expect(runKeywordVolumes({ projectId: PROJECT }, { admin: client, searchVolume, trendsExplore: vi.fn(), now })).rejects.toThrow("ledger down");
+    expect(searchVolume).not.toHaveBeenCalled();
+    expect(jobUpdate(calls)).toMatchObject({ status: "failed", error: "ledger down", cost_usd: 0 });
+  });
+
   it("nieudany zapis zamknięcia zadania nie zasłania pierwotnego błędu", async () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const { client } = fakeAdmin((c) => {
@@ -500,7 +548,10 @@ describe("runKeywordVolumes: błędy", () => {
       if (c.table === "keywords") return { data: [{ id: "k1", key: "a" }] };
       if (c.table === "seo_jobs" && c.op === "insert") return { data: { id: "job-1" } };
       if (c.table === "seo_jobs" && c.op === "select") return { data: [] };
-      if (c.table === "seo_jobs" && c.op === "update") return { error: { message: "ledger down" } };
+      // rezerwacja kosztu przechodzi, pada dopiero zamknięcie zadania
+      if (c.table === "seo_jobs" && c.op === "update") {
+        return (c.payload as Record<string, unknown>).status === "failed" ? { error: { message: "ledger down" } } : { data: [{ id: "job-1" }] };
+      }
       return {};
     });
     const searchVolume = vi.fn().mockRejectedValue(new Error("pierwotny błąd"));

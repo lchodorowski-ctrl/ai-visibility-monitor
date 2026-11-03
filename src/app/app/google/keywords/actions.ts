@@ -4,6 +4,7 @@ import { tasks } from "@trigger.dev/sdk";
 import { revalidatePath } from "next/cache";
 import type { keywordVolumesTask } from "@/trigger/keyword-volumes";
 import type { keywordResearchTask } from "@/trigger/keyword-research";
+import type { rankCheckTask } from "@/trigger/rank-check";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getCurrentProject } from "@/lib/workspace";
 import { getGscLastDate, getQueryWindows } from "@/lib/seo/queries";
@@ -209,6 +210,25 @@ export async function refreshVolumes() {
     );
   } catch (e) {
     console.error("keyword-volumes trigger failed", e instanceof Error ? e.message : e);
+  }
+  revalidatePath(PAGE);
+}
+
+/**
+ * Starts a check of this week's Google positions of the active phrases (paid, checked against the SEO budget by the task;
+ * phrases already checked this week are not sent again). Two clicks within 10 minutes share one run.
+ */
+export async function checkRanks() {
+  const project = await getCurrentProject();
+  // an unreachable Trigger must not throw into the page; the status section shows whether a run actually started
+  try {
+    await tasks.trigger<typeof rankCheckTask>(
+      "rank-check",
+      { projectId: project.id },
+      { idempotencyKey: `rank-check:${project.id}:${tenMinuteWindow()}`, idempotencyKeyTTL: "10m" },
+    );
+  } catch (e) {
+    console.error("rank-check trigger failed", e instanceof Error ? e.message : e);
   }
   revalidatePath(PAGE);
 }

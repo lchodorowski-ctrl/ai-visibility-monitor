@@ -1,0 +1,49 @@
+{
+ "version": "0.1.20261103",
+ "status_code": 20000,
+ "status_message": "Ok.",
+ "time": "0.0337 sec.",
+ "cost": 0,
+ "tasks_count": 1,
+ "tasks_error": 1,
+ "tasks": [
+  {
+   "id": "11031320-2787-0066-0000-859615c49f91",
+   "status_code": 40601,
+   "status_message": "Task Handed.",
+   "time": "0.0017 sec.",
+   "cost": 0,
+   "result_count": 0,
+   "path": [
+    "v3",
+    "serp",
+    "google",
+    "organic",
+    "task_get",
+    "advanced",
+    "11031320-2787-0066-0000-859615c49f91"
+   ],
+   "data": {
+    "api": "serp",
+    "function": "task_get",
+    "se": "google",
+    "se_type": "organic",
+    "location_code": 2616,
+    "language_code": "pl",
+    "depth": 100,
+    "load_async_ai_overview": true,
+    "stop_crawl_on_match": [
+     {
+      "match_value": "polskaszkola.ai",
+      "match_type": "with_subdomains"
+     }
+    ],
+    "keyword": "szkolenia ai",
+    "device": "desktop",
+    "tag": "szkolenia-desktop",
+    "os": "windows"
+   },
+   "result": null
+  }
+ ]
+}

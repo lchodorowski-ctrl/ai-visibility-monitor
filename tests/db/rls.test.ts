@@ -8,6 +8,39 @@ const MEMBER = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const OUTSIDER = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
 const PROJECT = "22222222-2222-2222-2222-222222222222";
 
+const MEMBER_CLAIMS = { sub: MEMBER, role: "authenticated" };
+const OUTSIDER_CLAIMS = { sub: OUTSIDER, role: "authenticated" };
+
+const connect = async () => {
+  const c = new Client({ connectionString: url });
+  await c.connect();
+  return c;
+};
+
+// Wykonuje `run` jako rola `anon` albo `authenticated` z podanymi claimami JWT, po czym przywraca superusera.
+const asRole = async <T>(
+  c: Client,
+  role: "anon" | "authenticated",
+  claims: object,
+  run: () => Promise<T>,
+): Promise<T> => {
+  try {
+    await c.query(`set role ${role}`);
+    await c.query(`select set_config('request.jwt.claims', $1, false)`, [JSON.stringify(claims)]);
+    return await run();
+  } finally {
+    await c.query(`reset role`);
+    await c.query(`select set_config('request.jwt.claims', '', false)`);
+  }
+};
+
+const prepareUsers = async (c: Client) => {
+  for (const uid of [MEMBER, OUTSIDER]) {
+    await c.query(`insert into auth.users (id, email) values ($1, $2) on conflict do nothing`, [uid, `${uid}@rls.test.local`]);
+  }
+  await c.query(`insert into memberships (org_id, user_id) values ($1, $2) on conflict do nothing`, [ORG, MEMBER]);
+};
+
 describe.skipIf(!url)("RLS", () => {
   it("anon i nie-członek nie widzą promptów, członek org widzi", async () => {
     const c = new Client({ connectionString: url });
@@ -259,35 +292,6 @@ describe.skipIf(!url)("RLS", () => {
     const CUR_DAY = "2020-01-02";
     const DAYS = [PREV_DAY, CUR_DAY];
 
-    const connect = async () => {
-      const c = new Client({ connectionString: url });
-      await c.connect();
-      return c;
-    };
-
-    const asRole = async <T>(
-      c: Client,
-      role: "anon" | "authenticated",
-      claims: object,
-      run: () => Promise<T>,
-    ): Promise<T> => {
-      try {
-        await c.query(`set role ${role}`);
-        await c.query(`select set_config('request.jwt.claims', $1, false)`, [JSON.stringify(claims)]);
-        return await run();
-      } finally {
-        await c.query(`reset role`);
-        await c.query(`select set_config('request.jwt.claims', '', false)`);
-      }
-    };
-
-    const prepareUsers = async (c: Client) => {
-      for (const uid of [MEMBER, OUTSIDER]) {
-        await c.query(`insert into auth.users (id, email) values ($1, $2) on conflict do nothing`, [uid, `${uid}@rls.test.local`]);
-      }
-      await c.query(`insert into memberships (org_id, user_id) values ($1, $2) on conflict do nothing`, [ORG, MEMBER]);
-    };
-
     const cleanup = async (c: Client) => {
       await c.query(`reset role`);
       await c.query(`select set_config('request.jwt.claims', '', false)`);
@@ -326,9 +330,6 @@ describe.skipIf(!url)("RLS", () => {
         [PROJECT, PREV_DAY, CUR_DAY, PHRASE],
       );
     };
-
-    const MEMBER_CLAIMS = { sub: MEMBER, role: "authenticated" };
-    const OUTSIDER_CLAIMS = { sub: OUTSIDER, role: "authenticated" };
 
     it("GSC: anon i nie-członek nie widzą danych ani agregatów, członek widzi", async () => {
       const c = await connect();
@@ -505,6 +506,201 @@ describe.skipIf(!url)("RLS", () => {
           const prevOnly = await c.query(`select * from gsc_query_pages($1, $2, $3, 0)`, [PROJECT, PREV_DAY, PREV_DAY]);
           expect(prevOnly.rows).toEqual([]);
         });
+      } finally {
+        await cleanup(c);
+      }
+    });
+  });
+
+  describe("Pozycje w Google", () => {
+    const WEEK_1 = "2020-01-06";
+    const WEEK_2 = "2020-01-13";
+    const WEEK_3 = "2020-01-20";
+    const KEYS = ["rls rank test a", "rls rank test b", "rls rank test c"];
+    const DETAIL_PHRASE = "rls rank detail fraza";
+    const DETAIL_DAYS = ["2020-02-01", "2020-02-02", "2020-02-03"];
+
+    // Usunięcie fraz kasuje kaskadowo ich pomiary (rank_checks).
+    const cleanup = async (c: Client) => {
+      await c.query(`reset role`);
+      await c.query(`select set_config('request.jwt.claims', '', false)`);
+      await c.query(`delete from keywords where project_id = $1 and key = any($2::text[])`, [PROJECT, KEYS]);
+      await c.query(`delete from gsc_query_daily where project_id = $1 and date = any($2::date[])`, [PROJECT, DETAIL_DAYS]);
+      await c.query(`delete from memberships where user_id = any($1::uuid[])`, [[MEMBER, OUTSIDER]]);
+      await c.query(`delete from auth.users where id = any($1::uuid[])`, [[MEMBER, OUTSIDER]]);
+      await c.end();
+    };
+
+    const insertKeyword = async (c: Client, key: string) => {
+      const res = await c.query(
+        `insert into keywords (project_id, text, key, source) values ($1, $2, $2, 'manual') returning id`,
+        [PROJECT, key],
+      );
+      return res.rows[0].id as string;
+    };
+
+    const insertCheck = (
+      c: Client,
+      keywordId: string,
+      device: "desktop" | "mobile",
+      weekStart: string,
+      status: "pending" | "done" | "failed",
+      position: number | null,
+    ) =>
+      c.query(
+        `insert into rank_checks (project_id, keyword_id, device, week_start, status, position, checked_at)
+         values ($1, $2, $3, $4, $5, $6, case when $5 = 'done' then now() end)`,
+        [PROJECT, keywordId, device, weekStart, status, position],
+      );
+
+    // fraza A: desktop done 52 -> done poza top 100 -> pending, mobile jeden pomiar done 7;
+    // fraza B: done poza top 100 -> done 12 -> failed; fraza C: tylko pending.
+    const seedChecks = async (c: Client) => {
+      const a = await insertKeyword(c, KEYS[0]);
+      const b = await insertKeyword(c, KEYS[1]);
+      const cc = await insertKeyword(c, KEYS[2]);
+      await insertCheck(c, a, "desktop", WEEK_1, "done", 52);
+      await insertCheck(c, a, "desktop", WEEK_2, "done", null);
+      await insertCheck(c, a, "desktop", WEEK_3, "pending", null);
+      await insertCheck(c, a, "mobile", WEEK_2, "done", 7);
+      await insertCheck(c, b, "desktop", WEEK_1, "done", null);
+      await insertCheck(c, b, "desktop", WEEK_2, "done", 12);
+      await insertCheck(c, b, "desktop", WEEK_3, "failed", null);
+      await insertCheck(c, cc, "desktop", WEEK_3, "pending", null);
+      return { a, b, c: cc };
+    };
+
+    const seedDetail = async (c: Client) => {
+      await c.query(
+        `insert into gsc_query_daily (project_id, date, query, page, device, clicks, impressions, position) values
+           ($1, '2020-02-01', $2, '/a', 'desktop', 2, 50, 4.00),
+           ($1, '2020-02-02', $2, '/a', 'desktop', 5, 100, 3.00),
+           ($1, '2020-02-02', $2, '/b', 'mobile', 1, 300, 8.00),
+           ($1, '2020-02-02', 'inna fraza rls', '/c', 'desktop', 9, 900, 1.00),
+           ($1, '2020-02-03', $2, '/a', 'desktop', 100, 1000, 1.00)`,
+        [PROJECT, DETAIL_PHRASE],
+      );
+    };
+
+    it("rank_checks: anon i nie-członek nie widzą, członek widzi", async () => {
+      const c = await connect();
+      const countAs = (role: "anon" | "authenticated", claims: object, keywordId: string) =>
+        asRole(c, role, claims, async () => {
+          const res = await c.query(`select count(*)::int as n from rank_checks where keyword_id = $1`, [keywordId]);
+          return res.rows[0].n as number;
+        });
+
+      try {
+        await prepareUsers(c);
+        const ids = await seedChecks(c);
+
+        expect(await countAs("anon", {}, ids.a)).toBe(0);
+        expect(await countAs("authenticated", OUTSIDER_CLAIMS, ids.a)).toBe(0);
+        expect(await countAs("authenticated", MEMBER_CLAIMS, ids.a)).toBe(4);
+      } finally {
+        await cleanup(c);
+      }
+    });
+
+    it("rank_latest zwraca najnowszy done i poprzednią pozycję, pomija pending", async () => {
+      const c = await connect();
+
+      try {
+        await prepareUsers(c);
+        const ids = await seedChecks(c);
+
+        const rows = await asRole(c, "authenticated", MEMBER_CLAIMS, async () => {
+          const res = await c.query(`select * from rank_latest($1) where keyword_id = any($2::uuid[]) order by keyword_id, device`, [
+            PROJECT, [ids.a, ids.b, ids.c],
+          ]);
+          return res.rows;
+        });
+        const pick = (keywordId: string, device: string) => rows.find((r) => r.keyword_id === keywordId && r.device === device);
+        // pg zwraca kolumnę date jako Date o północy czasu lokalnego, więc składamy datę z lokalnych części (nie z UTC)
+        const day = (d: Date | null) =>
+          d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` : null;
+
+        // tylko pary z co najmniej jednym pomiarem done: A desktop, A mobile, B desktop
+        expect(rows).toHaveLength(3);
+        expect(pick(ids.c, "desktop")).toBeUndefined();
+
+        // A desktop: pending z tygodnia 3 pominięty; najnowszy done to tydzień 2 (poza top 100), poprzedni tydzień 1 na 52
+        const aDesktop = pick(ids.a, "desktop");
+        expect(day(aDesktop.week_start)).toBe(WEEK_2);
+        expect(aDesktop.position).toBeNull();
+        expect(day(aDesktop.prev_week_start)).toBe(WEEK_1);
+        expect(aDesktop.prev_position).toBe(52);
+        expect(aDesktop.checked_at).not.toBeNull();
+
+        // A mobile: pierwszy pomiar, brak poprzedniego
+        const aMobile = pick(ids.a, "mobile");
+        expect(day(aMobile.week_start)).toBe(WEEK_2);
+        expect(aMobile.position).toBe(7);
+        expect(aMobile.prev_week_start).toBeNull();
+        expect(aMobile.prev_position).toBeNull();
+
+        // B desktop: failed z tygodnia 3 pominięty; poprzedni pomiar był poza top 100 (prev_position null przy prev_week_start)
+        const bDesktop = pick(ids.b, "desktop");
+        expect(day(bDesktop.week_start)).toBe(WEEK_2);
+        expect(bDesktop.position).toBe(12);
+        expect(day(bDesktop.prev_week_start)).toBe(WEEK_1);
+        expect(bDesktop.prev_position).toBeNull();
+      } finally {
+        await cleanup(c);
+      }
+    });
+
+    it("rank_latest i gsc_query_detail: nie-członek dostaje 0 wierszy, anon błąd 42501", async () => {
+      const c = await connect();
+      const calls = {
+        latest: { sql: `select * from rank_latest($1)`, params: [PROJECT] },
+        detail: { sql: `select * from gsc_query_detail($1, $2, $3, $4)`, params: [PROJECT, DETAIL_PHRASE, "2020-02-01", "2020-02-03"] },
+      };
+      const callAs = (role: "anon" | "authenticated", claims: object, name: keyof typeof calls) =>
+        asRole(c, role, claims, async () => (await c.query(calls[name].sql, calls[name].params)).rows);
+
+      try {
+        await prepareUsers(c);
+        const ids = await seedChecks(c);
+        await seedDetail(c);
+
+        for (const name of Object.keys(calls) as (keyof typeof calls)[]) {
+          await expect(callAs("anon", {}, name)).rejects.toMatchObject({ code: "42501" });
+          expect(await callAs("authenticated", OUTSIDER_CLAIMS, name)).toEqual([]);
+        }
+
+        // kontrola pozytywna: członek dostaje dane z obu funkcji
+        const latest = await callAs("authenticated", MEMBER_CLAIMS, "latest");
+        expect(latest.filter((r) => [ids.a, ids.b].includes(r.keyword_id))).toHaveLength(3);
+        expect((await callAs("authenticated", MEMBER_CLAIMS, "detail")).length).toBeGreaterThan(0);
+      } finally {
+        await cleanup(c);
+      }
+    });
+
+    it("gsc_query_detail sumuje frazę po stronach, waży pozycję wyświetleniami i sortuje po wyświetleniach", async () => {
+      const c = await connect();
+
+      try {
+        await prepareUsers(c);
+        await seedDetail(c);
+
+        const rows = await asRole(c, "authenticated", MEMBER_CLAIMS, async () => {
+          const res = await c.query(`select * from gsc_query_detail($1, $2, $3, $4)`, [
+            PROJECT, DETAIL_PHRASE, "2020-02-01", "2020-02-02",
+          ]);
+          return res.rows;
+        });
+
+        // tylko szukana fraza, tylko okno dat (bez 2020-02-03); /b ma więcej wyświetleń niż /a
+        expect(rows.map((r) => r.page)).toEqual(["/b", "/a"]);
+        expect(Number(rows[0].clicks)).toBe(1);
+        expect(Number(rows[0].impressions)).toBe(300);
+        expect(Number(rows[0].position)).toBeCloseTo(8, 5);
+        expect(Number(rows[1].clicks)).toBe(7);
+        expect(Number(rows[1].impressions)).toBe(150);
+        // (4*50 + 3*100) / 150, a nie zwykła średnia 3.5
+        expect(Number(rows[1].position)).toBeCloseTo(10 / 3, 4);
       } finally {
         await cleanup(c);
       }

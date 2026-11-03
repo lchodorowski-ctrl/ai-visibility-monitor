@@ -5,8 +5,10 @@ import type { ChannelSummary } from "@/lib/trends/direction";
 
 const m = vi.hoisted(() => ({ getDirectionRows: vi.fn() }));
 const q = vi.hoisted(() => ({ getGscLastDate: vi.fn(), getGscFirstDate: vi.fn(), getGscTotals: vi.fn() }));
+const r = vi.hoisted(() => ({ getRankDirectionRows: vi.fn(), countActiveKeywords: vi.fn() }));
 vi.mock("@/lib/metrics/queries", () => m);
 vi.mock("@/lib/seo/queries", () => q);
+vi.mock("@/lib/seo/rank-queries", () => r);
 
 import { DirectionCards, DirectionSection } from "@/app/app/overview/direction";
 
@@ -29,6 +31,10 @@ const unknown = summary({
   detail: "Wpisz usługę w Ustawienia → Google.", href: "/app/google",
 });
 const flat = summary({ key: "google", direction: "flat", label: "Google: wyniki wyszukiwania", headline: "125 kliknięć, +4%", detail: "średnia pozycja 9,4", href: "/app/google" });
+const rank = summary({
+  key: "rank", direction: "up", label: "Google: pozycje fraz", headline: "4 z 10 fraz w top 10",
+  detail: "lepiej: 3, gorzej: 1, bez zmian: 6", since: "2026-10-05", href: "/app/google/keywords",
+});
 
 describe("DirectionCards", () => {
   const html = render(<DirectionCards summaries={[up, down, unknown]} headline="W górę: AI. W dół: AI Overviews." />);
@@ -44,6 +50,16 @@ describe("DirectionCards", () => {
       "Google: wyniki wyszukiwania", "Podłącz Search Console",
     ]) expect(html).toContain(text);
     expect(html.match(/<a /g)).toHaveLength(3);
+  });
+
+  it("cztery kafle w siatce 2 kolumny od md i 4 od xl; kafel pozycji fraz prowadzi do listy fraz", () => {
+    const h = render(<DirectionCards summaries={[up, down, unknown, rank]} headline="x" />);
+    expect(h.match(/<a /g)).toHaveLength(4);
+    expect(h).toMatch(/<div class="[^"]*\bmd:grid-cols-2\b[^"]*\bxl:grid-cols-4\b[^"]*"/);
+    expect(h).not.toContain("md:grid-cols-3");
+    expect(h).toMatch(/<a [^>]*href="\/app\/google\/keywords"/);
+    const card = h.split("<a ").find((chunk) => chunk.includes('href="/app/google/keywords"'))!;
+    for (const text of ["Google: pozycje fraz", "w górę", "4 z 10 fraz w top 10", "lepiej: 3, gorzej: 1, bez zmian: 6", "od 05.10"]) expect(card).toContain(text);
   });
 
   it("strzałki ↑ ↓ z tekstem dla czytników ekranu; sama strzałka jest ukryta przed czytnikiem", () => {
@@ -103,6 +119,13 @@ const metricRow = (p: Partial<Tables<"daily_metrics">>): Tables<"daily_metrics">
   score: 54, computed_at: "2026-10-29T00:00:00Z", ...p,
 });
 
+const rankRow = (keywordId: string, weekStart: string, position: number | null) => ({ keywordId, weekStart, position });
+/** Pięć fraz: trzy poprawiły się o ponad 3 miejsca, dwie bez zmian; dwie z pięciu w top 10 w najnowszym tygodniu. */
+const rankRows = [
+  ...[["k1", 30], ["k2", 20], ["k3", 15], ["k4", 50], ["k5", 8]].map(([k, p]) => rankRow(k as string, "2026-10-05", p as number)),
+  ...[["k1", 24], ["k2", 14], ["k3", 9], ["k4", 50], ["k5", 8]].map(([k, p]) => rankRow(k as string, "2026-11-02", p as number)),
+];
+
 const rows = [
   metricRow({ date: "2026-10-01", score: 48, visibility_rate: 0.34 }),
   metricRow({ date: "2026-10-29", score: 54, visibility_rate: 0.42 }),
@@ -117,6 +140,8 @@ describe("DirectionSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     m.getDirectionRows.mockResolvedValue(rows);
+    r.getRankDirectionRows.mockResolvedValue(rankRows);
+    r.countActiveKeywords.mockResolvedValue(5);
     q.getGscLastDate.mockResolvedValue("2026-10-31");
     q.getGscFirstDate.mockResolvedValue("2025-07-01");
     q.getGscTotals.mockImplementation(async (_p: string, from: string) =>
@@ -124,7 +149,7 @@ describe("DirectionSection", () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
-  it("zbiera trzy podsumowania i zdanie o kierunku; okna Search Console z ostatniej daty danych", async () => {
+  it("zbiera cztery podsumowania i zdanie o kierunku; okna Search Console z ostatniej daty danych", async () => {
     const html = render(await section());
     expect(m.getDirectionRows).toHaveBeenCalledWith("p");
     expect(q.getGscLastDate).toHaveBeenCalledWith("p");
@@ -134,9 +159,84 @@ describe("DirectionSection", () => {
     expect(html).toContain(`Widoczność 33%, −7 pp`);
     expect(html).toContain("142 kliknięcia, +18%");
     expect(html).toContain("średnia pozycja 9,4 (lepiej o 1,2 poz.)");
-    expect(html).toContain("W górę: AI, Google. W dół: AI Overviews.");
+    expect(html).toContain("W górę: AI, Google, pozycje fraz. W dół: AI Overviews.");
     expect(html).toContain('href="/app/prompts"');
     expect(html).toContain('href="/app/google"');
+    expect(html.match(/<a /g)).toHaveLength(4);
+  });
+
+  it("kafel pozycji fraz: odczyt dla projektu, liczby z pozycji komputerowych i data bazy", async () => {
+    const html = render(await section());
+    expect(r.getRankDirectionRows).toHaveBeenCalledWith("p");
+    expect(html).toContain("Google: pozycje fraz");
+    expect(html).toContain("2 z 5 fraz w top 10");
+    expect(html).toContain("lepiej: 3, gorzej: 0, bez zmian: 2");
+    expect(html).toContain("od 05.10");
+    expect(html).toContain('href="/app/google/keywords"');
+  });
+
+  it("są pomiary pozycji: liczby aktywnych fraz nie pyta", async () => {
+    await section();
+    expect(r.countActiveKeywords).not.toHaveBeenCalled();
+  });
+
+  it("bez pomiarów pozycji przy aktywnych frazach: zachęta do sprawdzenia, kierunek nieznany", async () => {
+    r.getRankDirectionRows.mockResolvedValue([]);
+    const html = render(await section());
+    expect(r.countActiveKeywords).toHaveBeenCalledWith("p");
+    expect(html).toContain("Brak pomiarów pozycji");
+    expect(html).toContain("Kliknij Sprawdź pozycje w Google → Frazy.");
+    expect(html).toContain("W górę: AI, Google. W dół: AI Overviews. Brak danych: pozycje fraz.");
+  });
+
+  it("bez pomiarów pozycji i bez aktywnych fraz: zachęta do dodania fraz", async () => {
+    r.getRankDirectionRows.mockResolvedValue([]);
+    r.countActiveKeywords.mockResolvedValue(0);
+    expect(render(await section())).toContain("Dodaj frazy w Google → Frazy.");
+  });
+
+  it("jeden tydzień pomiarów pozycji: nagłówek z top 10, kierunek nieznany", async () => {
+    r.getRankDirectionRows.mockResolvedValue(rankRows.filter((row) => row.weekStart === "2026-11-02"));
+    const html = render(await section());
+    expect(html).toContain("2 z 5 fraz w top 10");
+    expect(html).toContain("brak wcześniejszego pomiaru do porównania");
+    expect(html).toContain("Brak danych: pozycje fraz.");
+  });
+
+  it("błąd odczytu pozycji nie psuje przeglądu: kafel pozycji mówi o błędzie odczytu (nie o braku fraz), reszta działa", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    r.getRankDirectionRows.mockRejectedValue(new Error("Nie udało się pobrać pozycji do podsumowania: boom"));
+    const html = render(await section());
+    expect(html).toContain("Brak danych o pozycjach");
+    expect(html).toContain("Nie udało się wczytać pomiarów pozycji.");
+    expect(html).not.toContain("Brak pomiarów pozycji");
+    expect(html).not.toContain("Dodaj frazy w Google");
+    expect(html).not.toContain("Kliknij Sprawdź pozycje");
+    expect(html).toContain("Score 54, +6 pkt");
+    expect(html).toContain("142 kliknięcia, +18%");
+    expect(html).toContain("Brak danych: pozycje fraz.");
+    expect(error).toHaveBeenCalledOnce();
+    expect(String(error.mock.calls[0][0])).toContain("boom");
+  });
+
+  it("błąd liczenia fraz też jest tylko zalogowany, a kafel nie podpowiada dodania fraz", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    r.getRankDirectionRows.mockResolvedValue([]);
+    r.countActiveKeywords.mockRejectedValue(new Error("Nie udało się policzyć fraz: boom"));
+    const html = render(await section());
+    expect(html).toContain("Brak danych o pozycjach");
+    expect(html).not.toContain("Dodaj frazy w Google");
+    expect(error).toHaveBeenCalledOnce();
+    expect(String(error.mock.calls[0][0])).toContain("boom");
+  });
+
+  it("pomiary pozycji starsze niż poprzedni tydzień (liczone od `now` przeglądu): kafel mówi, że są nieaktualne, i podaje datę ostatniego pomiaru", async () => {
+    const later = new Date("2026-12-14T10:00:00Z"); // najnowszy pomiar to 2026-11-02, czyli siedem tygodni wcześniej
+    const html = render(await DirectionSection({ projectId: "p", gscProperty: "sc-domain:polskaszkola.ai", now: later }));
+    expect(html).toContain("Pozycje fraz są nieaktualne");
+    expect(html).toContain("ostatni pomiar: tydzień od 02.11. Sprawdź pozycje w Google → Frazy.");
+    expect(html).not.toContain("w top 10");
+    expect(html).toMatch(/Brak danych: [^.]*pozycje fraz\./);
   });
 
   it("kafel Google podaje okres porównania z datą ostatnich danych", async () => {
@@ -151,7 +251,7 @@ describe("DirectionSection", () => {
     expect(html).toContain("142 kliknięcia");
     expect(html).toContain("Za krótka historia do porównania (dane od 21.09)");
     expect(html).not.toContain("+18%");
-    expect(html).toContain("W górę: AI. W dół: AI Overviews. Brak danych: Google.");
+    expect(html).toContain("W górę: AI, pozycje fraz. W dół: AI Overviews. Brak danych: Google.");
   });
 
   it("historia sięgająca początku poprzedniego okna wystarcza do porównania", async () => {
@@ -166,19 +266,20 @@ describe("DirectionSection", () => {
     const html = render(await section());
     expect(html).toContain("Dane z Search Console są nieaktualne");
     expect(html).toContain("ostatnie dane: 20.10. Sprawdź synchronizację na stronie Google.");
-    expect(html).toContain("W górę: AI. W dół: AI Overviews. Brak danych: Google.");
+    expect(html).toContain("W górę: AI, pozycje fraz. W dół: AI Overviews. Brak danych: Google.");
   });
 
   it("bez usługi Search Console nie pyta o dane Google i podpowiada podłączenie", async () => {
     for (const gscProperty of [null, "", "   "]) {
       vi.clearAllMocks();
       m.getDirectionRows.mockResolvedValue(rows);
+      r.getRankDirectionRows.mockResolvedValue(rankRows);
       const html = render(await DirectionSection({ projectId: "p", gscProperty, now }));
       expect(q.getGscLastDate).not.toHaveBeenCalled();
       expect(q.getGscFirstDate).not.toHaveBeenCalled();
       expect(q.getGscTotals).not.toHaveBeenCalled();
       expect(html).toContain("Podłącz Search Console");
-      expect(html).toContain("W górę: AI. W dół: AI Overviews. Brak danych: Google.");
+      expect(html).toContain("W górę: AI, pozycje fraz. W dół: AI Overviews. Brak danych: Google.");
     }
   });
 
@@ -201,9 +302,10 @@ describe("DirectionSection", () => {
 
   it("bez żadnych pomiarów AI zdanie mówi o braku danych", async () => {
     m.getDirectionRows.mockResolvedValue([]);
+    r.getRankDirectionRows.mockResolvedValue([]);
     q.getGscLastDate.mockResolvedValue(null);
     const html = render(await section(null));
     expect(html).toContain("Za mało danych, żeby ocenić kierunek. Potrzebne są co najmniej dwa pomiary.");
-    expect(html.match(/<span class="sr-only">brak danych<\/span>/g)).toHaveLength(3);
+    expect(html.match(/<span class="sr-only">brak danych<\/span>/g)).toHaveLength(4);
   });
 });

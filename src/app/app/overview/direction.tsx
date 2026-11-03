@@ -1,7 +1,8 @@
 import { getDirectionRows } from "@/lib/metrics/queries";
 import { getGscFirstDate, getGscLastDate, getGscTotals, type GscTotals } from "@/lib/seo/queries";
 import { gscWindows, hasPreviousWindow } from "@/lib/seo/overview";
-import { aiSummary, aioSummary, googleSummary, overallHeadline, type ChannelSummary, type Direction } from "@/lib/trends/direction";
+import { countActiveKeywords, getRankDirectionRows, type RankDirectionRow } from "@/lib/seo/rank-queries";
+import { aiSummary, aioSummary, googleSummary, overallHeadline, rankSummary, type ChannelSummary, type Direction } from "@/lib/trends/direction";
 import { fmtDayMonth } from "@/lib/format/number";
 import { Eyebrow, Meta, SectionHead, Tile } from "@/components/psai";
 
@@ -36,7 +37,7 @@ export function DirectionCards({ summaries, headline }: { summaries: ChannelSumm
     <section aria-label="Kierunek">
       <Eyebrow className="mb-3">Kierunek</Eyebrow>
       <SectionHead title={headline} />
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         {summaries.map((s) => <DirectionCard key={s.key} s={s} />)}
       </div>
     </section>
@@ -69,13 +70,33 @@ async function loadGscWindows(projectId: string): Promise<GscWindowData> {
   }
 }
 
+interface RankData { rows: RankDirectionRow[]; activeKeywords: number; readFailed: boolean }
+
+const FAILED_RANKS: RankData = { rows: [], activeKeywords: 0, readFailed: true };
+
+/**
+ * Desktop positions of the last weeks, and the number of active phrases when there are none (it only picks the hint on
+ * the card). A failed read must not take the whole overview down either: it is logged and the card says it could not
+ * load the positions, not that there are none to show (the phrases page shows the real error).
+ */
+async function loadRanks(projectId: string): Promise<RankData> {
+  try {
+    const rows = await getRankDirectionRows(projectId);
+    return { rows, activeKeywords: rows.length > 0 ? 0 : await countActiveKeywords(projectId), readFailed: false };
+  } catch (e) {
+    console.error(`DirectionSection: nie udało się pobrać pozycji fraz: ${e instanceof Error ? e.message : String(e)}`);
+    return FAILED_RANKS;
+  }
+}
+
 export async function DirectionSection({ projectId, gscProperty, now }: { projectId: string; gscProperty: string | null; now?: Date }) {
   const configured = Boolean(gscProperty?.trim());
-  const [rows, gsc] = await Promise.all([getDirectionRows(projectId), configured ? loadGscWindows(projectId) : NO_GSC]);
+  const [rows, gsc, ranks] = await Promise.all([getDirectionRows(projectId), configured ? loadGscWindows(projectId) : NO_GSC, loadRanks(projectId)]);
   const summaries = [
     aiSummary(rows),
     aioSummary(rows),
     googleSummary(gsc.cur, gsc.prev, configured, { lastDate: gsc.lastDate, firstDate: gsc.firstDate, now }),
+    rankSummary(ranks.rows, { activeKeywords: ranks.activeKeywords, readFailed: ranks.readFailed, now }),
   ];
   return <DirectionCards summaries={summaries} headline={overallHeadline(summaries)} />;
 }

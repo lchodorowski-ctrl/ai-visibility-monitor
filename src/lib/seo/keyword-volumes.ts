@@ -5,8 +5,8 @@ import { searchVolume as defaultSearchVolume, type VolumeItem } from "@/lib/data
 import { trendsExplore as defaultTrendsExplore, trendBatches, normalizeTrends, type TrendSeries } from "@/lib/dataforseo/trends";
 import { DEFAULT_TRENDS_ANCHOR, normalizeKeyword } from "./keywords";
 import { estimateVolumesCost } from "./costs";
-import { seoMonthSpend, decideSeoSpend, budgetExceededMessage } from "./budget";
-import { startJob, finishJob, type SeoJobStatus } from "./jobs";
+import { passSeoBudget } from "./budget";
+import { startJob, finishJob, failJob, type SeoJobStatus } from "./jobs";
 
 type Admin = SupabaseClient<Database>;
 
@@ -19,7 +19,6 @@ export const MAX_VOLUME_WORDS = 10;
 export const NO_KEYWORDS_MESSAGE = "Brak aktywnych fraz";
 
 const WEEK_MS = 7 * 86_400_000;
-const errorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export interface RunKeywordVolumesDeps {
@@ -75,7 +74,7 @@ function completeWeeks(points: { week: string; value: number | null }[], now: Da
  * potem Google Trends dla tych z wolumenem od `TRENDS_MIN_VOLUME` (z odpowiedzi albo, gdy Google go nie zwrócił,
  * zapisanego wcześniej). Frazy dłuższe niż `MAX_VOLUME_WORDS` słów zostają nietknięte. Płatne, więc przed pierwszym
  * wywołaniem sprawdza budżet SEO projektu (górny szacunek: każda wysyłana fraza ma wolumen i trend), a w rejestrze
- * zapisuje faktyczny koszt.
+ * zapisuje najpierw szacunek (rezerwacja), a na końcu faktyczny koszt.
  * Wyjątek zamyka zadanie jako `failed` z kosztem poniesionym do tego momentu i leci dalej.
  */
 export async function runKeywordVolumes(payload: { projectId: string }, deps: RunKeywordVolumesDeps = {}): Promise<KeywordVolumesResult> {
@@ -105,14 +104,7 @@ export async function runKeywordVolumes(payload: { projectId: string }, deps: Ru
     const sendable = tracked.filter((k) => wordCount(k.key) <= MAX_VOLUME_WORDS);
     const tooLong = tracked.length - sendable.length;
     const estimate = estimateVolumesCost(sendable.length, sendable.length);
-    const monthSpent = await seoMonthSpend(admin, projectId, now());
-    const decision = decideSeoSpend(monthSpent, estimate, budget);
-    if (decision.kind === "budget_exceeded") {
-      await finishJob(admin, jobId, {
-        status: "budget_exceeded",
-        error: budgetExceededMessage(decision.spent, decision.estimate, budget),
-        stats: { spentUsd: decision.spent, estimateUsd: decision.estimate, budgetUsd: budget },
-      });
+    if (!(await passSeoBudget(admin, { projectId, jobId, estimate, budget, now: now() }))) {
       return { status: "budget_exceeded", keywords: 0, trends: 0, costUsd: 0 };
     }
 
@@ -180,12 +172,7 @@ export async function runKeywordVolumes(payload: { projectId: string }, deps: Ru
     });
     return { status: "done", keywords: updated, trends, costUsd: spent };
   } catch (err) {
-    try {
-      await finishJob(admin, jobId, { status: "failed", error: errorMessage(err), costUsd: spent });
-    } catch (finishErr) {
-      // oryginalny błąd jest ważniejszy niż nieudany zapis do rejestru
-      console.error("keyword-volumes: nie udało się zamknąć zadania w rejestrze:", errorMessage(finishErr));
-    }
+    await failJob(admin, jobId, err, spent, "keyword-volumes");
     throw err;
   }
 }

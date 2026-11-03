@@ -4,7 +4,7 @@ import { fakeAdmin, filterValue, type Call, type Handled } from "./fake-admin";
 const h = vi.hoisted(() => ({ client: null as unknown }));
 vi.mock("@/lib/supabase/server", () => ({ createServerSupabase: async () => h.client }));
 
-import { getKeywords, getSuggestions, getKeywordJobs, getResearchTargets } from "@/lib/seo/keyword-queries";
+import { getKeywords, getSuggestions, getKeywordJobs, getResearchTargets, toKeywordRow } from "@/lib/seo/keyword-queries";
 import { MAX_TRACKED } from "@/lib/seo/keyword-volumes";
 import { MAX_COMPETITORS } from "@/lib/seo/keyword-research";
 
@@ -30,6 +30,14 @@ const keywordRow = (over: Record<string, unknown> = {}) => ({
   trend: [{ week: "2026-10-12", value: 41.5 }, { week: "2026-10-19", value: null }, { week: "2026-10-26", value: 50 }],
   trend_updated_at: "2026-11-03T10:00:05Z", created_at: "2026-11-01T10:00:00Z",
   ...over,
+});
+
+describe("toKeywordRow", () => {
+  it("mapuje pojedynczy wiersz tak samo jak lista fraz: liczby z tekstu, miesiące od najstarszego", () => {
+    const k = toKeywordRow(keywordRow() as never);
+    expect(k).toMatchObject({ id: "k1", text: "szkolenia ai", targetPath: "/szkolenia", searchVolume: 1900, competitionIndex: 81, cpc: 2.4 });
+    expect(k.monthlySearches.map((m) => `${m.year}-${m.month}`)).toEqual(["2025-12", "2026-1", "2026-9", "2026-10"]);
+  });
 });
 
 describe("getKeywords", () => {
@@ -207,14 +215,18 @@ describe("getSuggestions", () => {
 
 describe("getKeywordJobs", () => {
   const job = (kind: string) => ({ id: `j-${kind}`, kind, status: "done", cost_usd: "0.12", started_at: "2026-11-03T10:00:00Z", finished_at: "2026-11-03T10:01:00Z", error: null, stats: {} });
+  /** Zapytania o ostatnie zadanie każdego rodzaju, bez filtra statusu. */
+  const latestCalls = () => calls.filter((c) => !c.filters.some((f) => f[0] === "eq" && f[1] === "status"));
+  const doneCall = () => calls.find((c) => c.filters.some((f) => f[0] === "eq" && f[1] === "status"))!;
 
-  it("ostatnie zadanie wolumenów i ostatnie badanie fraz, każde z własnym rodzajem", async () => {
+  it("ostatnie zadanie wolumenów, ostatnie badanie fraz i ostatnie sprawdzenie pozycji, każde z własnym rodzajem", async () => {
     setDb((c) => ({ data: job(String(filterValue(c, "eq", "kind"))) }));
     const jobs = await getKeywordJobs("jb-ok");
     expect(jobs.volumes?.id).toBe("j-keyword_volumes");
     expect(jobs.research?.id).toBe("j-keyword_research");
-    expect(calls.map((c) => filterValue(c, "eq", "kind")).sort()).toEqual(["keyword_research", "keyword_volumes"]);
-    for (const c of calls) {
+    expect(jobs.ranks?.id).toBe("j-rank_check");
+    expect(latestCalls().map((c) => filterValue(c, "eq", "kind")).sort()).toEqual(["keyword_research", "keyword_volumes", "rank_check"]);
+    for (const c of latestCalls()) {
       expect(c.table).toBe("seo_jobs");
       expect(filterValue(c, "eq", "project_id")).toBe("jb-ok");
       expect(c.filters.find((f) => f[0] === "order")).toEqual(["order", "started_at", { ascending: false }]);
@@ -222,11 +234,38 @@ describe("getKeywordJobs", () => {
     }
   });
 
-  it("bez żadnego zadania: dwa nulle; błąd bazy rzuca po polsku", async () => {
+  it("getKeywordJobs: researchDoneAt z ostatniego zakończonego badania (nowszy job failed nie zmienia daty)", async () => {
+    // baza oddaje to, co pasuje do filtrów: zakończone badanie tylko ze statusem done, najnowsze zadanie z dowolnym statusem
+    const history = [
+      { kind: "keyword_research", status: "failed", started_at: "2026-11-05T09:00:00Z", finished_at: "2026-11-05T09:00:03Z" },
+      { kind: "keyword_research", status: "done", started_at: "2026-11-03T10:00:00Z", finished_at: "2026-11-03T10:01:00Z" },
+      { kind: "keyword_research", status: "done", started_at: "2026-10-01T10:00:00Z", finished_at: "2026-10-01T10:02:00Z" },
+    ];
+    setDb((c) => {
+      const kind = filterValue(c, "eq", "kind");
+      const status = filterValue(c, "eq", "status");
+      const match = history.filter((j) => j.kind === kind && (status === undefined || j.status === status));
+      return { data: match[0] ? { id: `j-${match[0].status}`, ...match[0] } : null };
+    });
+    const jobs = await getKeywordJobs("jb-done");
+    expect(jobs.research?.status).toBe("failed");
+    expect(jobs.researchDoneAt).toBe("2026-11-03T10:01:00Z");
+    expect(filterValue(doneCall(), "eq", "kind")).toBe("keyword_research");
+    expect(filterValue(doneCall(), "eq", "project_id")).toBe("jb-done");
+    expect(doneCall().filters.find((f) => f[0] === "order")).toEqual(["order", "started_at", { ascending: false }]);
+    expect(doneCall().filters).toContainEqual(["limit", 1]);
+  });
+
+  it("bez żadnego zadania: puste pola i brak daty; błąd bazy rzuca po polsku", async () => {
     setDb(() => ({ data: null }));
-    expect(await getKeywordJobs("jb-none")).toEqual({ volumes: null, research: null });
+    expect(await getKeywordJobs("jb-none")).toEqual({ volumes: null, research: null, ranks: null, researchDoneAt: null });
     setDb(() => ({ error: { message: "boom" } }));
     await expect(getKeywordJobs("jb-err")).rejects.toThrow("Nie udało się pobrać zadań fraz: boom");
+  });
+
+  it("błąd samego zapytania o zakończone badanie też rzuca po polsku", async () => {
+    setDb((c) => (filterValue(c, "eq", "status") === "done" ? { error: { message: "boom done" } } : { data: null }));
+    await expect(getKeywordJobs("jb-err-done")).rejects.toThrow("Nie udało się pobrać zadań fraz: boom done");
   });
 });
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   gscWindows, shiftDate, delta, ctr, overviewState, hasPreviousWindow, isInterruptedJob, topOpportunities, topQueries, fillMissingDays,
 } from "@/lib/seo/overview";
+import { MAX_POLLS, POLL_INTERVAL_MS } from "@/lib/seo/rank-check";
 import type { Opportunity, QueryWindow } from "@/lib/seo/opportunities";
 
 describe("shiftDate", () => {
@@ -61,6 +62,25 @@ describe("isInterruptedJob", () => {
     expect(isInterruptedJob(running("2026-11-02T11:15:00Z"), now)).toBe(false);
     expect(isInterruptedJob(running("2026-11-02T11:14:59Z"), now)).toBe(true);
     expect(isInterruptedJob(running("2026-11-02T11:59:00Z"), now)).toBe(false);
+  });
+
+  it("sprawdzenie pozycji ma dłuższy limit: godzina odbioru wyników plus 30 minut zapasu", () => {
+    const rankCheck = (started_at: string) => ({ kind: "rank_check", status: "running", started_at });
+    const minutesAgo = (m: number) => new Date(now.getTime() - m * 60_000).toISOString();
+    const limitMinutes = (MAX_POLLS * POLL_INTERVAL_MS) / 60_000 + 30;
+    // zdrowe sprawdzenie trwa do godziny odbioru plus czas wysyłki: po 50 minutach to nie jest przerwanie
+    expect(isInterruptedJob(rankCheck(minutesAgo(50)), now)).toBe(false);
+    expect(isInterruptedJob(rankCheck(minutesAgo(limitMinutes)), now)).toBe(false);
+    expect(isInterruptedJob(rankCheck(minutesAgo(limitMinutes + 1)), now)).toBe(true);
+    expect(isInterruptedJob(rankCheck(minutesAgo(95)), now)).toBe(true);
+  });
+
+  it("pozostałe rodzaje zadań zachowują limit 45 minut, także synchronizacja z Search Console", () => {
+    const minutesAgo = (m: number) => new Date(now.getTime() - m * 60_000).toISOString();
+    for (const kind of ["gsc_sync", "keyword_volumes", "keyword_research"]) {
+      expect(isInterruptedJob({ kind, status: "running", started_at: minutesAgo(50) }, now)).toBe(true);
+      expect(isInterruptedJob({ kind, status: "running", started_at: minutesAgo(44) }, now)).toBe(false);
+    }
   });
 
   it("zadanie w innym stanie nigdy nie jest przerwane, a nieczytelna data nie wywołuje fałszywego alarmu", () => {

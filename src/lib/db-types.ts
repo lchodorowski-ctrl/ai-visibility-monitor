@@ -391,6 +391,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"rank_checks": {
+                  Row: {
+                    "breadcrumb": string | null,"checked_at": string | null,"competitors": NonNullable<Json>,"cost_usd": number,"created_at": string,"device": string,"dfs_task_id": string | null,"error": string | null,"features": NonNullable<Json>,"id": string,"keyword_id": string,"position": number | null,"project_id": string,"rank_absolute": number | null,"status": string,"top10": NonNullable<Json>,"url": string | null,"week_start": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "breadcrumb"?: string | null,"checked_at"?: string | null,"competitors"?: NonNullable<Json>,"cost_usd"?: number,"created_at"?: string,"device": string,"dfs_task_id"?: string | null,"error"?: string | null,"features"?: NonNullable<Json>,"id"?: string,"keyword_id": string,"position"?: number | null,"project_id": string,"rank_absolute"?: number | null,"status"?: string,"top10"?: NonNullable<Json>,"url"?: string | null,"week_start": string
+                  }
+                  Update: {
+                    "breadcrumb"?: string | null,"checked_at"?: string | null,"competitors"?: NonNullable<Json>,"cost_usd"?: number,"created_at"?: string,"device"?: string,"dfs_task_id"?: string | null,"error"?: string | null,"features"?: NonNullable<Json>,"id"?: string,"keyword_id"?: string,"position"?: number | null,"project_id"?: string,"rank_absolute"?: number | null,"status"?: string,"top10"?: NonNullable<Json>,"url"?: string | null,"week_start"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "rank_checks_keyword_id_fkey"
+      columns: ["keyword_id"]
+isOneToOne: false
+      referencedRelation: "keywords"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "rank_checks_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"recommendations": {
                   Row: {
                     "action_steps": NonNullable<Json>,"created_at": string,"effort": number,"evidence": NonNullable<Json>,"fingerprint": string,"id": string,"impact": number,"priority": number | null,"project_id": string,"prompt_id": string | null,"rationale": string | null,"run_id": string | null,"status": string,"suggested_outline": Json | null,"summary": string,"target_url": string | null,"title": string,"type": string,"updated_at": string
@@ -541,7 +567,12 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "gsc_query_pages":
+            "gsc_query_detail":
+{ Args: { "p_from": string,"p_project": string,"p_query": string,"p_to": string }; Returns: {
+              "clicks": number,"impressions": number,"page": string,"position": number
+            }[]
+                           },
+"gsc_query_pages":
 { Args: { "p_from": string,"p_min_impressions": number,"p_project": string,"p_to": string }; Returns: {
               "clicks": number,"impressions": number,"page": string,"position": number,"query": string
             }[]
@@ -566,6 +597,11 @@ isOneToOne: false
                            },
 "project_org":
 { Args: { "p": string }; Returns: string
+                           },
+"rank_latest":
+{ Args: { "p_project": string }; Returns: {
+              "breadcrumb": string,"checked_at": string,"competitors": Json,"device": string,"features": Json,"keyword_id": string,"position": number,"prev_position": number,"prev_week_start": string,"rank_absolute": number,"url": string,"week_start": string
+            }[]
                            }
           }
           Enums: {
