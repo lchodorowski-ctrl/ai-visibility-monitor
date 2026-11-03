@@ -10,7 +10,7 @@ const q = vi.hoisted(() => ({ getGscLastDate: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createServerSupabase: async () => ({ rpc, from: (table: string) => h.from!(table) }) }));
 vi.mock("@/lib/seo/queries", () => q);
 
-import { getKeywordDetail, getLatestRanks } from "@/lib/seo/rank-queries";
+import { countActiveKeywords, getKeywordDetail, getLatestRanks, getRankDirectionRows } from "@/lib/seo/rank-queries";
 
 let calls: Call[];
 function setDb(handler: (c: Call) => Handled) {
@@ -292,5 +292,87 @@ describe("getKeywordDetail", () => {
     q.getGscLastDate.mockResolvedValue("2026-10-31");
     result = { data: null, error: { message: "boom" } };
     await expect(getKeywordDetail("p1", KW)).rejects.toThrow("Nie udało się pobrać frazy z Search Console: boom");
+  });
+});
+
+// --- getRankDirectionRows i countActiveKeywords --------------------------------------------------------------------
+
+describe("getRankDirectionRows", () => {
+  const directionRow = (over: Record<string, unknown> = {}) => ({ keyword_id: "k1", week_start: "2026-11-02", position: 12, ...over });
+
+  /** Atrapa bazy: najnowszy tydzień to pierwsze zapytanie (kolumna `week_start`), wiersze to drugie. */
+  function seedDirection(newest: string | null, rows: unknown[]) {
+    setDb((c) => (c.cols === "week_start" ? { data: newest === null ? null : { week_start: newest } } : { data: rows }));
+  }
+
+  it("najpierw najnowszy tydzień ukończonych pomiarów na komputerze, potem wiersze z 42 dni do niego, tylko z projektu", async () => {
+    seedDirection("2026-11-02", []);
+    await getRankDirectionRows("rd-query");
+    const [newest, rows] = calls.filter((c) => c.table === "rank_checks");
+    for (const call of [newest, rows]) {
+      expect(call.op).toBe("select");
+      expect(filterValue(call, "eq", "project_id")).toBe("rd-query");
+      expect(filterValue(call, "eq", "status")).toBe("done");
+      expect(filterValue(call, "eq", "device")).toBe("desktop");
+    }
+    expect(newest.filters.find((f) => f[0] === "order")).toEqual(["order", "week_start", { ascending: false }]);
+    expect(newest.filters.find((f) => f[0] === "limit")).toEqual(["limit", 1]);
+    expect(rows.cols).toBe("keyword_id, week_start, position");
+    expect(filterValue(rows, "gte", "week_start")).toBe("2026-09-21");
+  });
+
+  it("mapuje wiersze na id frazy, tydzień i pozycję; pozycja z tekstu to liczba, brak pozycji to null, nie 0", async () => {
+    seedDirection("2026-11-02", [
+      directionRow(),
+      directionRow({ keyword_id: "k2", position: "37" }),
+      directionRow({ keyword_id: "k3", position: null }),
+      directionRow({ keyword_id: "k4", week_start: "2026-10-05", position: "" }),
+    ]);
+    expect(await getRankDirectionRows("rd-map")).toEqual([
+      { keywordId: "k1", weekStart: "2026-11-02", position: 12 },
+      { keywordId: "k2", weekStart: "2026-11-02", position: 37 },
+      { keywordId: "k3", weekStart: "2026-11-02", position: null },
+      { keywordId: "k4", weekStart: "2026-10-05", position: null },
+    ]);
+  });
+
+  it("wiersz bez frazy albo bez tygodnia jest pomijany", async () => {
+    seedDirection("2026-11-02", [directionRow({ keyword_id: null }), directionRow({ week_start: null }), directionRow({ keyword_id: "k9" })]);
+    expect(await getRankDirectionRows("rd-skip")).toEqual([{ keywordId: "k9", weekStart: "2026-11-02", position: 12 }]);
+  });
+
+  it("bez żadnego ukończonego pomiaru: pusta lista i bez drugiego zapytania", async () => {
+    seedDirection(null, [directionRow()]);
+    expect(await getRankDirectionRows("rd-none")).toEqual([]);
+    expect(calls.filter((c) => c.table === "rank_checks")).toHaveLength(1);
+  });
+
+  it("błędy bazy rzucają po polsku", async () => {
+    setDb(() => ({ error: { message: "boom" } }));
+    await expect(getRankDirectionRows("rd-err1")).rejects.toThrow("Nie udało się pobrać pozycji do podsumowania: boom");
+    setDb((c) => (c.cols === "week_start" ? { data: { week_start: "2026-11-02" } } : { error: { message: "boom" } }));
+    await expect(getRankDirectionRows("rd-err2")).rejects.toThrow("Nie udało się pobrać pozycji do podsumowania: boom");
+  });
+});
+
+describe("countActiveKeywords", () => {
+  it("liczy aktywne frazy projektu zapytaniem tylko o liczbę, bez pobierania wierszy", async () => {
+    setDb(() => ({ data: null, count: 7 }));
+    expect(await countActiveKeywords("ck-ok")).toBe(7);
+    const call = calls.find((c) => c.table === "keywords")!;
+    expect(call.op).toBe("select");
+    expect(call.opts).toEqual({ count: "exact", head: true });
+    expect(filterValue(call, "eq", "project_id")).toBe("ck-ok");
+    expect(filterValue(call, "eq", "active")).toBe(true);
+  });
+
+  it("brak licznika w odpowiedzi to 0", async () => {
+    setDb(() => ({ data: null, count: null }));
+    expect(await countActiveKeywords("ck-null")).toBe(0);
+  });
+
+  it("błąd bazy rzuca po polsku", async () => {
+    setDb(() => ({ error: { message: "boom" } }));
+    await expect(countActiveKeywords("ck-err")).rejects.toThrow("Nie udało się policzyć fraz: boom");
   });
 });

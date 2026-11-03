@@ -1,12 +1,14 @@
 /**
  * Pure logic of the "Kierunek" summary on the main overview (no I/O): is the brand going up, down or standing still
- * in AI assistants overall, in Google AI Overviews and in Google search results, and the texts that say so.
+ * in AI assistants overall, in Google AI Overviews, in Google search results and in the positions of tracked phrases,
+ * and the texts that say so.
  *
  * Every verdict is computed from the numbers as they are shown on screen (rounded points, whole percentages),
  * so a card never shows "-5 pp" next to a "no change" verdict.
  */
 import type { Tables } from "@/lib/db-types";
 import type { GscTotals } from "@/lib/seo/queries";
+import type { RankDirectionRow } from "@/lib/seo/rank-queries";
 import { shiftDate, WINDOW_DAYS } from "@/lib/seo/overview";
 import { fmtDayMonth, fmtDecimal, fmtNumber, fmtSignedNumber, fmtSignedPercent, pct, positionChange, positionChangeText } from "@/lib/format/number";
 import { pluralFmt } from "@/lib/format/plural";
@@ -26,6 +28,10 @@ export const DIRECTION_THRESHOLDS = {
   positionPlaces: 0.5,
   /** Relative rise in impressions that softens a worse average position from "down" to "flat" (0.1 = 10%). */
   impressionsGrowth: 0.1,
+  /** Change of a phrase's position in places that counts as a move (better or worse). */
+  rankPlaces: 3,
+  /** Share of the compared phrases (0.1 = 10%) that must net move the same way for a verdict. */
+  rankShare: 0.1,
   /** How far back the AI measurement used for comparison should be. */
   baselineDays: 28,
   /** Search Console data whose latest day is more than this many days old is stale (the sync stopped or fails). */
@@ -66,7 +72,7 @@ export function lowerIsBetter(cur: number, base: number, threshold: number): Dir
 }
 
 export interface ChannelSummary {
-  key: "ai" | "aio" | "google";
+  key: "ai" | "aio" | "google" | "rank";
   label: string;
   direction: Direction;
   /** The number behind the verdict, with its change: "Score 54, +6 pkt". */
@@ -221,7 +227,69 @@ export function googleSummary(cur: GscTotals | null, prev: GscTotals | null, con
   return { ...id, direction, headline, detail, period: prevClicks !== null ? `${upTo} wobec poprzednich ${WINDOW_DAYS}` : upTo };
 }
 
-const SHORT_LABEL: Record<ChannelSummary["key"], string> = { ai: "AI", aio: "AI Overviews", google: "Google" };
+/** A phrase outside the checked top 100 has no position; for the comparison it counts as the first place after it. */
+const OUTSIDE_TOP_100 = 101;
+
+/** The first ten organic results are the first page of Google. */
+const TOP_10 = 10;
+
+export interface RankSummaryContext {
+  /** Active tracked phrases: tells "add phrases" from "run the check" when there are no positions yet. */
+  activeKeywords: number;
+}
+
+/**
+ * Direction of the tracked phrases: of the phrases checked both in the latest week and in the baseline week (28 days
+ * earlier, or the oldest earlier one), count those that got at least `rankPlaces` places better and worse. The verdict
+ * needs the net count (better minus worse) to reach `rankShare` of the compared phrases (at least one phrase), so the
+ * counts in the text decide it and a lone phrase cannot swing a large list. The headline is the latest top 10 count.
+ */
+export function rankSummary(rows: RankDirectionRow[], ctx: RankSummaryContext): ChannelSummary {
+  const id = { key: "rank", label: "Google: pozycje fraz", href: "/app/google/keywords" } as const;
+  if (rows.length === 0) {
+    return {
+      ...id, direction: "unknown", headline: "Brak pomiarów pozycji", since: null,
+      detail: ctx.activeKeywords > 0 ? "Kliknij Sprawdź pozycje w Google → Frazy." : "Dodaj frazy w Google → Frazy.",
+    };
+  }
+
+  const weeks = new Map<string, Map<string, number | null>>();
+  for (const r of rows) {
+    const week = weeks.get(r.weekStart) ?? new Map<string, number | null>();
+    week.set(r.keywordId, r.position);
+    weeks.set(r.weekStart, week);
+  }
+  const latestWeek = [...weeks.keys()].reduce((a, b) => (a > b ? a : b));
+  const latest = weeks.get(latestWeek)!;
+  const inTop10 = [...latest.values()].filter((p) => p !== null && p <= TOP_10).length;
+  const headline = `${fmtNumber(inTop10)} z ${fmtNumber(latest.size)} ${latest.size === 1 ? "frazy" : "fraz"} w top 10`;
+
+  const base = pickBaseline([...weeks.keys()].map((date) => ({ date })), latestWeek, TH.baselineDays);
+  if (!base) return { ...id, direction: "unknown", headline, detail: `pomiar z ${fmtDayMonth(latestWeek)}, ${NO_BASELINE}`, since: null };
+
+  const before = weeks.get(base.date)!;
+  let better = 0;
+  let worse = 0;
+  let same = 0;
+  for (const [keywordId, position] of latest) {
+    if (!before.has(keywordId)) continue;
+    const moved = (before.get(keywordId) ?? OUTSIDE_TOP_100) - (position ?? OUTSIDE_TOP_100);
+    if (moved >= TH.rankPlaces) better += 1;
+    else if (moved <= -TH.rankPlaces) worse += 1;
+    else same += 1;
+  }
+  const compared = better + worse + same;
+  if (compared === 0) {
+    return { ...id, direction: "unknown", headline, detail: "brak fraz sprawdzonych w obu tygodniach", since: null };
+  }
+
+  const needed = Math.max(1, Math.ceil(compared * TH.rankShare - EPSILON));
+  const net = better - worse;
+  const direction: Direction = net >= needed ? "up" : net <= -needed ? "down" : "flat";
+  return { ...id, direction, headline, detail: `lepiej: ${better}, gorzej: ${worse}, bez zmian: ${same}`, since: base.date };
+}
+
+const SHORT_LABEL: Record<ChannelSummary["key"], string> = { ai: "AI", aio: "AI Overviews", google: "Google", rank: "pozycje fraz" };
 
 /**
  * One sentence about the whole picture. A channel without data is not counted towards the direction, but it does not

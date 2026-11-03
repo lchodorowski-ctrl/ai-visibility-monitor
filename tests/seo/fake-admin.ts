@@ -9,7 +9,7 @@ export interface Call {
   filters: unknown[][];
 }
 
-export type Handled = { data?: unknown; error?: { message: string } | null };
+export type Handled = { data?: unknown; error?: { message: string } | null; /** Liczba wierszy dla zapytania z `{ count: "exact" }`. */ count?: number | null };
 
 export function fakeAdmin(handler: (c: Call) => Handled) {
   const calls: Call[] = [];
@@ -17,12 +17,12 @@ export function fakeAdmin(handler: (c: Call) => Handled) {
     const call: Call = { table, op: "select", filters: [] };
     const b: Record<string, unknown> = {};
     for (const m of ["eq", "in", "not", "gte", "lt", "order", "limit"]) b[m] = (...args: unknown[]) => { call.filters.push([m, ...args]); return b; };
-    b.select = (cols: string) => { if (call.op === "select") call.cols = cols; return b; };
+    b.select = (cols: string, opts?: unknown) => { if (call.op === "select") { call.cols = cols; call.opts = opts; } return b; };
     b.insert = (payload: unknown) => { call.op = "insert"; call.payload = payload; return b; };
     b.update = (payload: unknown) => { call.op = "update"; call.payload = payload; return b; };
     b.upsert = (payload: unknown, opts: unknown) => { call.op = "upsert"; call.payload = payload; call.opts = opts; return b; };
     b.delete = () => { call.op = "delete"; return b; };
-    const run = () => { calls.push(call); const r = handler(call); return Promise.resolve({ data: r.data ?? null, error: r.error ?? null }); };
+    const run = () => { calls.push(call); const r = handler(call); return Promise.resolve({ data: r.data ?? null, error: r.error ?? null, count: r.count ?? null }); };
     b.single = run; b.maybeSingle = run;
     b.then = (ok: (v: unknown) => unknown, ko: (e: unknown) => unknown) => run().then(ok, ko);
     return b;

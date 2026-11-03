@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import type { Tables } from "@/lib/db-types";
 import {
-  DIRECTION_THRESHOLDS, pickBaseline, higherIsBetter, lowerIsBetter, aiSummary, aioSummary, googleSummary, overallHeadline,
+  DIRECTION_THRESHOLDS, pickBaseline, higherIsBetter, lowerIsBetter, aiSummary, aioSummary, googleSummary, rankSummary, overallHeadline,
   type ChannelSummary,
 } from "@/lib/trends/direction";
+import type { RankDirectionRow } from "@/lib/seo/rank-queries";
 
 const MINUS = "−";
 
@@ -19,7 +20,7 @@ describe("DIRECTION_THRESHOLDS", () => {
   it("progi z założeń zadania", () => {
     expect(DIRECTION_THRESHOLDS).toEqual({
       scorePoints: 3, ratePoints: 0.05, clicksRelative: 0.1, clicksMinBase: 20, positionPlaces: 0.5, impressionsGrowth: 0.1,
-      baselineDays: 28, staleDays: 7,
+      baselineDays: 28, staleDays: 7, rankPlaces: 3, rankShare: 0.1,
     });
   });
 });
@@ -480,7 +481,130 @@ describe("overallHeadline", () => {
   });
 
   it("zdania nie zawierają półpauz ani pauz", () => {
-    const all = overallHeadline([s("ai", "up"), s("aio", "down"), s("google", "unknown")]);
+    const all = overallHeadline([s("ai", "up"), s("aio", "down"), s("google", "unknown"), s("rank", "flat")]);
     expect(all).not.toMatch(/[\u2013\u2014]/);
+  });
+
+  it("cztery kanały: pozycje fraz mają własną krótką etykietę", () => {
+    expect(overallHeadline([s("ai", "up"), s("aio", "up"), s("google", "up"), s("rank", "up")])).toBe("Idziemy w górę we wszystkich kanałach");
+    expect(overallHeadline([s("ai", "down"), s("aio", "down"), s("google", "down"), s("rank", "down")])).toBe("Spadamy we wszystkich kanałach");
+    expect(overallHeadline([s("ai", "up"), s("aio", "down"), s("google", "flat"), s("rank", "up")])).toBe("W górę: AI, pozycje fraz. W dół: AI Overviews. Bez zmian: Google.");
+    expect(overallHeadline([s("ai", "up"), s("aio", "up"), s("google", "up"), s("rank", "unknown")])).toBe("W górę: AI, AI Overviews, Google. Brak danych: pozycje fraz.");
+    expect(overallHeadline([s("ai", "unknown"), s("aio", "unknown"), s("google", "unknown"), s("rank", "flat")])).toBe("Bez zmian: pozycje fraz. Brak danych: AI, AI Overviews, Google.");
+  });
+});
+
+describe("rankSummary", () => {
+  const NEW = "2026-11-02";
+  const OLD = "2026-10-05"; // 28 dni wcześniej
+  const rk = (weekStart: string, ...positions: (number | null)[]): RankDirectionRow[] =>
+    positions.map((position, i) => ({ keywordId: `k${i + 1}`, weekStart, position }));
+  /** Dwa tygodnie: pozycje fraz k1..kn w starym i w nowym tygodniu. */
+  const twoWeeks = (before: (number | null)[], after: (number | null)[]) => [...rk(OLD, ...before), ...rk(NEW, ...after)];
+  const none = { activeKeywords: 0 };
+
+  it("brak wierszy bez fraz: nieznany kierunek, zachęta do dodania fraz, link do fraz", () => {
+    expect(rankSummary([], none)).toEqual({
+      key: "rank", label: "Google: pozycje fraz", direction: "unknown",
+      headline: "Brak pomiarów pozycji", detail: "Dodaj frazy w Google → Frazy.", since: null, href: "/app/google/keywords",
+    });
+  });
+
+  it("brak wierszy przy aktywnych frazach: zachęta do sprawdzenia pozycji", () => {
+    const s = rankSummary([], { activeKeywords: 12 });
+    expect(s).toMatchObject({ direction: "unknown", headline: "Brak pomiarów pozycji", detail: "Kliknij Sprawdź pozycje w Google → Frazy.", since: null });
+  });
+
+  it("jeden tydzień: nieznany kierunek, ale nagłówek z liczbą fraz w top 10 i brak bazy w opisie", () => {
+    const s = rankSummary(rk(NEW, 3, 10, 11, null, 45), none);
+    expect(s).toMatchObject({ key: "rank", direction: "unknown", headline: "2 z 5 fraz w top 10", since: null, href: "/app/google/keywords" });
+    expect(s.detail).toBe("pomiar z 02.11, brak wcześniejszego pomiaru do porównania");
+  });
+
+  it("odmiana w nagłówku: „1 z 1 frazy”, „0 z 4 fraz”, „3 z 12 fraz”; pozycja 10 jest w top 10, 11 już nie", () => {
+    expect(rankSummary(rk(NEW, 4), none).headline).toBe("1 z 1 frazy w top 10");
+    expect(rankSummary(rk(NEW, 11, 40, null, 100), none).headline).toBe("0 z 4 fraz w top 10");
+    expect(rankSummary(rk(NEW, 1, 2, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19), none).headline).toBe("3 z 12 fraz w top 10");
+  });
+
+  it("10 fraz: 2 lepiej o 5, 1 gorzej o 4, reszta bez zmian: potrzeba 1, wynik netto 1, więc w górę", () => {
+    const before = [20, 30, 50, 50, 50, 50, 50, 50, 50, 8];
+    const after = [15, 25, 50, 50, 50, 50, 50, 50, 50, 12];
+    const s = rankSummary(twoWeeks(before, after), none);
+    expect(s).toEqual({
+      key: "rank", label: "Google: pozycje fraz", direction: "up",
+      headline: "0 z 10 fraz w top 10", detail: "lepiej: 2, gorzej: 1, bez zmian: 7", since: OLD, href: "/app/google/keywords",
+    });
+  });
+
+  it("20 fraz: 2 lepiej, 1 gorzej: potrzeba 2, wynik netto 1, więc bez zmian", () => {
+    const before = [20, 30, 8, ...Array<number>(17).fill(50)];
+    const after = [15, 25, 12, ...Array<number>(17).fill(50)];
+    const s = rankSummary(twoWeeks(before, after), none);
+    expect(s.direction).toBe("flat");
+    expect(s.detail).toBe("lepiej: 2, gorzej: 1, bez zmian: 17");
+  });
+
+  it("30 fraz: potrzeba dokładnie 3 (30 × 0,1 w liczbach zmiennoprzecinkowych to 3,0000000000000004, a nie 4)", () => {
+    const base = Array<number>(30).fill(50);
+    const withBetter = (n: number) => base.map((p, i) => (i < n ? p - 5 : p));
+    expect(rankSummary(twoWeeks(base, withBetter(3)), none)).toMatchObject({ direction: "up", detail: "lepiej: 3, gorzej: 0, bez zmian: 27" });
+    expect(rankSummary(twoWeeks(base, withBetter(2)), none)).toMatchObject({ direction: "flat", detail: "lepiej: 2, gorzej: 0, bez zmian: 28" });
+  });
+
+  it("więcej fraz gorzej niż lepiej o potrzebną liczbę: w dół", () => {
+    const before = [10, 10, 10, 30, 50];
+    const after = [20, 20, 20, 25, 50];
+    const s = rankSummary(twoWeeks(before, after), none);
+    expect(s).toMatchObject({ direction: "down", headline: "0 z 5 fraz w top 10", detail: "lepiej: 1, gorzej: 3, bez zmian: 1" });
+  });
+
+  it("próg ruchu: równe 3 miejsca to już ruch, 2 miejsca jeszcze nie; w obie strony", () => {
+    expect(rankSummary(twoWeeks([30], [27]), none)).toMatchObject({ direction: "up", detail: "lepiej: 1, gorzej: 0, bez zmian: 0" });
+    expect(rankSummary(twoWeeks([30], [28]), none)).toMatchObject({ direction: "flat", detail: "lepiej: 0, gorzej: 0, bez zmian: 1" });
+    expect(rankSummary(twoWeeks([27], [30]), none)).toMatchObject({ direction: "down", detail: "lepiej: 0, gorzej: 1, bez zmian: 0" });
+    expect(rankSummary(twoWeeks([28], [30]), none)).toMatchObject({ direction: "flat", detail: "lepiej: 0, gorzej: 0, bez zmian: 1" });
+  });
+
+  it("fraza poza top 100 liczy się jako pozycja 101: z 101 do 40 to „lepiej”, z 40 do braku to „gorzej”", () => {
+    expect(rankSummary(twoWeeks([null], [40]), none)).toMatchObject({ direction: "up", detail: "lepiej: 1, gorzej: 0, bez zmian: 0" });
+    expect(rankSummary(twoWeeks([40], [null]), none)).toMatchObject({ direction: "down", detail: "lepiej: 0, gorzej: 1, bez zmian: 0" });
+    // poza top 100 w obu tygodniach to fraza porównana, bez zmian
+    expect(rankSummary(twoWeeks([null], [null]), none)).toMatchObject({ direction: "flat", detail: "lepiej: 0, gorzej: 0, bez zmian: 1" });
+    // 100 do braku to tylko 1 miejsce
+    expect(rankSummary(twoWeeks([100], [null]), none).detail).toBe("lepiej: 0, gorzej: 0, bez zmian: 1");
+  });
+
+  it("porównuje tylko frazy z obu tygodni; fraza nowa albo wycofana nie wpływa na liczby", () => {
+    const rows: RankDirectionRow[] = [
+      { keywordId: "a", weekStart: OLD, position: 30 }, { keywordId: "gone", weekStart: OLD, position: 5 },
+      { keywordId: "a", weekStart: NEW, position: 20 }, { keywordId: "new", weekStart: NEW, position: 4 },
+    ];
+    const s = rankSummary(rows, none);
+    expect(s).toMatchObject({ direction: "up", headline: "1 z 2 fraz w top 10", detail: "lepiej: 1, gorzej: 0, bez zmian: 0" });
+  });
+
+  it("brak wspólnych fraz w obu tygodniach: nieznany kierunek i bez daty bazy", () => {
+    const rows: RankDirectionRow[] = [{ keywordId: "a", weekStart: OLD, position: 30 }, { keywordId: "b", weekStart: NEW, position: 5 }];
+    const s = rankSummary(rows, none);
+    expect(s).toMatchObject({ direction: "unknown", headline: "1 z 1 frazy w top 10", detail: "brak fraz sprawdzonych w obu tygodniach", since: null });
+  });
+
+  it("baza to najnowszy tydzień sprzed co najmniej 28 dni; bez takiego najstarszy wcześniejszy", () => {
+    const rows = [...rk("2026-09-21", 50), ...rk("2026-10-05", 50), ...rk("2026-10-19", 50), ...rk(NEW, 20)];
+    expect(rankSummary(rows, none).since).toBe("2026-10-05");
+    const short = [...rk("2026-10-19", 50), ...rk("2026-10-26", 40), ...rk(NEW, 20)];
+    expect(rankSummary(short, none).since).toBe("2026-10-19");
+  });
+
+  it("kolejność wierszy nie ma znaczenia", () => {
+    const rows = twoWeeks([50, 8], [40, 30]);
+    expect(rankSummary([...rows].reverse(), none)).toEqual(rankSummary(rows, none));
+  });
+
+  it("teksty nie zawierają półpauz ani pauz", () => {
+    for (const s of [rankSummary([], none), rankSummary([], { activeKeywords: 3 }), rankSummary(rk(NEW, 3), none), rankSummary(twoWeeks([30], [20]), none)]) {
+      expect(`${s.label} ${s.headline} ${s.detail}`).not.toMatch(/[\u2013\u2014]/);
+    }
   });
 });

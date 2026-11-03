@@ -2,7 +2,7 @@ import { cache } from "react";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { Device } from "@/lib/dataforseo/serp";
 import { toKeywordRow, type KeywordRow } from "./keyword-queries";
-import { gscWindows } from "./overview";
+import { gscWindows, shiftDate } from "./overview";
 import { getGscLastDate } from "./queries";
 import type { CompetitorRank, SerpEntry, SerpFeatures } from "./rank-parse";
 
@@ -218,4 +218,55 @@ export const getKeywordDetail = cache(async (projectId: string, keywordId: strin
     readGscPages(supabase, projectId, keyword.key),
   ]);
   return { keyword, history, latest, gsc };
+});
+
+// --- Kierunek na przeglądzie ----------------------------------------------------------------------------------------
+
+/** One finished desktop check of a phrase: what the "Kierunek" card on the overview compares week to week. */
+export interface RankDirectionRow {
+  keywordId: string;
+  /** Monday of the checked week (YYYY-MM-DD). */
+  weekStart: string;
+  /** Position in the organic results; null when the domain is outside the checked top 100. */
+  position: number | null;
+}
+
+/** How far back from the newest checked week the direction card reads: six weeks cover the 28-day baseline. */
+const DIRECTION_WINDOW_DAYS = 42;
+
+/**
+ * Finished desktop checks (ruling M2-R6: the direction counts desktop positions only) of the 42 days up to the newest
+ * checked week, in the user's session. Empty without a finished check. At most `MAX_RANK_KEYWORDS` phrases are checked
+ * per week, so seven weeks stay under the 1000 rows PostgREST returns per request.
+ */
+export const getRankDirectionRows = cache(async (projectId: string): Promise<RankDirectionRow[]> => {
+  const supabase = await createServerSupabase();
+  const { data: newest, error: newestError } = await supabase
+    .from("rank_checks").select("week_start")
+    .eq("project_id", projectId).eq("status", "done").eq("device", "desktop")
+    .order("week_start", { ascending: false }).limit(1).maybeSingle();
+  if (newestError) throw new Error(`Nie udało się pobrać pozycji do podsumowania: ${newestError.message}`);
+  const latest = str(newest?.week_start);
+  if (latest === null) return [];
+
+  const { data, error } = await supabase
+    .from("rank_checks").select("keyword_id, week_start, position")
+    .eq("project_id", projectId).eq("status", "done").eq("device", "desktop")
+    .gte("week_start", shiftDate(latest, -DIRECTION_WINDOW_DAYS))
+    .order("week_start", { ascending: true });
+  if (error) throw new Error(`Nie udało się pobrać pozycji do podsumowania: ${error.message}`);
+  return (data ?? []).flatMap((r) => {
+    const keywordId = str(r.keyword_id);
+    const weekStart = str(r.week_start);
+    return keywordId !== null && weekStart !== null ? [{ keywordId, weekStart, position: num(r.position) }] : [];
+  });
+});
+
+/** Number of active tracked phrases of the project: tells "add phrases" from "run the check" when there are no positions yet. */
+export const countActiveKeywords = cache(async (projectId: string): Promise<number> => {
+  const supabase = await createServerSupabase();
+  const { count, error } = await supabase
+    .from("keywords").select("id", { count: "exact", head: true }).eq("project_id", projectId).eq("active", true);
+  if (error) throw new Error(`Nie udało się policzyć fraz: ${error.message}`);
+  return count ?? 0;
 });
