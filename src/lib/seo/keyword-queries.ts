@@ -106,16 +106,9 @@ function parseCompetitors(json: unknown): CompetitorPosition[] {
   return rivals.sort((a, b) => a.position - b.position);
 }
 
-/** Tracked phrases, largest monthly volume first and the ones without a volume last (at most `MAX_TRACKED`). */
-export const getKeywords = cache(async (projectId: string): Promise<KeywordRow[]> => {
-  const supabase = await createServerSupabase();
-  const { data, error } = await supabase
-    .from("keywords").select("*").eq("project_id", projectId)
-    .order("search_volume", { ascending: false, nullsFirst: false })
-    .order("text", { ascending: true })
-    .limit(MAX_TRACKED);
-  if (error) throw new Error(`Nie udało się pobrać fraz: ${error.message}`);
-  return (data ?? []).map((r) => ({
+/** A `keywords` row as the pages read it (numbers from text, jsonb parsed); shared by the list and the phrase detail. */
+export function toKeywordRow(r: Tables<"keywords">): KeywordRow {
+  return {
     id: r.id,
     text: r.text,
     key: r.key,
@@ -130,7 +123,19 @@ export const getKeywords = cache(async (projectId: string): Promise<KeywordRow[]
     trend: parseTrend(r.trend),
     volumeUpdatedAt: r.volume_updated_at,
     trendUpdatedAt: r.trend_updated_at,
-  }));
+  };
+}
+
+/** Tracked phrases, largest monthly volume first and the ones without a volume last (at most `MAX_TRACKED`). */
+export const getKeywords = cache(async (projectId: string): Promise<KeywordRow[]> => {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from("keywords").select("*").eq("project_id", projectId)
+    .order("search_volume", { ascending: false, nullsFirst: false })
+    .order("text", { ascending: true })
+    .limit(MAX_TRACKED);
+  if (error) throw new Error(`Nie udało się pobrać fraz: ${error.message}`);
+  return (data ?? []).map(toKeywordRow);
 });
 
 /** The default row cap of PostgREST; a longer list of phrases is cut here. */

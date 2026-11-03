@@ -4,7 +4,7 @@ import { fakeAdmin, filterValue, type Call, type Handled } from "./fake-admin";
 const h = vi.hoisted(() => ({ client: null as unknown }));
 vi.mock("@/lib/supabase/server", () => ({ createServerSupabase: async () => h.client }));
 
-import { getKeywords, getSuggestions, getKeywordJobs, getResearchTargets } from "@/lib/seo/keyword-queries";
+import { getKeywords, getSuggestions, getKeywordJobs, getResearchTargets, toKeywordRow } from "@/lib/seo/keyword-queries";
 import { MAX_TRACKED } from "@/lib/seo/keyword-volumes";
 import { MAX_COMPETITORS } from "@/lib/seo/keyword-research";
 
@@ -30,6 +30,14 @@ const keywordRow = (over: Record<string, unknown> = {}) => ({
   trend: [{ week: "2026-10-12", value: 41.5 }, { week: "2026-10-19", value: null }, { week: "2026-10-26", value: 50 }],
   trend_updated_at: "2026-11-03T10:00:05Z", created_at: "2026-11-01T10:00:00Z",
   ...over,
+});
+
+describe("toKeywordRow", () => {
+  it("mapuje pojedynczy wiersz tak samo jak lista fraz: liczby z tekstu, miesiące od najstarszego", () => {
+    const k = toKeywordRow(keywordRow() as never);
+    expect(k).toMatchObject({ id: "k1", text: "szkolenia ai", targetPath: "/szkolenia", searchVolume: 1900, competitionIndex: 81, cpc: 2.4 });
+    expect(k.monthlySearches.map((m) => `${m.year}-${m.month}`)).toEqual(["2025-12", "2026-1", "2026-9", "2026-10"]);
+  });
 });
 
 describe("getKeywords", () => {

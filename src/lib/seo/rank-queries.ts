@@ -1,13 +1,16 @@
 import { cache } from "react";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { Device } from "@/lib/dataforseo/serp";
-import type { CompetitorRank, SerpFeatures } from "./rank-parse";
+import { toKeywordRow, type KeywordRow } from "./keyword-queries";
+import { gscWindows } from "./overview";
+import { getGscLastDate } from "./queries";
+import type { CompetitorRank, SerpEntry, SerpFeatures } from "./rank-parse";
 
 /*
  * Reads of Google positions, through the user-session client: `rank_latest` is security definer with a membership gate
  * on auth.uid(), so the admin client (no user) would get nothing. PostgREST may return numeric and bigint as strings,
  * and the generated rpc types claim non-null for columns that are null at runtime, so every number goes through `num`;
- * the jsonb columns (`features`, `competitors`) are parsed defensively: a malformed entry is dropped.
+ * the jsonb columns (`features`, `competitors`, `top10`) are parsed defensively: a malformed entry is dropped.
  */
 
 /** Numeric value or null (never 0 for a missing value). */
@@ -95,4 +98,124 @@ export const getLatestRanks = cache(async (projectId: string): Promise<Map<strin
     ranks.set(r.keyword_id, { ...ranks.get(r.keyword_id), [r.device]: view });
   }
   return ranks;
+});
+
+// --- Szczegóły frazy ----------------------------------------------------------------------------------------------
+
+/** One week of the history chart: the position on each device, null when outside the top 100 or not checked that week. */
+export interface RankHistoryPoint {
+  /** Monday of the checked week (YYYY-MM-DD). */
+  weekStart: string;
+  desktop: number | null;
+  mobile: number | null;
+}
+
+/** The newest finished check of a phrase on one device, with its snapshot of the results. */
+export interface KeywordRankDetail
+  extends Pick<RankView, "weekStart" | "position" | "url" | "breadcrumb" | "features" | "competitors" | "prevWeekStart" | "prevPosition"> {
+  /** The ten best organic results of that check, best first. */
+  top10: SerpEntry[];
+}
+
+/** One page of the site that Google showed for the phrase. */
+export interface GscPageRow {
+  page: string;
+  clicks: number;
+  impressions: number;
+  /** Average position weighted by impressions. */
+  position: number | null;
+}
+
+export interface KeywordDetail {
+  keyword: KeywordRow;
+  /** Finished checks, oldest week first. */
+  history: RankHistoryPoint[];
+  /** A device that was never checked has no entry. */
+  latest: Partial<Record<Device, KeywordRankDetail>>;
+  /** Pages ranking for the phrase in the last 28 days of Search Console data; empty without impressions. */
+  gsc: GscPageRow[];
+}
+
+function parseTop10(json: unknown): SerpEntry[] {
+  if (!Array.isArray(json)) return [];
+  const entries: SerpEntry[] = [];
+  for (const item of json) {
+    if (!isRecord(item)) continue;
+    const position = num(item.position);
+    if (position === null) continue;
+    entries.push({ position, domain: str(item.domain) ?? "", url: str(item.url), title: str(item.title) ?? "", breadcrumb: str(item.breadcrumb) });
+  }
+  return entries.sort((a, b) => a.position - b.position);
+}
+
+type Db = Awaited<ReturnType<typeof createServerSupabase>>;
+
+const byWeek = (a: { weekStart: string }, b: { weekStart: string }) => (a.weekStart < b.weekStart ? -1 : a.weekStart > b.weekStart ? 1 : 0);
+
+/** Every finished check of the phrase, oldest week first; the snapshot columns are parsed only for the newest check of a device. */
+async function readChecks(supabase: Db, projectId: string, keywordId: string): Promise<{ history: RankHistoryPoint[]; latest: KeywordDetail["latest"] }> {
+  const { data, error } = await supabase
+    .from("rank_checks").select("device, week_start, position, url, breadcrumb, features, top10, competitors")
+    .eq("project_id", projectId).eq("keyword_id", keywordId).eq("status", "done")
+    .order("week_start", { ascending: true });
+  if (error) throw new Error(`Nie udało się pobrać pozycji frazy: ${error.message}`);
+  const checks = (data ?? []).flatMap((r) => {
+    const weekStart = str(r.week_start);
+    return isDevice(r.device) && weekStart !== null ? [{ device: r.device, weekStart, row: r }] : [];
+  }).sort(byWeek);
+
+  const points = new Map<string, RankHistoryPoint>();
+  for (const { device, weekStart, row } of checks) {
+    const point = points.get(weekStart) ?? { weekStart, desktop: null, mobile: null };
+    point[device] = num(row.position);
+    points.set(weekStart, point);
+  }
+
+  const latest: KeywordDetail["latest"] = {};
+  for (const device of ["desktop", "mobile"] as const) {
+    const own = checks.filter((c) => c.device === device);
+    const last = own[own.length - 1];
+    if (!last) continue;
+    const prev = own[own.length - 2];
+    latest[device] = {
+      weekStart: last.weekStart,
+      position: num(last.row.position),
+      url: str(last.row.url),
+      breadcrumb: str(last.row.breadcrumb),
+      features: parseFeatures(last.row.features),
+      competitors: parseCompetitors(last.row.competitors),
+      top10: parseTop10(last.row.top10),
+      prevWeekStart: prev?.weekStart ?? null,
+      prevPosition: prev ? num(prev.row.position) : null,
+    };
+  }
+  return { history: [...points.values()], latest };
+}
+
+/** Pages ranking for the phrase in the 28 days up to the last day with Search Console data (most impressions first). */
+async function readGscPages(supabase: Db, projectId: string, query: string): Promise<GscPageRow[]> {
+  const lastDate = await getGscLastDate(projectId);
+  if (lastDate === null) return [];
+  const { from, to } = gscWindows(lastDate).cur;
+  const { data, error } = await supabase.rpc("gsc_query_detail", { p_project: projectId, p_query: query, p_from: from, p_to: to });
+  if (error) throw new Error(`Nie udało się pobrać frazy z Search Console: ${error.message}`);
+  return (data ?? []).map((r) => ({ page: r.page, clicks: num(r.clicks) ?? 0, impressions: num(r.impressions) ?? 0, position: num(r.position) }));
+}
+
+/**
+ * A tracked phrase with its rank history, the newest check of each device and the pages Search Console shows for it.
+ * Null when the phrase is not in the project (the user-session client sees only its own organization's rows). The
+ * phrase is looked up by the normalized `key`, which is how Search Console spells a query.
+ */
+export const getKeywordDetail = cache(async (projectId: string, keywordId: string): Promise<KeywordDetail | null> => {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase.from("keywords").select("*").eq("id", keywordId).eq("project_id", projectId).maybeSingle();
+  if (error) throw new Error(`Nie udało się pobrać frazy: ${error.message}`);
+  if (!data) return null;
+  const keyword = toKeywordRow(data);
+  const [{ history, latest }, gsc] = await Promise.all([
+    readChecks(supabase, projectId, keywordId),
+    readGscPages(supabase, projectId, keyword.key),
+  ]);
+  return { keyword, history, latest, gsc };
 });
