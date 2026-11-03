@@ -1,4 +1,4 @@
-/** Ceny DataForSEO (USD) dla endpointów live, sprawdzone na prawdziwych odpowiedziach z 2026-11-03. */
+/** Ceny DataForSEO (USD) dla endpointów live i dla kolejki standard SERP, sprawdzone na prawdziwych odpowiedziach z 2026-11-03. */
 export const DFS_PRICE = {
   searchVolumeTask: 0.09,
   trendsTask: 0.011,

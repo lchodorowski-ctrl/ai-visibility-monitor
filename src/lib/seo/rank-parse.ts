@@ -80,8 +80,16 @@ function resolve(item: RawItem): Resolved {
 
 const referenceDomain = (ref: RawReference): string => normalizeDomain(ref.domain || ref.url || "");
 
+/** The plain objects of a list from the provider: a missing list, a non-list, `null` or a scalar element is dropped, not thrown on. */
+function objectsOf<T extends object>(list: unknown): T[] {
+  return Array.isArray(list) ? list.filter((el): el is T => typeof el === "object" && el !== null && !Array.isArray(el)) : [];
+}
+
 function citesAnyOf(overview: RawItem, domains: string[]): boolean {
-  const references = [...(overview.references ?? []), ...(overview.items ?? []).flatMap((el) => el.references ?? [])];
+  const references = [
+    ...objectsOf<RawReference>(overview.references),
+    ...objectsOf<RawItem>(overview.items).flatMap((el) => objectsOf<RawReference>(el.references)),
+  ];
   return references.some((ref) => domainMatches(referenceDomain(ref), domains));
 }
 
@@ -120,14 +128,14 @@ function parseFeatures(items: RawItem[], ownDomains: string[]): SerpFeatures {
 /**
  * Odczyt pozycji z wyniku SERP (`tasks[0].result[0]` z DataForSEO): nasza pozycja organiczna, top 10, konkurenci
  * i elementy SERP. Domena wyniku przekierowanego pochodzi z breadcrumb, więc nigdy nie liczy się jako google.com.
- * Brak wyniku albo `items` daje pusty odczyt (pozycja null).
+ * Brak wyniku albo `items` daje pusty odczyt (pozycja null); element listy, który nie jest obiektem (`null`, liczba),
+ * jest pomijany.
  */
 export function parseSerp(
   result: unknown,
   ctx: { ownDomains: string[]; competitors: { name: string; domains: string[] }[] },
 ): RankReading {
-  const rawItems = (result as { items?: unknown } | null | undefined)?.items;
-  const items: RawItem[] = Array.isArray(rawItems) ? rawItems : [];
+  const items = objectsOf<RawItem>((result as { items?: unknown } | null | undefined)?.items);
 
   const organic = items
     .filter((item) => item.type === "organic" && typeof item.rank_group === "number")

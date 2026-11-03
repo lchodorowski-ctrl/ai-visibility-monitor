@@ -210,6 +210,29 @@ describe("getSerpTask", () => {
     await expect(getSerpTask("x")).resolves.toEqual({ state: "done", result: null, costUsd: 0, checkedAt: null });
   });
 
+  it("brak kosztu w zadaniu i w odpowiedzi to costUsd null (nie 0): nieznany koszt nie nadpisuje ceny z task_post", async () => {
+    const body = taskGet(20000, "Ok.", { result: [{ keyword: "x", items: [] }] });
+    delete (body.tasks[0] as { cost?: number }).cost;
+    delete (body as { cost?: number }).cost;
+    vi.stubGlobal("fetch", respondWith(body));
+    await expect(getSerpTask("x")).resolves.toMatchObject({ state: "done", costUsd: null });
+    // także przy braku wyników (40102)
+    const none = taskGet(40102, "No Search Results.");
+    delete (none.tasks[0] as { cost?: number }).cost;
+    delete (none as { cost?: number }).cost;
+    vi.stubGlobal("fetch", respondWith(none));
+    await expect(getSerpTask("x")).resolves.toEqual({ state: "done", result: null, costUsd: null, checkedAt: null });
+  });
+
+  it("koszt zadania 0 to prawdziwe 0, a brak kosztu zadania bierze koszt odpowiedzi", async () => {
+    const free = taskGet(20000, "Ok.", { cost: 0, result: [{ keyword: "x", items: [] }] });
+    vi.stubGlobal("fetch", respondWith(free));
+    await expect(getSerpTask("x")).resolves.toMatchObject({ costUsd: 0 });
+    const body = envelope([{ id: "t1", status_code: 20000, status_message: "Ok.", result: [{ keyword: "x", items: [] }] }], 0.0072);
+    vi.stubGlobal("fetch", respondWith(body));
+    await expect(getSerpTask("x")).resolves.toMatchObject({ costUsd: 0.0072 });
+  });
+
   it("nieczytelna data pomiaru daje checkedAt null, a wynik zostaje", async () => {
     const result = { keyword: "x", datetime: "wczoraj", items: [] };
     vi.stubGlobal("fetch", respondWith(taskGet(20000, "Ok.", { result: [result] })));

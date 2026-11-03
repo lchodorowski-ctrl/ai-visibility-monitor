@@ -26,7 +26,8 @@ export interface SerpTaskInput {
 
 export type SerpTaskState =
   | { state: "pending" }
-  | { state: "done"; result: unknown; costUsd: number; checkedAt: string | null }
+  /** `costUsd` is null when DataForSEO states no cost: the price from `task_post` then stays the cost of the task. */
+  | { state: "done"; result: unknown; costUsd: number | null; checkedAt: string | null }
   | { state: "failed"; error: string };
 
 const errorMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err));
@@ -118,7 +119,7 @@ export async function getSerpTask(id: string): Promise<SerpTaskState> {
   if (!task) return { state: "failed", error: MISSING_TASK_MESSAGE };
   if (PENDING_CODES.includes(task.status_code)) return { state: "pending" };
 
-  const costUsd = task.cost ?? res.cost ?? 0;
+  const costUsd = task.cost ?? res.cost ?? null;
   if (task.status_code === CODE_NO_RESULTS) return { state: "done", result: null, costUsd, checkedAt: null };
   const result = task.result?.[0] ?? null;
   return { state: "done", result, costUsd, checkedAt: toIso((result as { datetime?: unknown } | null)?.datetime) };

@@ -4,6 +4,7 @@ import {
 } from "@/lib/seo/rank-check";
 import { estimateRankCost } from "@/lib/seo/costs";
 import { PAYMENT_REQUIRED_MESSAGE } from "@/lib/dataforseo/client";
+import { parseSerp } from "@/lib/seo/rank-parse";
 import type { postSerpTasks as postFn, getSerpTask as getFn, SerpTaskState } from "@/lib/dataforseo/serp";
 import { fakeAdmin, filterValue, jobUpdate, type Call } from "./fake-admin";
 
@@ -40,11 +41,12 @@ function world(w: World = {}) {
     if (c.op === "select") {
       const week = filterValue(c, "eq", "week_start");
       const before = filterValue(c, "lt", "week_start") as string | undefined;
+      const from = filterValue(c, "gte", "week_start") as string | undefined;
       const status = filterValue(c, "eq", "status");
       const needsTask = c.filters.some((f) => f[0] === "not" && f[1] === "dfs_task_id");
       return {
         data: rows
-          .filter((r) => (week === undefined || r.week_start === week) && (before === undefined || r.week_start < before))
+          .filter((r) => (week === undefined || r.week_start === week) && (before === undefined || r.week_start < before) && (from === undefined || r.week_start >= from))
           .filter((r) => (status === undefined || r.status === status) && (!needsTask || r.dfs_task_id !== null))
           .map((r) => ({ ...r })),
       };
@@ -108,7 +110,7 @@ const organic = (rank: number, domain: string, absolute = rank + 1) => ({
   type: "organic", rank_group: rank, rank_absolute: absolute, domain, title: `Wynik ${rank}`, url: `https://${domain}/strona`, breadcrumb: `https://${domain}`,
 });
 const serp = (...items: unknown[]) => ({ items });
-const done = (result: unknown, costUsd = 0.005, checkedAt: string | null = "2026-11-04T09:03:00.000Z"): SerpTaskState =>
+const done = (result: unknown, costUsd: number | null = 0.005, checkedAt: string | null = "2026-11-04T09:03:00.000Z"): SerpTaskState =>
   ({ state: "done", result, costUsd, checkedAt });
 const NEVER_RANKED = serp(organic(1, "inna.example"), organic(2, "druga.example"));
 
@@ -170,7 +172,8 @@ describe("runRankCheck: bez płatnych wywołań", () => {
       .toEqual({ project_id: PROJECT, kind: "rank_check", status: "running" });
     expect(jobUpdate(t.calls)).toMatchObject({ status: "skipped", error: "Brak aktywnych fraz" });
     expect(t.calls.some((c) => c.table === "seo_jobs" && c.op === "select")).toBe(false);
-    expect(t.calls.some((c) => c.table === "rank_checks")).toBe(false);
+    // czyta tylko opłacone, nieodebrane zadania (darmowy odbiór); nic nie zapisuje
+    expect(t.calls.filter((c) => c.table === "rank_checks").map((c) => c.op)).toEqual(["select"]);
   });
 
   it.each([
@@ -184,7 +187,98 @@ describe("runRankCheck: bez płatnych wywołań", () => {
     expect(res.status).toBe("skipped");
     expect(t.post).not.toHaveBeenCalled();
     expect(jobUpdate(t.calls)).toMatchObject({ status: "skipped", error: "Projekt nie ma ustawionej domeny" });
-    expect(t.calls.some((c) => c.table === "rank_checks")).toBe(false);
+    expect(t.calls.filter((c) => c.table === "rank_checks").map((c) => c.op)).toEqual(["select"]);
+  });
+
+  describe("odbiór opłaconych zadań przed wczesnym zamknięciem jako skipped (odbiór jest darmowy)", () => {
+    const paid = (keywordId: string, device: string, task: string, over: Record<string, unknown> = {}) =>
+      ({ id: rowId(keywordId, device), keyword_id: keywordId, device, status: "pending", dfs_task_id: task, cost_usd: POST_COST, ...over });
+    const ranked = serp(organic(1, "inna.example"), organic(2, "polskaszkola.ai", 4));
+
+    it("bez aktywnych fraz: wiersz pending z id jest odebrany i zapisany, potem zadanie skipped z tym samym komunikatem; bez wysyłki i bez bramki budżetu", async () => {
+      const t = setup({ keywords: [], rows: [paid("k1", "desktop", "old-task-d")] }, { get: getFake({ "old-task-d": done(ranked, 0.0049) }) });
+
+      const res = await t.run();
+
+      expect(t.post).not.toHaveBeenCalled();
+      expect(t.get.mock.calls.map((c) => c[0])).toEqual(["old-task-d"]);
+      expect(t.sleep).toHaveBeenCalledTimes(1);
+      expect(rowOf(t.rows, "k1", "desktop")).toMatchObject({ status: "done", position: 2, cost_usd: 0.0049 });
+      expect(res).toEqual({ status: "skipped", posted: 0, done: 1, failed: 0, pending: 0, costUsd: 0 });
+      expect(t.calls.some((c) => c.table === "seo_jobs" && c.op === "select")).toBe(false);
+      expect(t.calls.some((c) => c.table === "rank_checks" && c.op === "upsert")).toBe(false);
+      expect(jobWrites(t.calls)).toHaveLength(1);
+      expect(jobUpdate(t.calls)).toMatchObject({ status: "skipped", error: "Brak aktywnych fraz", stats: { resumed: 1, done: 1, failed: 0, pending: 0 } });
+      expect(jobUpdate(t.calls)).not.toHaveProperty("cost_usd");
+    });
+
+    it("bez domeny projektu: wynik jest zapisany z pustą listą własnych domen (pozycja null), ale z top 10, cechami i konkurentami", async () => {
+      const result = serp(organic(1, "kodolamacz.pl"), organic(2, "polskaszkola.ai", 4), { type: "people_also_ask", rank_group: 1 });
+      const t = setup({
+        keywords: kws("szkolenia ai"), domains: [], competitors: [{ name: "Kodołamacz", domains: ["kodolamacz.pl"] }],
+        rows: [paid("k1", "desktop", "old-task-d")],
+      }, { get: getFake({ "old-task-d": done(result, 0.0049) }) });
+
+      const res = await t.run();
+
+      const row = rowOf(t.rows, "k1", "desktop");
+      expect(row).toMatchObject({ status: "done", position: null, rank_absolute: null, url: null, cost_usd: 0.0049 });
+      expect(row.top10).toHaveLength(2);
+      expect(row.features).toMatchObject({ peopleAlsoAsk: true });
+      expect(row.competitors).toEqual([{ name: "Kodołamacz", domain: "kodolamacz.pl", position: 1, url: "https://kodolamacz.pl/strona" }]);
+      expect(res).toMatchObject({ status: "skipped", posted: 0, done: 1, pending: 0 });
+      expect(jobUpdate(t.calls)).toMatchObject({ status: "skipped", error: "Projekt nie ma ustawionej domeny" });
+      expect(t.post).not.toHaveBeenCalled();
+    });
+
+    it("odbiera także wiersz z poprzedniego tygodnia, a starszy lub bez id zostawia", async () => {
+      const t = setup({
+        keywords: [],
+        rows: [
+          paid("k1", "desktop", "last-week", { week_start: "2026-10-26" }),
+          paid("k2", "desktop", "too-old", { week_start: "2026-10-19" }),
+          paid("k3", "desktop", null as unknown as string),
+        ],
+      }, { get: getFake({ "last-week": done(ranked), "too-old": done(ranked) }) });
+
+      const res = await t.run();
+
+      expect(t.get.mock.calls.map((c) => c[0])).toEqual(["last-week"]);
+      expect(rowOf(t.rows, "k1", "desktop")).toMatchObject({ status: "done" });
+      expect(rowOf(t.rows, "k2", "desktop")).toMatchObject({ status: "pending" });
+      expect(res).toMatchObject({ status: "skipped", done: 1 });
+    });
+
+    it("wynik niegotowy do końca odbioru zostaje pending i jest policzony w statystykach zadania (wiersz „w kolejce DataForSEO”)", async () => {
+      const t = setup({ keywords: [], rows: [paid("k1", "desktop", "old-task-d")] });
+
+      const res = await t.run();
+
+      expect(t.sleep).toHaveBeenCalledTimes(MAX_POLLS);
+      expect(rowOf(t.rows, "k1", "desktop")).toMatchObject({ status: "pending", dfs_task_id: "old-task-d" });
+      expect(res).toEqual({ status: "skipped", posted: 0, done: 0, failed: 0, pending: 1, costUsd: 0 });
+      expect(jobUpdate(t.calls)).toMatchObject({ status: "skipped", error: "Brak aktywnych fraz", stats: { pending: 1 } });
+    });
+
+    it("zadanie odrzucone przez dostawcę kończy swój wiersz błędem, a zadanie nadal jest skipped", async () => {
+      const t = setup({ keywords: [], rows: [paid("k1", "desktop", "old-task-d")] }, {
+        get: getFake({ "old-task-d": { state: "failed", error: "DataForSEO task 40501: Invalid Field." } }),
+      });
+
+      const res = await t.run();
+
+      expect(rowOf(t.rows, "k1", "desktop")).toMatchObject({ status: "failed", error: "DataForSEO task 40501: Invalid Field." });
+      expect(res).toMatchObject({ status: "skipped", done: 0, failed: 1, pending: 0 });
+    });
+
+    it("brak środków przy odbiorze leci dalej i zamyka zadanie jako failed (nie skipped)", async () => {
+      const get = vi.fn<typeof getFn>(async () => { throw new Error(PAYMENT_REQUIRED_MESSAGE); });
+      const t = setup({ keywords: [], rows: [paid("k1", "desktop", "old-task-d")] }, { get });
+
+      await expect(t.run()).rejects.toThrow(PAYMENT_REQUIRED_MESSAGE);
+
+      expect(jobUpdate(t.calls)).toMatchObject({ status: "failed", error: PAYMENT_REQUIRED_MESSAGE });
+    });
   });
 
   it("czyta projekt, konkurentów projektu i aktywne frazy: wolumen malejąco, bez wolumenu na końcu, najwyżej 100", async () => {
@@ -794,6 +888,77 @@ describe("runRankCheck: tygodniowy limit fraz", () => {
 
     expect(res.status).toBe("skipped");
     expect(t.post).not.toHaveBeenCalled();
+  });
+});
+
+describe("runRankCheck: zepsuty wynik i brak kosztu", () => {
+  const parseCtx = { ownDomains: ["polskaszkola.ai"], competitors: [] };
+  // `domain` nie jest tekstem: parser rzuca wyjątek (zepsuty wynik z dostawcy)
+  const poison = serp({ type: "organic", rank_group: 1, rank_absolute: 2, domain: 5, title: "x", url: "https://x.example/" });
+
+  it("wynik, którego parser nie przeczyta, kończy błędem tylko swój wiersz: pozostałe są zapisane, a zadanie done", async () => {
+    expect(() => parseSerp(poison, parseCtx)).toThrow();
+    const message = (() => { try { parseSerp(poison, parseCtx); } catch (e) { return (e as Error).message; } return ""; })();
+    const t = setup({ keywords: kws("szkolenia ai") }, {
+      get: getFake({
+        [taskId("k1", "desktop")]: done(poison, 0.005),
+        [taskId("k1", "mobile")]: done(serp(organic(2, "polskaszkola.ai", 4)), 0.006),
+      }),
+    });
+
+    const res = await t.run();
+
+    expect(rowOf(t.rows, "k1", "desktop")).toMatchObject({ status: "failed", error: message, cost_usd: 0.005 });
+    expect(message).not.toBe("");
+    expect(rowOf(t.rows, "k1", "mobile")).toMatchObject({ status: "done", position: 2, cost_usd: 0.006, error: null });
+    // zadanie nie jest ponawiane: tak samo zepsuty wynik byłby odebrany za darmo, ale nic by nie dał
+    expect(t.get).toHaveBeenCalledTimes(2);
+    expect(res).toMatchObject({ status: "done", posted: 2, done: 1, failed: 1, pending: 0 });
+    expect(res.costUsd).toBeCloseTo(0.011, 6);
+    expect(jobUpdate(t.calls)).toMatchObject({ status: "done", stats: { done: 1, failed: 1, pending: 0 } });
+  });
+
+  it("zepsuty wynik jednego wiersza nie zatrzymuje odbioru pozostałych w tej samej paczce", async () => {
+    const t = setup({ keywords: kws("a", "b", "c") }, {
+      get: getFake({
+        [taskId("k1", "desktop")]: done(poison),
+        [taskId("k2", "desktop")]: done(serp(organic(3, "polskaszkola.ai"))),
+        [taskId("k3", "desktop")]: done(NEVER_RANKED),
+      }),
+    });
+    const res = await t.run();
+    // zepsuty jest wiersz k1, a k2 i k3 z tej samej paczki są zapisane; zadania mobilne dostawca jeszcze liczy (pending)
+    expect(rowOf(t.rows, "k1", "desktop").status).toBe("failed");
+    expect(rowOf(t.rows, "k2", "desktop")).toMatchObject({ status: "done", position: 3 });
+    expect(rowOf(t.rows, "k3", "desktop")).toMatchObject({ status: "done", position: null });
+    expect(res).toMatchObject({ done: 2, failed: 1, pending: 3 });
+  });
+
+  it("brak kosztu w task_get (null): zostaje cena z task_post w wierszu i w koszcie zadania, a dla odebranego z kosztem faktyczna", async () => {
+    const t = setup({ keywords: kws("szkolenia ai") }, {
+      get: getFake({ [taskId("k1", "desktop")]: done(NEVER_RANKED, null), [taskId("k1", "mobile")]: done(NEVER_RANKED, 0.004) }),
+    });
+
+    const res = await t.run();
+
+    const doneWrite = rankUpdates(t.calls).find((c) => filterValue(c, "eq", "id") === rowId("k1", "desktop") && (c.payload as Record<string, unknown>).status === "done")!;
+    expect(doneWrite.payload).not.toHaveProperty("cost_usd");
+    expect(rowOf(t.rows, "k1", "desktop")).toMatchObject({ status: "done", cost_usd: POST_COST });
+    expect(rowOf(t.rows, "k1", "mobile")).toMatchObject({ status: "done", cost_usd: 0.004 });
+    expect(res.costUsd).toBeCloseTo(POST_COST + 0.004, 6);
+    expect(jobUpdate(t.calls).cost_usd as number).toBeCloseTo(POST_COST + 0.004, 6);
+  });
+
+  it("wznowiony wiersz bez kosztu w task_get zachowuje swój koszt, a koszt tego uruchomienia to 0", async () => {
+    const t = setup({
+      keywords: kws("szkolenia ai"),
+      rows: [{ id: rowId("k1", "desktop"), keyword_id: "k1", device: "desktop", status: "pending", dfs_task_id: "old-task-d", cost_usd: POST_COST }],
+    }, { get: getFake({ "old-task-d": done(NEVER_RANKED, null), ...Object.fromEntries([[taskId("k1", "mobile"), done(NEVER_RANKED, 0.004)]]) }) });
+
+    const res = await t.run();
+
+    expect(rowOf(t.rows, "k1", "desktop")).toMatchObject({ status: "done", cost_usd: POST_COST });
+    expect(res.costUsd).toBeCloseTo(0.004, 6);
   });
 });
 

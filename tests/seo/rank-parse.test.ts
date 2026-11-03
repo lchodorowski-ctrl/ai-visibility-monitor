@@ -147,6 +147,33 @@ describe("parseSerp: brak danych", () => {
   });
 });
 
+describe("parseSerp: zepsute dane z dostawcy", () => {
+  const OWN = { domain: "polskaszkola.ai", url: "https://polskaszkola.ai/" };
+
+  it("element items, który nie jest obiektem (null, liczba, tekst, tablica), nie przerywa odczytu, a reszta jest czytana", () => {
+    const r = reading([null, 7, "tekst", [organic(1)], undefined, true, organic(2, OWN), organic(3)]);
+    expect(r.position).toBe(2);
+    // lista zagnieżdżona w items to nie obiekt: jej wynik (pozycja 1) nie jest czytany
+    expect(r.top10.map((e) => e.position)).toEqual([2, 3]);
+  });
+
+  it("same elementy niebędące obiektami dają pusty odczyt", () => {
+    expect(reading([null, 3, "x", [], false])).toEqual(EMPTY);
+  });
+
+  it("przegląd AI z pustymi elementami w references i items nie przerywa odczytu, a cytowanie jest rozpoznane", () => {
+    const r = reading([{ type: "ai_overview", references: [null, "x", { domain: "polskaszkola.ai" }], items: [null, 5, { references: [null] }] }]);
+    expect(r.features).toMatchObject({ aiOverview: true, aiOverviewCitesUs: true });
+    const other = reading([{ type: "ai_overview", references: [null], items: [null, { references: [null, 4] }] }]);
+    expect(other.features).toMatchObject({ aiOverview: true, aiOverviewCitesUs: false });
+  });
+
+  it("references albo items przeglądu AI, które nie są listami, są pomijane", () => {
+    const r = reading([{ type: "ai_overview", references: "brak", items: { a: 1 } }]);
+    expect(r.features).toMatchObject({ aiOverview: true, aiOverviewCitesUs: false });
+  });
+});
+
 describe("parseSerp: pozycje", () => {
   it("pozycja to rank_group pierwszego wyniku z naszej domeny, także z poddomeny", () => {
     const r = reading([organic(1), organic(2, { domain: "blog.polskaszkola.ai", url: "https://blog.polskaszkola.ai/a" }), organic(3, { domain: "www.polskaszkola.ai", url: "https://www.polskaszkola.ai/" })]);

@@ -7,8 +7,8 @@ import {
 } from "@/lib/dataforseo/serp";
 import { estimateRankCost } from "./costs";
 import { passSeoBudget } from "./budget";
-import { startJob, finishJob, failJob, type SeoJobStatus } from "./jobs";
-import { parseSerp } from "./rank-parse";
+import { startJob, finishJob, failJob, errorMessage, type SeoJobStatus } from "./jobs";
+import { parseSerp, type RankReading } from "./rank-parse";
 import { NO_KEYWORDS_MESSAGE } from "./keyword-volumes";
 
 type Admin = SupabaseClient<Database>;
@@ -121,6 +121,9 @@ const rejections = (results: PromiseSettledResult<void>[]): unknown[] =>
  * (np. brak środków), koszt jest nieznany, więc zostaje rezerwacja (szacunek). Gdy dostawca odrzucił wszystkie zadania
  * (np. brak danych logowania), też jest to wyjątek, a wiersze zostają `pending` bez id: ponowi je następne uruchomienie.
  * Błąd zapisu id opłaconych zadań nie przerywa pozostałych zapisów ani odbioru: wyjątek leci dopiero na końcu.
+ * Brak aktywnych fraz albo domeny zamyka zadanie jako `skipped`, ale dopiero po odebraniu opłaconych zadań (bez wysyłki
+ * i bez bramki budżetu). Wynik, którego parser nie przeczyta, kończy błędem tylko swój wiersz; brak kosztu w `task_get`
+ * zostawia cenę z `task_post`.
  */
 export async function runRankCheck(payload: { projectId: string }, deps: RunRankCheckDeps = {}): Promise<RankCheckResult> {
   const { projectId } = payload;
@@ -144,10 +147,96 @@ export async function runRankCheck(payload: { projectId: string }, deps: RunRank
   let unconfirmedUsd = 0;
   /** Zadanie zamknięte przez bramkę budżetu: późniejszy błąd nie może go ponownie otworzyć jako `failed`. */
   let jobClosed = false;
+  /** Konkurenci projektu dla parsera (czytani na początku uruchomienia). */
+  let competitors: { name: string; domains: string[] }[] = [];
+
+  /**
+   * Odbiera czekające zadania: co `POLL_INTERVAL_MS` pyta o nie (po `CONCURRENCY` naraz) i zapisuje gotowe, najwyżej
+   * `MAX_POLLS` razy. Wynik, którego parser nie przeczyta, kończy błędem tylko swój wiersz (zadanie jest opłacone
+   * i nic lepszego nie zwróci), a odbiór pozostałych trwa. Brak kosztu w `task_get` zostawia cenę z `task_post`.
+   */
+  const collect = async (toCollect: Waiting[]): Promise<{ done: number; failed: number; waiting: Waiting[] }> => {
+    const ctx = { ownDomains, competitors };
+    let waiting = toCollect;
+    let done = 0;
+    let failed = 0;
+    for (let poll = 0; poll < MAX_POLLS && waiting.length > 0; poll += 1) {
+      await sleep(POLL_INTERVAL_MS);
+      const stillWaiting: Waiting[] = [];
+      await inChunks(waiting, CONCURRENCY, async (w) => {
+        const state = await get(w.taskId);
+        if (state.state === "pending") {
+          stillWaiting.push(w);
+          return;
+        }
+        if (state.state === "failed") {
+          const { error } = await admin.from("rank_checks").update({ status: "failed", error: state.error })
+            .eq("id", w.id).eq("project_id", projectId);
+          if (error) throw new Error(error.message);
+          failed += 1;
+          return;
+        }
+        // Faktyczny koszt, o ile dostawca go podał; bez niego zostaje cena z `task_post` (wiersz i koszt uruchomienia).
+        const actualCost = state.costUsd === null ? {} : { cost_usd: state.costUsd };
+        const settleCost = () => {
+          // Do kosztu tego uruchomienia wchodzą tylko zadania wysłane w nim; wznowione zapłacono wcześniej.
+          if (state.costUsd !== null && sentCosts.has(w.id)) sentCosts.set(w.id, state.costUsd);
+        };
+        let reading: RankReading;
+        try {
+          reading = parseSerp(state.result, ctx);
+        } catch (err) {
+          const { error } = await admin.from("rank_checks").update({ status: "failed", error: errorMessage(err), ...actualCost })
+            .eq("id", w.id).eq("project_id", projectId);
+          if (error) throw new Error(error.message);
+          settleCost();
+          failed += 1;
+          return;
+        }
+        const { error } = await admin.from("rank_checks").update({
+          status: "done",
+          position: reading.position,
+          rank_absolute: reading.rankAbsolute,
+          url: reading.url,
+          breadcrumb: reading.breadcrumb,
+          features: reading.features as unknown as NonNullable<Json>,
+          top10: reading.top10 as unknown as NonNullable<Json>,
+          competitors: reading.competitors as unknown as NonNullable<Json>,
+          ...actualCost,
+          checked_at: state.checkedAt ?? now().toISOString(),
+          error: null,
+        }).eq("id", w.id).eq("project_id", projectId);
+        if (error) throw new Error(error.message);
+        done += 1;
+        settleCost();
+      });
+      waiting = stillWaiting;
+    }
+    return { done, failed, waiting };
+  };
+
+  /**
+   * Zamyka zadanie jako `skipped` z powodem, ale najpierw odbiera opłacone i nieodebrane zadania (z id z tego albo
+   * z poprzedniego tygodnia): odbiór jest darmowy i bez wysyłki, więc nie wymaga ani fraz, ani domeny, ani budżetu.
+   * Bez własnej domeny parser nie znajdzie naszej pozycji (null), ale zapisze top 10, cechy SERP i konkurentów.
+   */
+  const skipAfterCollecting = async (message: string): Promise<RankCheckResult> => {
+    const earliest = weeksBefore(rankWeekStart(now()), RESUME_WEEKS);
+    const res = await admin.from("rank_checks").select("id, dfs_task_id")
+      .eq("project_id", projectId).eq("status", "pending").not("dfs_task_id", "is", null).gte("week_start", earliest);
+    if (res.error) throw new Error(res.error.message);
+    const paid = (res.data ?? []).flatMap((r) => (r.dfs_task_id ? [{ id: r.id, taskId: r.dfs_task_id }] : []));
+    const { done, failed, waiting } = await collect(paid);
+    await finishJob(admin, jobId, {
+      status: "skipped", error: message, stats: { resumed: paid.length, done, failed, pending: waiting.length },
+    });
+    return { status: "skipped", posted: 0, done, failed, pending: waiting.length, costUsd: 0 };
+  };
+
   try {
     const competitorsRes = await admin.from("competitors").select("name, domains").eq("project_id", projectId);
     if (competitorsRes.error) throw new Error(competitorsRes.error.message);
-    const competitors = competitorsRes.data ?? [];
+    competitors = competitorsRes.data ?? [];
 
     // Aktywne frazy: najwyższy wolumen pierwszy, bez wolumenu na końcu; `id` rozstrzyga remisy, żeby drugie uruchomienie
     // w tym samym tygodniu widziało tę samą kolejność.
@@ -158,14 +247,8 @@ export async function runRankCheck(payload: { projectId: string }, deps: RunRank
       .limit(MAX_RANK_KEYWORDS);
     if (keywordsRes.error) throw new Error(keywordsRes.error.message);
     const ranked = keywordsRes.data ?? [];
-    if (ranked.length === 0) {
-      await finishJob(admin, jobId, { status: "skipped", error: NO_KEYWORDS_MESSAGE });
-      return emptyResult("skipped");
-    }
-    if (ownDomains.length === 0) {
-      await finishJob(admin, jobId, { status: "skipped", error: NO_DOMAIN_MESSAGE });
-      return emptyResult("skipped");
-    }
+    if (ranked.length === 0) return await skipAfterCollecting(NO_KEYWORDS_MESSAGE);
+    if (ownDomains.length === 0) return await skipAfterCollecting(NO_DOMAIN_MESSAGE);
 
     // 1. Wiersze tego tygodnia: z nich wynika, które frazy mają już miejsce w limicie i co jest sprawdzone.
     const week = rankWeekStart(now());
@@ -286,45 +369,10 @@ export async function runRankCheck(payload: { projectId: string }, deps: RunRank
     }
 
     // 4. Odbiór: co minutę pytamy o czekające zadania (po kilka naraz), gotowe zapisujemy.
-    let done = 0;
-    const ctx = { ownDomains, competitors };
-    for (let poll = 0; poll < MAX_POLLS && waiting.length > 0; poll += 1) {
-      await sleep(POLL_INTERVAL_MS);
-      const stillWaiting: Waiting[] = [];
-      await inChunks(waiting, CONCURRENCY, async (w) => {
-        const state = await get(w.taskId);
-        if (state.state === "pending") {
-          stillWaiting.push(w);
-          return;
-        }
-        if (state.state === "failed") {
-          const { error } = await admin.from("rank_checks").update({ status: "failed", error: state.error })
-            .eq("id", w.id).eq("project_id", projectId);
-          if (error) throw new Error(error.message);
-          failed += 1;
-          return;
-        }
-        const reading = parseSerp(state.result, ctx);
-        const { error } = await admin.from("rank_checks").update({
-          status: "done",
-          position: reading.position,
-          rank_absolute: reading.rankAbsolute,
-          url: reading.url,
-          breadcrumb: reading.breadcrumb,
-          features: reading.features as unknown as NonNullable<Json>,
-          top10: reading.top10 as unknown as NonNullable<Json>,
-          competitors: reading.competitors as unknown as NonNullable<Json>,
-          cost_usd: state.costUsd,
-          checked_at: state.checkedAt ?? now().toISOString(),
-          error: null,
-        }).eq("id", w.id).eq("project_id", projectId);
-        if (error) throw new Error(error.message);
-        done += 1;
-        // Do kosztu tego uruchomienia wchodzą tylko zadania wysłane w nim; wznowione zapłacono wcześniej.
-        if (sentCosts.has(w.id)) sentCosts.set(w.id, state.costUsd);
-      });
-      waiting = stillWaiting;
-    }
+    const collected = await collect(waiting);
+    waiting = collected.waiting;
+    failed += collected.failed;
+    const done = collected.done;
 
     if (writeErrors.length > 0) throw writeErrors[0];
     // Zadanie zamknęła już bramka budżetu (`budget_exceeded`): zostaje takie, a wynik niesie to, co odebrano.
