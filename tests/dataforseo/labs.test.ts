@@ -95,6 +95,26 @@ describe("rankedKeywords", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)[0].limit).toBe(30);
   });
 
+  it("bez filtrów zapytanie nie ma pola filters", async () => {
+    const fetchMock = respondWith(rankedOwnFixture);
+    vi.stubGlobal("fetch", fetchMock);
+    await rankedKeywords("polskaszkola.ai", 100, {});
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)[0]).not.toHaveProperty("filters");
+  });
+
+  it("filtry po stronie serwera trafiają do zapytania bez zmian, reszta zapytania zostaje", async () => {
+    const fetchMock = respondWith(rankedCompetitorFixture);
+    vi.stubGlobal("fetch", fetchMock);
+    const filters = [["keyword_data.keyword", "regex", "(^| )ai( |$)"], "and", ["ranked_serp_element.serp_item.rank_group", "<=", 20]];
+    await rankedKeywords("altkomakademia.pl", 100, { filters });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual([
+      {
+        target: "altkomakademia.pl", location_code: 2616, language_code: "pl", limit: 100,
+        order_by: ["keyword_data.keyword_info.search_volume,desc"], filters,
+      },
+    ]);
+  });
+
   it("własna domena: 6 fraz, „szkolenia ai” na pozycji 52", async () => {
     vi.stubGlobal("fetch", respondWith(rankedOwnFixture));
     const { items, costUsd } = await rankedKeywords("polskaszkola.ai");

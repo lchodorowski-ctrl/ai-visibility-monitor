@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { runKeywordResearch } from "@/lib/seo/keyword-research";
+import { runKeywordResearch, TOPIC_REGEX } from "@/lib/seo/keyword-research";
 import { estimateResearchCost } from "@/lib/seo/costs";
 import type { keywordSuggestions as suggestionsFn, rankedKeywords as rankedFn, LabsKeyword, RankedKeyword } from "@/lib/dataforseo/labs";
 import { fakeAdmin, filterValue, jobUpdate, type Call } from "./fake-admin";
@@ -46,6 +46,8 @@ const lab = (keyword: string, searchVolume: number | null = 100, keywordDifficul
   ({ keyword, searchVolume, keywordDifficulty, cpc });
 const rk = (keyword: string, position: number, url: string, searchVolume: number | null = 100, keywordDifficulty: number | null = 30, cpc: number | null = 2): RankedKeyword =>
   ({ ...lab(keyword, searchVolume, keywordDifficulty, cpc), position, url });
+
+const COMPETITOR_FILTERS = [["keyword_data.keyword", "regex", TOPIC_REGEX], "and", ["ranked_serp_element.serp_item.rank_group", "<=", 20]];
 
 const COST = 0.0144;
 function clients(o: { labs?: Record<string, LabsKeyword[]>; ranked?: Record<string, RankedKeyword[]>; cost?: number } = {}) {
@@ -183,7 +185,13 @@ describe("runKeywordResearch: widoczność własnej domeny i luki", () => {
     const c = clients({ ranked });
     await run(w, c, { seeds: ["szkolenia ai"], competitors: true });
 
-    expect(c.rankedKeywords.mock.calls).toEqual([[OWN, 100], ["rywal-a.pl", 100], ["rywal-b.pl", 100]]);
+    // własna domena bez filtrów, konkurenci z filtrem tematu i pozycji po stronie serwera
+    expect(c.rankedKeywords.mock.calls).toEqual([
+      [OWN, 100],
+      ["rywal-a.pl", 100, { filters: COMPETITOR_FILTERS }],
+      ["rywal-b.pl", 100, { filters: COMPETITOR_FILTERS }],
+    ]);
+    expect(c.rankedKeywords.mock.calls[0]).toHaveLength(2);
     const read = w.calls.find((x) => x.table === "competitors")!;
     expect(read.cols).toBe("name, domains");
     expect(filterValue(read, "eq", "project_id")).toBe(PROJECT);
@@ -250,6 +258,25 @@ describe("runKeywordResearch: widoczność własnej domeny i luki", () => {
     expect(c.rankedKeywords).not.toHaveBeenCalled();
     expect(w.calls.some((x) => x.table === "competitors")).toBe(false);
     expect(res).toMatchObject({ status: "done", suggestions: 1 });
+  });
+});
+
+describe("TOPIC_REGEX", () => {
+  const topic = new RegExp(TOPIC_REGEX);
+
+  it.each(["szkolenia ai", "kurs chatgpt", "sztuczna inteligencja w firmie", "ai act", "prompty dla marketingu", "copilot w excelu", "kurs sztucznej inteligencji"])(
+    "pasuje do frazy o AI: %s", (phrase) => expect(topic.test(phrase)).toBe(true),
+  );
+
+  it.each([
+    "choinka sztuczna 100 cm", "maile", "kraina", "minimalne wynagrodzenie 2026", "kfs", "upadłość konsumencka", "instaling",
+    "drzewko bonsai", "aikido dla dzieci", "sztuczne kwiaty a inteligencja emocjonalna",
+  ])(
+    "nie pasuje do frazy spoza tematu: %s", (phrase) => expect(topic.test(phrase)).toBe(false),
+  );
+
+  it("używa tylko konstrukcji wspólnych dla silników regex: alternacji, grup, klas znaków i kotwic (bez \\b i klas skrótowych)", () => {
+    expect(TOPIC_REGEX).not.toMatch(/\\[a-zA-Z]|\(\?|\{/);
   });
 });
 

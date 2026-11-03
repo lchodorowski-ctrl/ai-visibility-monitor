@@ -18,7 +18,17 @@ export const MAX_SEEDS = 10;
 export const MAX_COMPETITORS = 7;
 /** Luka to fraza, na którą konkurent jest w pierwszej dwudziestce, a my nie rankujemy wcale. */
 export const GAP_MAX_POSITION = 20;
+// Konkurenci to szerocy dostawcy szkoleń, więc ich luki ograniczamy do tematów AI.
+// Regex liczy DataForSEO, nie JS: tylko alternacje, grupy, klasy znaków i ^ $, bez \b.
+export const TOPIC_REGEX = "(^| )(ai|chatgpt|gpt|copilot|gemini|llm|prompt|prompty|chatbot|chatboty)( |$)|sztuczn[a-ząćęłńóśźż]* inteligenc";
 export const NOTHING_TO_CHECK_MESSAGE = "Brak haseł i domeny projektu do sprawdzenia";
+
+/** Filtr po stronie serwera dla konkurentów: fraza o AI i pozycja do `GAP_MAX_POSITION`; klient i tak sprawdza pozycję. */
+const COMPETITOR_FILTERS = [
+  ["keyword_data.keyword", "regex", TOPIC_REGEX],
+  "and",
+  ["ranked_serp_element.serp_item.rank_group", "<=", GAP_MAX_POSITION],
+];
 
 const SUGGESTION_LIMIT = 50;
 const RANKED_LIMIT = 100;
@@ -205,7 +215,7 @@ export async function runKeywordResearch(
     // 3. Luki: pierwsza dwudziestka konkurentów na frazy, na które my nie rankujemy
     const gaps = new Map<string, Suggestion>();
     for (const rival of rivals) {
-      const res = await ranked(rival.domain, RANKED_LIMIT);
+      const res = await ranked(rival.domain, RANKED_LIMIT, { filters: COMPETITOR_FILTERS });
       spent += res.costUsd;
       for (const [key, item] of bestPositions(res.items)) {
         if (item.position > GAP_MAX_POSITION || ownKeys.has(key)) continue;

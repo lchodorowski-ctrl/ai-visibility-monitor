@@ -45,12 +45,20 @@ export async function keywordSuggestions(seed: string, limit = 50): Promise<{ it
   return { items: itemsOf<RawKeywordData>(res.tasks?.[0]?.result).map(toLabsKeyword), costUsd: res.cost ?? 0 };
 }
 
-/** Frazy, na które domena widnieje w organicznych wynikach Google (DataForSEO Labs, live), od największego wolumenu. */
-export async function rankedKeywords(target: string, limit = 100): Promise<{ items: RankedKeyword[]; costUsd: number }> {
+/**
+ * Frazy, na które domena widnieje w organicznych wynikach Google (DataForSEO Labs, live), od największego wolumenu.
+ * `opts.filters` to filtr DataForSEO po stronie serwera (np. temat i pozycja), przekazany bez zmian; limit liczy się już po filtrze.
+ */
+export async function rankedKeywords(
+  target: string,
+  limit = 100,
+  opts: { filters?: unknown[] } = {},
+): Promise<{ items: RankedKeyword[]; costUsd: number }> {
   const res = await dfsRequest("POST", RANKED_KEYWORDS_PATH, [
     {
       target, location_code: dfsLocationCode(), language_code: "pl", limit,
       order_by: ["keyword_data.keyword_info.search_volume,desc"],
+      ...(opts.filters ? { filters: opts.filters } : {}),
     },
   ]);
   const items: RankedKeyword[] = [];
