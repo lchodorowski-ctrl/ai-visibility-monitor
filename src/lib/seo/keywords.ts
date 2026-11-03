@@ -3,7 +3,8 @@ export function normalizeKeyword(text: string): string {
   return text.normalize("NFC").trim().toLocaleLowerCase("pl").replace(/\s+/g, " ");
 }
 
-const MAX_KEYWORD_LENGTH = 80;
+/** Najdłuższa fraza, jaką śledzimy (dłuższe odpada przy dodawaniu i imporcie). */
+export const MAX_KEYWORD_LENGTH = 80;
 
 /**
  * Lista fraz z pola tekstowego: podział po nowych liniach i przecinkach, normalizacja, bez pustych,
@@ -27,3 +28,14 @@ export const DEFAULT_TRENDS_ANCHOR = "szkolenia ai";
 
 /** Etykiety poziomu konkurencji z DataForSEO. */
 export const COMPETITION_LABEL: Record<string, string> = { LOW: "niska", MEDIUM: "średnia", HIGH: "wysoka" };
+
+/** Hasła wyjściowe formularza „Szukaj nowych fraz”, gdy użytkownik nie wpisał własnych. */
+export const DEFAULT_SEEDS: readonly string[] = [
+  "szkolenia ai",
+  "szkolenie chatgpt",
+  "kurs ai dla firm",
+  "szkolenie ai act",
+  "szkolenia ai warszawa",
+  "szkolenia ai wrocław",
+  "lider w erze ai",
+];

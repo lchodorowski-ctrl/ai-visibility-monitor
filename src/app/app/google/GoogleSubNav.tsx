@@ -3,8 +3,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-// Kolejne milestony dopisują tu swoje pozycje (Frazy, Strony i audyt).
-export const GOOGLE_NAV: readonly (readonly [string, string])[] = [["/app/google", "Przegląd"]];
+// Kolejne milestony dopisują tu swoje pozycje (Strony i audyt).
+export const GOOGLE_NAV: readonly (readonly [string, string])[] = [
+  ["/app/google", "Przegląd"],
+  ["/app/google/keywords", "Frazy"],
+];
 
 export function GoogleSubNav({ items = GOOGLE_NAV }: { items?: readonly (readonly [string, string])[] }) {
   const pathname = usePathname();

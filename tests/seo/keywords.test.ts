@@ -4,7 +4,10 @@ import {
   parseKeywordList,
   DEFAULT_TRENDS_ANCHOR,
   COMPETITION_LABEL,
+  DEFAULT_SEEDS,
+  MAX_KEYWORD_LENGTH,
 } from "@/lib/seo/keywords";
+import { MAX_SEEDS } from "@/lib/seo/keyword-research";
 
 describe("normalizeKeyword", () => {
   it("przycina, zamienia na małe litery i zwija białe znaki", () => {
@@ -75,5 +78,20 @@ describe("stałe", () => {
 
   it("etykiety konkurencji po polsku", () => {
     expect(COMPETITION_LABEL).toEqual({ LOW: "niska", MEDIUM: "średnia", HIGH: "wysoka" });
+  });
+});
+
+describe("DEFAULT_SEEDS", () => {
+  it("siedem haseł wyjściowych, już znormalizowanych, w limicie badania", () => {
+    expect(DEFAULT_SEEDS).toEqual([
+      "szkolenia ai", "szkolenie chatgpt", "kurs ai dla firm", "szkolenie ai act",
+      "szkolenia ai warszawa", "szkolenia ai wrocław", "lider w erze ai",
+    ]);
+    expect(DEFAULT_SEEDS.length).toBeLessThanOrEqual(MAX_SEEDS);
+    for (const seed of DEFAULT_SEEDS) {
+      expect(normalizeKeyword(seed)).toBe(seed);
+      expect(seed.length).toBeLessThanOrEqual(MAX_KEYWORD_LENGTH);
+    }
+    expect(parseKeywordList(DEFAULT_SEEDS.join("\n"))).toEqual([...DEFAULT_SEEDS]);
   });
 });

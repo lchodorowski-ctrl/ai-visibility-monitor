@@ -1,7 +1,7 @@
 /** Wspólna atrapa klienta PostgREST dla testów zadań SEO: każde zapytanie jest zapisywane, wynik zwraca `handler`. */
 export interface Call {
   table: string;
-  op: "select" | "insert" | "update" | "upsert";
+  op: "select" | "insert" | "update" | "upsert" | "delete";
   cols?: string;
   payload?: unknown;
   opts?: unknown;
@@ -21,6 +21,7 @@ export function fakeAdmin(handler: (c: Call) => Handled) {
     b.insert = (payload: unknown) => { call.op = "insert"; call.payload = payload; return b; };
     b.update = (payload: unknown) => { call.op = "update"; call.payload = payload; return b; };
     b.upsert = (payload: unknown, opts: unknown) => { call.op = "upsert"; call.payload = payload; call.opts = opts; return b; };
+    b.delete = () => { call.op = "delete"; return b; };
     const run = () => { calls.push(call); const r = handler(call); return Promise.resolve({ data: r.data ?? null, error: r.error ?? null }); };
     b.single = run; b.maybeSingle = run;
     b.then = (ok: (v: unknown) => unknown, ko: (e: unknown) => unknown) => run().then(ok, ko);
