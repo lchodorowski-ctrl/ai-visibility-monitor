@@ -24,7 +24,7 @@ const keyword = (over: Partial<KeywordRow> = {}): KeywordRow => ({
 });
 const suggestion = (over: Partial<SuggestionRow> = {}): SuggestionRow => ({
   id: "s1", key: "kurs ai", text: "kurs ai", seed: "szkolenia ai", source: "labs", searchVolume: 880, keywordDifficulty: 38,
-  cpc: 1.1, ownPosition: null, ownUrl: null, competitors: [], ...over,
+  cpc: 1.1, ownPosition: null, ownUrl: null, competitors: [], updatedAt: "2026-11-03T10:00:00Z", tracked: false, ...over,
 });
 const job = (over: Record<string, unknown> = {}) => ({
   id: "j1", project_id: "p", kind: "keyword_volumes", status: "done", cost_usd: 0.123, started_at: "2026-11-03T10:00:00Z",
@@ -97,14 +97,15 @@ describe("KeywordStatusSection", () => {
   it("przycisk odświeżenia ma szacunek kosztu liczony dla aktywnych fraz", async () => {
     activeKeywords(10); // 1 zadanie wolumenów 0,09 + 3 zapytania Trends po 0,011 = 0,123
     const html = render(await KeywordStatusSection({ projectId: "p", now }));
-    expect(html).toContain("Odśwież wolumeny i trendy (ok. 0,12 USD)");
-    expect(disabledButton(html, "Odśwież wolumeny i trendy \\(ok\\. 0,12 USD\\)")).toBe(false);
+    expect(html).toContain("Odśwież wolumeny i trendy (najwyżej 0,12 USD)");
+    expect(html).not.toContain("(ok.");
+    expect(disabledButton(html, "Odśwież wolumeny i trendy \\(najwyżej 0,12 USD\\)")).toBe(false);
   });
 
   it("nieaktywne frazy nie liczą się do kosztu; bez aktywnych fraz przycisk jest wyłączony z podpowiedzią", async () => {
     q.getKeywords.mockResolvedValue([keyword({ active: false })]);
     const html = render(await KeywordStatusSection({ projectId: "p", now }));
-    expect(disabledButton(html, "Odśwież wolumeny i trendy \\(ok\\. 0,00 USD\\)")).toBe(true);
+    expect(disabledButton(html, "Odśwież wolumeny i trendy \\(najwyżej 0,00 USD\\)")).toBe(true);
     expect(html).toContain("Dodaj albo włącz frazy");
   });
 });
@@ -120,11 +121,37 @@ describe("RankedSection", () => {
     expect(html).toContain("pozycja 52");
     expect(html).toContain("1900 / mies.");
     expect(html).toContain("https://polskaszkola.ai/szkolenia-ai");
-    expect(html).toContain("według indeksu DataForSEO z dnia wyszukiwania");
+    expect(html).toContain("według indeksu DataForSEO, stan na 03.11.2026");
     expect(html).toMatch(/<input type="hidden" name="id" value="s9"\/>/);
     expect(html).toMatch(/>Śledź<\/button>/);
     expect(html).not.toContain("Odrzuć");
     expect(q.getSuggestions).toHaveBeenCalledWith("p", "ranked", expect.any(Number));
+  });
+
+  it("fraza już śledzona dostaje wyciszoną etykietę „śledzona” zamiast przycisku „Śledź”, pozostałe zachowują przycisk", async () => {
+    q.getSuggestions.mockResolvedValue([
+      suggestion({ id: "s1", key: "a", text: "fraza a", source: "ranked", ownPosition: 3, tracked: true }),
+      suggestion({ id: "s2", key: "b", text: "fraza b", source: "ranked", ownPosition: 8, tracked: false }),
+    ]);
+    const html = render(await RankedSection({ projectId: "p" }));
+    expect(html.match(/>Śledź<\/button>/g)).toHaveLength(1);
+    expect(html).toContain('aria-label="Śledź frazę „fraza b”"');
+    expect(html).not.toContain('aria-label="Śledź frazę „fraza a”"');
+    expect(html.match(/>śledzona</g)).toHaveLength(1);
+    expect(html).not.toMatch(/<input type="hidden" name="id" value="s1"\/>/);
+    expect(html).toMatch(/<input type="hidden" name="id" value="s2"\/>/);
+    expect(html).not.toContain("Odrzuć");
+  });
+
+  it("nota podaje datę ostatniego badania: najnowsze odświeżenie wśród wierszy, w czasie warszawskim", async () => {
+    q.getSuggestions.mockResolvedValue([
+      suggestion({ id: "s1", source: "ranked", updatedAt: "2026-10-12T08:00:00Z" }),
+      suggestion({ id: "s2", source: "ranked", updatedAt: "2026-11-02T23:30:00Z" }),
+      suggestion({ id: "s3", source: "ranked", updatedAt: "2026-11-01T10:00:00Z" }),
+    ]);
+    const html = render(await RankedSection({ projectId: "p" }));
+    expect(html).toContain("według indeksu DataForSEO, stan na 03.11.2026");
+    expect(html).not.toMatch(NO_DASHES);
   });
 
   it("brak wolumenu to „brak danych”, nie 0", async () => {
@@ -149,6 +176,17 @@ describe("TrackedSection", () => {
     expect(html).toContain("brak danych");
     expect(html).not.toMatch(/(?<!\d)0 \/ mies\./);
     expect(html).not.toMatch(NO_DASHES);
+  });
+
+  it("obok wolumenu wyciszone „stan na DD.MM” z daty pomiaru; bez pomiaru nic nie ma", async () => {
+    q.getKeywords.mockResolvedValue([
+      keyword({ volumeUpdatedAt: "2026-11-03T10:00:00Z" }),
+      keyword({ id: "k2", text: "kurs ai dla firm", key: "kurs ai dla firm", searchVolume: null, volumeUpdatedAt: null }),
+    ]);
+    const html = render(await TrackedSection(props));
+    expect(html.match(/stan na /g)).toHaveLength(1);
+    expect(html).toContain("stan na 03.11");
+    expect(html).not.toContain("stan na 03.11.");
   });
 
   it("CPC z przecinkiem i USD, konkurencja po polsku (nieznany kod zostaje jak jest)", async () => {
@@ -299,7 +337,7 @@ describe("ResearchSection", () => {
     expect(competitorsBox(html)).toContain('checked=""');
     expect(competitorsBox(html)).not.toContain("disabled");
     // 7 haseł po 0,018 + własna domena i 7 konkurentów po 0,024 = 0,318
-    expect(html).toContain("ok. 0,32 USD");
+    expect(html).toContain("Koszt dla ustawień domyślnych: najwyżej 0,32 USD");
     expect(html).toContain(">Szukaj fraz<");
     expect(q.getResearchTargets).toHaveBeenCalledWith("p", "polskaszkola.ai");
     expect(html).not.toMatch(NO_DASHES);
@@ -319,16 +357,17 @@ describe("ResearchSection", () => {
     expect(competitorsBox(html)).toContain('disabled=""');
     expect(competitorsBox(html)).not.toContain("checked");
     expect(html).toContain("Dodaj konkurentów w Ustawieniach");
-    expect(html).toContain("ok. 0,15 USD"); // 7 haseł po 0,018 + własna domena 0,024
+    expect(html).toContain("najwyżej 0,15 USD"); // 7 haseł po 0,018 + własna domena 0,024
     q.getResearchTargets.mockResolvedValue({ own: null, rivals: 0 });
     html = render(await ResearchSection({ projectId: "p", ownDomain: "" }));
     expect(html).toContain("Dodaj domenę projektu w Ustawieniach");
-    expect(html).toContain("ok. 0,13 USD"); // same hasła
+    expect(html).toContain("najwyżej 0,13 USD"); // same hasła
   });
 
-  it("podaje koszt dodatkowego hasła i dodatkowej domeny", async () => {
+  it("podaje koszt dodatkowego hasła i dodatkowej domeny z trzema miejscami po przecinku (to nie jest „ok.”, tylko górna granica)", async () => {
     const html = render(await ResearchSection({ projectId: "p", ownDomain: "polskaszkola.ai" }));
-    expect(html).toContain("każde dodatkowe hasło ok. 0,02 USD");
-    expect(html).toContain("każda domena ok. 0,02 USD");
+    expect(html).toContain("każde dodatkowe hasło najwyżej 0,018 USD");
+    expect(html).toContain("każda domena najwyżej 0,024 USD");
+    expect(html).not.toContain("ok.");
   });
 });

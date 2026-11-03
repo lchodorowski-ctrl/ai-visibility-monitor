@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { runKeywordResearch, TOPIC_REGEX } from "@/lib/seo/keyword-research";
+import { runKeywordResearch, pickRivals, MAX_COMPETITORS, TOPIC_REGEX } from "@/lib/seo/keyword-research";
 import { estimateResearchCost } from "@/lib/seo/costs";
 import type { keywordSuggestions as suggestionsFn, rankedKeywords as rankedFn, LabsKeyword, RankedKeyword } from "@/lib/dataforseo/labs";
 import { fakeAdmin, filterValue, jobUpdate, type Call } from "./fake-admin";
@@ -9,14 +9,20 @@ const now = () => new Date("2026-11-03T05:00:00Z");
 const NOW_ISO = "2026-11-03T05:00:00.000Z";
 const OWN = "polskaszkola.ai";
 
+/** Wiersz skrzynki w atrapie bazy: to, co zostaje po zapisach (`status` domyślnie `new`, jak w tabeli). */
+type Stored = Record<string, unknown> & { key: string; status: string; source: string; updated_at: string };
+const LONG_AGO = "2026-10-01T00:00:00.000Z";
+
 interface World {
   domains?: string[];
   budget?: number;
   spent?: number;
   competitors?: { name: string; domains: string[] }[];
   tracked?: string[];
-  existing?: Record<string, string>;
+  /** Wiersze skrzynki sprzed badania (klucz frazy do pól wiersza). */
+  existing?: Record<string, Partial<Stored>>;
   failUpsert?: boolean;
+  failDelete?: boolean;
 }
 
 const RIVALS = [
@@ -25,21 +31,44 @@ const RIVALS = [
   { name: "Bez domeny", domains: [] },
 ];
 
+/**
+ * Atrapa bazy ze stanem skrzynki: `upsert` scala kolumny z ładunku z istniejącym wierszem (jak PostgREST przy
+ * `merge-duplicates`: kolumn spoza ładunku, np. `status`, nie rusza), a nowy wiersz dostaje domyślny status `new`.
+ * `delete` usuwa wiersze pasujące do filtrów `eq` (źródło, status) i `lt` (updated_at).
+ */
 function world(w: World = {}) {
-  return fakeAdmin((c: Call) => {
+  const store = new Map<string, Stored>(
+    Object.entries(w.existing ?? {}).map(([key, row]) => [key, { key, status: "new", source: "labs", updated_at: LONG_AGO, ...row }]),
+  );
+  const fake = fakeAdmin((c: Call) => {
     const inKeys = (): string[] => (filterValue(c, "in", "key") as string[] | undefined) ?? [];
     if (c.table === "projects") return { data: { domains: w.domains ?? [OWN], seo_budget_usd: w.budget ?? 10 } };
     if (c.table === "competitors") return { data: w.competitors ?? RIVALS };
     if (c.table === "keywords" && c.op === "select") return { data: (w.tracked ?? []).filter((k) => inKeys().includes(k)).map((key) => ({ key })) };
-    if (c.table === "keyword_suggestions" && c.op === "select") {
-      return { data: Object.entries(w.existing ?? {}).filter(([k]) => inKeys().includes(k)).map(([key, status]) => ({ key, status })) };
+    if (c.table === "keyword_suggestions" && c.op === "upsert") {
+      if (w.failUpsert) return { error: { message: "boom upsert" } };
+      for (const row of c.payload as Record<string, unknown>[]) {
+        const key = row.key as string;
+        store.set(key, { status: "new", ...store.get(key), ...row } as Stored);
+      }
+      return {};
     }
-    if (c.table === "keyword_suggestions" && c.op === "upsert") return w.failUpsert ? { error: { message: "boom upsert" } } : {};
+    if (c.table === "keyword_suggestions" && c.op === "delete") {
+      if (w.failDelete) return { error: { message: "boom delete" } };
+      const source = filterValue(c, "eq", "source");
+      const status = filterValue(c, "eq", "status");
+      const before = filterValue(c, "lt", "updated_at") as string | undefined;
+      for (const [key, row] of [...store]) {
+        if ((source === undefined || row.source === source) && (status === undefined || row.status === status) && (before === undefined || row.updated_at < before)) store.delete(key);
+      }
+      return {};
+    }
     if (c.table === "seo_jobs" && c.op === "insert") return { data: { id: "job-1" } };
     if (c.table === "seo_jobs" && c.op === "select") return { data: [{ cost_usd: w.spent ?? 0 }] };
     if (c.table === "seo_jobs" && c.op === "update") return { data: [{ id: "job-1" }] };
     return {};
   });
+  return { ...fake, store };
 }
 
 const lab = (keyword: string, searchVolume: number | null = 100, keywordDifficulty: number | null = 20, cpc: number | null = 1.5): LabsKeyword =>
@@ -78,7 +107,7 @@ describe("runKeywordResearch: ziarna i podpowiedzi", () => {
     expect(many.keywordSuggestions).toHaveBeenCalledTimes(10);
   });
 
-  it("zapisuje podpowiedź z Labs: źródło labs, hasło, wolumen, trudność, cpc do 2 miejsc, status new, updated_at", async () => {
+  it("zapisuje podpowiedź z Labs: źródło labs, hasło, wolumen, trudność, cpc do 2 miejsc, updated_at, bez kolumny status", async () => {
     const w = world();
     const c = clients({ labs: { "szkolenia ai": [lab("szkolenia ai dla firm", 320, 41, 2.4000000953674316), lab("kurs bez danych", null, null, null)] } });
 
@@ -91,7 +120,7 @@ describe("runKeywordResearch: ziarna i podpowiedzi", () => {
     expect(rowOf(w.calls, "szkolenia ai dla firm")).toEqual({
       project_id: PROJECT, key: "szkolenia ai dla firm", text: "szkolenia ai dla firm", seed: "szkolenia ai", source: "labs",
       search_volume: 320, keyword_difficulty: 41, cpc: 2.4, own_position: null, own_url: null, competitor_positions: [],
-      status: "new", updated_at: NOW_ISO,
+      updated_at: NOW_ISO,
     });
     expect(rowOf(w.calls, "kurs bez danych")).toMatchObject({ search_volume: null, keyword_difficulty: null, cpc: null });
   });
@@ -112,18 +141,22 @@ describe("runKeywordResearch: ziarna i podpowiedzi", () => {
     expect(jobUpdate(w.calls)).toMatchObject({ stats: { labs: 250, skippedTracked: 2, written: 248 } });
   });
 
-  it("odrzucona i zaakceptowana wcześniej podpowiedź zachowuje status, nowa dostaje new", async () => {
-    const w = world({ existing: { "kurs ai": "dismissed", "ai act": "accepted", "stary wpis": "dismissed" } });
+  it("zapis nie niesie kolumny status: odrzucona i zaakceptowana wcześniej podpowiedź zachowuje status, nowa dostaje new", async () => {
+    const w = world({ existing: { "kurs ai": { status: "dismissed" }, "ai act": { status: "accepted" }, "stary wpis": { status: "dismissed" } } });
     const c = clients({ labs: { "szkolenia ai": [lab("kurs ai"), lab("ai act"), lab("chatgpt w pracy")] } });
 
     await run(w, c);
 
-    expect(rowOf(w.calls, "kurs ai")).toMatchObject({ status: "dismissed" });
-    expect(rowOf(w.calls, "ai act")).toMatchObject({ status: "accepted" });
-    expect(rowOf(w.calls, "chatgpt w pracy")).toMatchObject({ status: "new" });
-    // istniejące czyta się przed zapisem
-    const order = w.calls.map((x) => `${x.table}:${x.op}`);
-    expect(order.indexOf("keyword_suggestions:select")).toBeLessThan(order.indexOf("keyword_suggestions:upsert"));
+    // zapis bez `status` nie ma jak nadpisać decyzji użytkownika, także tej podjętej w trakcie badania
+    for (const row of upsertRows(w.calls)) expect(row).not.toHaveProperty("status");
+    expect(w.store.get("kurs ai")?.status).toBe("dismissed");
+    expect(w.store.get("ai act")?.status).toBe("accepted");
+    expect(w.store.get("chatgpt w pracy")?.status).toBe("new");
+    expect(w.store.get("stary wpis")?.status).toBe("dismissed");
+    // odświeża dane, nie tylko dodaje: wolumen z badania trafia do istniejącego wiersza
+    expect(w.store.get("kurs ai")).toMatchObject({ search_volume: 100, seed: "szkolenia ai", updated_at: NOW_ISO });
+    // statusów nie trzeba czytać przed zapisem
+    expect(w.calls.some((x) => x.table === "keyword_suggestions" && x.op === "select")).toBe(false);
   });
 
   it("ta sama fraza z dwóch haseł: zostaje pierwsze hasło", async () => {
@@ -164,7 +197,7 @@ describe("runKeywordResearch: widoczność własnej domeny i luki", () => {
     expect(rowOf(w.calls, "szkolenia ai")).toEqual({
       project_id: PROJECT, key: "szkolenia ai", text: "szkolenia ai", seed: null, source: "ranked",
       search_volume: 1900, keyword_difficulty: 8, cpc: 2.4, own_position: 52, own_url: "https://www.polskaszkola.ai/",
-      competitor_positions: [], status: "new", updated_at: NOW_ISO,
+      competitor_positions: [], updated_at: NOW_ISO,
     });
     expect(rowOf(w.calls, "kurs promptów")).toMatchObject({ source: "ranked", own_position: 4 });
   });
@@ -258,6 +291,157 @@ describe("runKeywordResearch: widoczność własnej domeny i luki", () => {
     expect(c.rankedKeywords).not.toHaveBeenCalled();
     expect(w.calls.some((x) => x.table === "competitors")).toBe(false);
     expect(res).toMatchObject({ status: "done", suggestions: 1 });
+  });
+});
+
+describe("runKeywordResearch: frazy rankujące, które już śledzimy", () => {
+  const ranked = {
+    [OWN]: [rk("szkolenia ai", 52, "https://www.polskaszkola.ai/", 1900), rk("kurs promptów", 4, "https://www.polskaszkola.ai/kurs")],
+    "rywal-a.pl": [rk("ai w firmie", 3, "https://rywal-a.pl/firma"), rk("kurs promptów", 9, "https://rywal-a.pl/prompty")],
+  };
+
+  it("własna fraza w rankingu jest zapisywana jako ranked także wtedy, gdy jest śledzona, i zachowuje status; podpowiedzi z Labs i luki dla śledzonych odpadają", async () => {
+    const w = world({
+      tracked: ["szkolenia ai", "kurs labs", "ai w firmie"],
+      existing: { "szkolenia ai": { status: "accepted", source: "ranked" } },
+    });
+    const c = clients({ labs: { "szkolenia ai": [lab("kurs labs"), lab("szkolenia ai")] }, ranked });
+
+    const res = await run(w, c, { seeds: ["szkolenia ai"], competitors: true });
+
+    expect(w.store.get("szkolenia ai")).toMatchObject({ source: "ranked", own_position: 52, search_volume: 1900, status: "accepted" });
+    expect(w.store.get("kurs promptów")).toMatchObject({ source: "ranked", own_position: 4, status: "new" });
+    expect(w.store.has("kurs labs")).toBe(false);
+    expect(w.store.has("ai w firmie")).toBe(false);
+    expect(res.suggestions).toBe(2);
+    expect(jobUpdate(w.calls)).toMatchObject({ stats: { ranked: 2, skippedTracked: 2, written: 2 } });
+  });
+
+  it("śledzona fraza, na którą nie rankujemy, nadal nie wraca do skrzynki (ani z Labs, ani jako luka)", async () => {
+    const w = world({ tracked: ["kurs labs", "ai w firmie"] });
+    const c = clients({ labs: { "szkolenia ai": [lab("kurs labs")] }, ranked: { "rywal-a.pl": [rk("ai w firmie", 3, "https://rywal-a.pl/firma")] } });
+    const res = await run(w, c, { seeds: ["szkolenia ai"], competitors: true });
+    expect(res.suggestions).toBe(0);
+    expect(w.calls.some((x) => x.op === "upsert")).toBe(false);
+  });
+});
+
+describe("runKeywordResearch: wiersze nieodświeżone w tym badaniu", () => {
+  const old = (source: string, status = "new") => ({ source, status, updated_at: LONG_AGO });
+  const existing = {
+    "stary ranked": old("ranked"),
+    "przyjęty ranked": old("ranked", "accepted"),
+    "stara luka": old("gap"),
+    "odrzucona luka": old("gap", "dismissed"),
+    "stara podpowiedź": old("labs"),
+  };
+  const mine = { ranked: { [OWN]: [rk("kurs ai", 6, "https://www.polskaszkola.ai/")] } };
+  const deleteCall = (w: ReturnType<typeof world>) => w.calls.filter((x) => x.table === "keyword_suggestions" && x.op === "delete");
+
+  it("po sprawdzeniu własnej domeny znikają stare nowe wiersze ranked; ranked z decyzją użytkownika, luki i podpowiedzi z Labs zostają", async () => {
+    const w = world({ existing });
+    await run(w, clients(mine), { seeds: ["szkolenia ai"], competitors: false });
+
+    expect([...w.store.keys()].sort()).toEqual(["kurs ai", "odrzucona luka", "przyjęty ranked", "stara luka", "stara podpowiedź"]);
+    const [del] = deleteCall(w);
+    expect(deleteCall(w)).toHaveLength(1);
+    expect(filterValue(del, "eq", "project_id")).toBe(PROJECT);
+    expect(filterValue(del, "eq", "source")).toBe("ranked");
+    expect(filterValue(del, "eq", "status")).toBe("new");
+    expect(filterValue(del, "lt", "updated_at")).toBe(NOW_ISO);
+  });
+
+  it("po sprawdzeniu konkurencji znikają też stare nowe luki; odrzucona luka zostaje", async () => {
+    const w = world({ existing });
+    await run(w, clients(mine), { seeds: ["szkolenia ai"], competitors: true });
+
+    expect([...w.store.keys()].sort()).toEqual(["kurs ai", "odrzucona luka", "przyjęty ranked", "stara podpowiedź"]);
+    const sources = deleteCall(w).map((x) => filterValue(x, "eq", "source")).sort();
+    expect(sources).toEqual(["gap", "ranked"]);
+    for (const del of deleteCall(w)) {
+      expect(filterValue(del, "eq", "project_id")).toBe(PROJECT);
+      expect(filterValue(del, "eq", "status")).toBe("new");
+      expect(filterValue(del, "lt", "updated_at")).toBe(NOW_ISO);
+    }
+  });
+
+  it("konkurenci zaznaczeni, ale bez żadnej sprawdzonej domeny: luki zostają, ranked jest czyszczone", async () => {
+    const w = world({ existing, competitors: [{ name: "Bez domeny", domains: [] }] });
+    await run(w, clients(mine), { seeds: ["szkolenia ai"], competitors: true });
+    expect(w.store.has("stara luka")).toBe(true);
+    expect(w.store.has("stary ranked")).toBe(false);
+  });
+
+  it("bez własnej domeny nic nie jest usuwane: nie sprawdzano ani widoczności, ani luk", async () => {
+    const w = world({ existing, domains: [] });
+    await run(w, clients({ labs: { "szkolenia ai": [lab("kurs ai")] } }), { seeds: ["szkolenia ai"], competitors: true });
+    expect(deleteCall(w)).toHaveLength(0);
+    expect(w.store.has("stary ranked")).toBe(true);
+    expect(w.store.has("stara luka")).toBe(true);
+  });
+
+  it("czyści po zapisie, a granicą jest początek badania: wiersze zapisane w trakcie zostają", async () => {
+    const w = world({ existing });
+    let t = Date.parse("2026-11-03T05:00:00Z");
+    const clock = () => new Date((t += 1000));
+    await runKeywordResearch(
+      { projectId: PROJECT, seeds: ["szkolenia ai"], competitors: false },
+      { admin: w.client, ...clients(mine), now: clock },
+    );
+
+    const order = w.calls.map((x) => `${x.table}:${x.op}`);
+    expect(order.indexOf("keyword_suggestions:upsert")).toBeLessThan(order.indexOf("keyword_suggestions:delete"));
+    const boundary = filterValue(deleteCall(w)[0], "lt", "updated_at") as string;
+    const written = w.store.get("kurs ai")!;
+    expect(boundary < written.updated_at).toBe(true);
+    expect(w.store.has("stary ranked")).toBe(false);
+  });
+
+  it("błąd zapisu nic nie kasuje: stare wiersze zostają, zadanie kończy się failed", async () => {
+    const w = world({ existing, failUpsert: true });
+    await expect(run(w, clients(mine), { seeds: ["szkolenia ai"], competitors: true })).rejects.toThrow("boom upsert");
+    expect(deleteCall(w)).toHaveLength(0);
+    expect(w.store.has("stary ranked")).toBe(true);
+    expect(jobUpdate(w.calls)).toMatchObject({ status: "failed", error: "boom upsert" });
+  });
+
+  it("błąd usuwania kończy zadanie jako failed z poniesionym kosztem", async () => {
+    const w = world({ existing, failDelete: true });
+    await expect(run(w, clients(mine), { seeds: ["szkolenia ai"], competitors: false })).rejects.toThrow("boom delete");
+    const job = jobUpdate(w.calls);
+    expect(job).toMatchObject({ status: "failed", error: "boom delete" });
+    expect(job.cost_usd as number).toBeCloseTo(2 * COST, 6);
+  });
+});
+
+describe("pickRivals", () => {
+  const rival = (name: string, ...domains: string[]) => ({ name, domains });
+
+  it("pierwsza domena każdego konkurenta, bez protokołu, www i ścieżki; pomija puste, własną i powtórzone, zachowuje kolejność", () => {
+    const picked = pickRivals([
+      rival("Rywal A", "https://www.rywal-a.pl/blog", "inna.pl"),
+      rival("Bez domeny"),
+      rival("Pusta", "  "),
+      rival("My sami", "https://www.PolskaSzkola.ai/"),
+      rival("Rywal A bis", "rywal-a.pl"),
+      rival("Rywal D", "d.pl"),
+    ], OWN);
+    expect(picked).toEqual([{ name: "Rywal A", domain: "rywal-a.pl" }, { name: "Rywal D", domain: "d.pl" }]);
+  });
+
+  it("najwyżej MAX_COMPETITORS; powtórzona domena nie zajmuje miejsca", () => {
+    const many = Array.from({ length: MAX_COMPETITORS + 3 }, (_, i) => rival(`K${i}`, `k${i}.pl`));
+    expect(pickRivals(many, OWN)).toHaveLength(MAX_COMPETITORS);
+    const withRepeat = [rival("K0", "k0.pl"), rival("K0 bis", "www.k0.pl"), ...many.slice(1)];
+    expect(pickRivals(withRepeat, OWN).map((r) => r.domain)).toEqual(many.slice(0, MAX_COMPETITORS).map((r) => r.domains[0]));
+  });
+
+  it("badanie płaci za domenę raz: dwóch konkurentów z tą samą domeną to jedno wywołanie i jedna domena w szacunku", async () => {
+    const w = world({ competitors: [rival("Rywal A", "rywal-a.pl"), rival("Rywal A bis", "https://www.rywal-a.pl/oferta"), rival("Rywal B", "rywal-b.pl")] });
+    const c = clients();
+    await run(w, c, { seeds: ["szkolenia ai"], competitors: true });
+    expect(c.rankedKeywords.mock.calls.map(([t]) => t)).toEqual([OWN, "rywal-a.pl", "rywal-b.pl"]);
+    expect(jobUpdate(w.calls)).toMatchObject({ stats: { domains: 3, estimateUsd: estimateResearchCost({ seeds: 1, domains: 3 }) } });
   });
 });
 

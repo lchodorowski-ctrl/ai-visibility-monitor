@@ -3,7 +3,7 @@ import type { Tables } from "@/lib/db-types";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { normalizeDomainInput } from "@/lib/validation/settings";
 import { MAX_TRACKED } from "./keyword-volumes";
-import { MAX_COMPETITORS } from "./keyword-research";
+import { pickRivals } from "./keyword-research";
 
 /*
  * Reads for the "Frazy" page, all through the user-session client (RLS limits them to the user's organization).
@@ -60,6 +60,10 @@ export interface SuggestionRow {
   ownUrl: string | null;
   /** Rivals ranking for the phrase, best (lowest) position first. */
   competitors: CompetitorPosition[];
+  /** When the research last refreshed the row (ISO timestamp). */
+  updatedAt: string;
+  /** The phrase is in `keywords` already; only the `ranked` list can hold such rows. */
+  tracked: boolean;
 }
 
 /** Months from `monthly_searches` (stored newest first), oldest first. */
@@ -141,26 +145,29 @@ const getTrackedKeys = cache(async (projectId: string): Promise<Set<string>> => 
 });
 
 /**
- * New suggestions of one source, without phrases that are already tracked: a phrase added by hand after a research
- * run stays in the inbox with status `new`, and offering "Śledź" for it again would be a duplicate. `ranked` goes by
- * our position (best first), the others by monthly volume; phrases without a number come last. The tracked ones are
+ * Suggestions of one source. The inbox lists (`labs`, `gap`) hold only new rows without phrases that are already
+ * tracked: a phrase added by hand after a research run stays in the inbox with status `new`, and offering "Śledź" for
+ * it again would be a duplicate. `ranked` is a view, not an inbox: it lists every row of the project (any status,
+ * tracked or not, marked with `tracked`), because it answers "where do we already rank". It goes by our position
+ * (best first), the others by monthly volume; phrases without a number come last. The tracked ones of an inbox are
  * filtered after reading, so the query asks for that many extra rows and `limit` is still reached.
  */
 export const getSuggestions = cache(async (projectId: string, source: SuggestionRow["source"], limit = 100): Promise<SuggestionRow[]> => {
   const supabase = await createServerSupabase();
   const tracked = await getTrackedKeys(projectId);
-  const inbox = supabase
-    .from("keyword_suggestions").select("*").eq("project_id", projectId).eq("source", source).eq("status", "new");
+  const view = source === "ranked";
+  const rows = supabase.from("keyword_suggestions").select("*").eq("project_id", projectId).eq("source", source);
+  const inbox = view ? rows : rows.eq("status", "new");
   const byVolume = { ascending: false, nullsFirst: false };
-  const ordered = source === "ranked"
+  const ordered = view
     ? inbox.order("own_position", { ascending: true, nullsFirst: false }).order("search_volume", byVolume)
     : inbox.order("search_volume", byVolume);
   const { data, error } = await ordered
     .order("text", { ascending: true })
-    .limit(Math.min(limit + tracked.size, KEY_ROWS));
+    .limit(view ? limit : Math.min(limit + tracked.size, KEY_ROWS));
   if (error) throw new Error(`Nie udało się pobrać podpowiedzi fraz: ${error.message}`);
   return (data ?? [])
-    .filter((r) => !tracked.has(r.key))
+    .filter((r) => view || !tracked.has(r.key))
     .slice(0, limit)
     .map((r) => ({
       id: r.id,
@@ -174,6 +181,8 @@ export const getSuggestions = cache(async (projectId: string, source: Suggestion
       ownPosition: num(r.own_position),
       ownUrl: r.own_url,
       competitors: parseCompetitors(r.competitor_positions),
+      updatedAt: r.updated_at,
+      tracked: tracked.has(r.key),
     }));
 });
 
@@ -191,18 +200,14 @@ export const getKeywordJobs = cache(async (projectId: string): Promise<{ volumes
 
 /**
  * Domains a phrase research checks, by the same rules as `runKeywordResearch`: our own (the first of the project's
- * domains) and the rivals (the first domain of each competitor, other than our own, at most `MAX_COMPETITORS`).
- * Rivals count only with an own domain: without it every rival phrase would look like a gap.
+ * domains) and the rivals, chosen by the very same `pickRivals` (same order, same dedupe), so the cost shown here is
+ * the one the job charges. Rivals count only with an own domain: without it every rival phrase would look like a gap.
  */
 export const getResearchTargets = cache(async (projectId: string, ownDomain: string): Promise<{ own: string | null; rivals: number }> => {
   const own = normalizeDomainInput(ownDomain) || null;
   if (!own) return { own: null, rivals: 0 };
   const supabase = await createServerSupabase();
-  const { data, error } = await supabase.from("competitors").select("name, domains").eq("project_id", projectId);
+  const { data, error } = await supabase.from("competitors").select("name, domains").eq("project_id", projectId).order("name", { ascending: true });
   if (error) throw new Error(`Nie udało się pobrać konkurentów: ${error.message}`);
-  const rivals = (data ?? [])
-    .map((c) => normalizeDomainInput(c.domains[0] ?? ""))
-    .filter((domain) => domain !== "" && domain !== own)
-    .slice(0, MAX_COMPETITORS);
-  return { own, rivals: rivals.length };
+  return { own, rivals: pickRivals(data ?? [], own).length };
 });

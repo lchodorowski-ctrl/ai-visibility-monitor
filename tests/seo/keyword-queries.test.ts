@@ -88,7 +88,7 @@ describe("getKeywords", () => {
 const suggestionRow = (over: Record<string, unknown> = {}) => ({
   id: "s1", project_id: "p", key: "szkolenia ai wrocław", text: "szkolenia ai wrocław", seed: "szkolenia ai", source: "labs",
   search_volume: "320", keyword_difficulty: "38", cpc: "1.10", own_position: null, own_url: null, competitor_positions: [], status: "new",
-  ...over,
+  updated_at: "2026-11-03T10:00:00Z", ...over,
 });
 
 /** Atrapa bazy: frazy śledzone (`keywords.key`) i skrzynka podpowiedzi. */
@@ -122,6 +122,34 @@ describe("getSuggestions", () => {
     const orders = suggestionCall().filters.filter((f) => f[0] === "order");
     expect(orders[0]).toEqual(["order", "own_position", { ascending: true, nullsFirst: false }]);
     expect(orders[1]).toEqual(["order", "search_volume", { ascending: false, nullsFirst: false }]);
+  });
+
+  it("własne frazy w Google: każdy wiersz ranked bez względu na status i śledzenie, śledzone oznaczone, limit bez dopłaty za śledzone", async () => {
+    const rows = [
+      suggestionRow({ id: "s1", key: "a", text: "a", source: "ranked", own_position: 3, status: "new" }),
+      suggestionRow({ id: "s2", key: "b", text: "b", source: "ranked", own_position: 7, status: "accepted" }),
+      suggestionRow({ id: "s3", key: "c", text: "c", source: "ranked", own_position: 9, status: "dismissed" }),
+    ];
+    seedSuggestions(rows, ["b"]);
+    const shown = await getSuggestions("sg-all-ranked", "ranked", 3);
+
+    expect(shown.map((s) => [s.key, s.tracked])).toEqual([["a", false], ["b", true], ["c", false]]);
+    expect(filterValue(suggestionCall(), "eq", "source")).toBe("ranked");
+    expect(suggestionCall().filters.some((f) => f[0] === "eq" && f[1] === "status")).toBe(false);
+    expect(suggestionCall().filters).toContainEqual(["limit", 3]);
+  });
+
+  it("podpowiedzi z Labs i luki nadal tylko ze statusem new, bez śledzonych, więc nigdy nie są oznaczone jako śledzone", async () => {
+    seedSuggestions([suggestionRow({ id: "s1", key: "a", text: "a" }), suggestionRow({ id: "s2", key: "b", text: "b" })], ["a"]);
+    const shown = await getSuggestions("sg-labs-flag", "labs");
+    expect(shown.map((s) => [s.key, s.tracked])).toEqual([["b", false]]);
+    expect(filterValue(suggestionCall(), "eq", "status")).toBe("new");
+  });
+
+  it("data odświeżenia wiersza (updatedAt) idzie do widoku", async () => {
+    seedSuggestions([suggestionRow({ source: "ranked", updated_at: "2026-11-02T08:30:00Z" })]);
+    const [row] = await getSuggestions("sg-updated", "ranked");
+    expect(row.updatedAt).toBe("2026-11-02T08:30:00Z");
   });
 
   it("ukrywa podpowiedzi, których fraza jest już śledzona (dodana ręcznie po badaniu), także nieaktywnej", async () => {
@@ -219,6 +247,12 @@ describe("getResearchTargets", () => {
     expect(t).toEqual({ own: "polskaszkola.ai", rivals: 2 });
     expect(calls[0].table).toBe("competitors");
     expect(filterValue(calls[0], "eq", "project_id")).toBe("rt-ok");
+  });
+
+  it("ta sama domena u dwóch konkurentów liczy się raz, tak jak w badaniu (wspólne pickRivals), w kolejności po nazwie", async () => {
+    setDb(() => ({ data: [rival("Altkom", ["https://www.altkomakademia.pl/szkolenia"]), rival("Altkom bis", ["altkomakademia.pl"]), rival("Coders Lab", ["coderslab.pl"])] }));
+    expect(await getResearchTargets("rt-dedupe", "polskaszkola.ai")).toEqual({ own: "polskaszkola.ai", rivals: 2 });
+    expect(calls[0].filters).toContainEqual(["order", "name", { ascending: true }]);
   });
 
   it("najwyżej MAX_COMPETITORS konkurentów", async () => {

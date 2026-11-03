@@ -4,7 +4,7 @@ import { COMPETITION_LABEL, DEFAULT_SEEDS } from "@/lib/seo/keywords";
 import { MAX_SEEDS } from "@/lib/seo/keyword-research";
 import { estimateResearchCost, estimateVolumesCost } from "@/lib/seo/costs";
 import { isInterruptedJob } from "@/lib/seo/overview";
-import { fmtDate, fmtDecimal, fmtNumber } from "@/lib/format/number";
+import { fmtDate, fmtDay, fmtDayShort, fmtDecimal, fmtNumber } from "@/lib/format/number";
 import { pluralFmt, pluralPl } from "@/lib/format/plural";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,8 @@ const SPARKLINE_MONTHS = 12;
 const NO_DATA = "brak danych";
 
 const usd = (n: number) => `${fmtDecimal(n, 2)} USD`;
+/** Costs of one more seed or domain are a few cents: three decimals keep 0,018 from rounding to 0,02. */
+const usdPrecise = (n: number) => `${fmtDecimal(n, 3)} USD`;
 const volumeText = (v: number | null) => (v === null ? NO_DATA : `${fmtNumber(v)} / mies.`);
 
 function EmptyList({ children }: { children: React.ReactNode }) {
@@ -62,7 +64,7 @@ function JobLine({ label, none, job, now }: { label: string; none: string; job: 
 export async function KeywordStatusSection({ projectId, now = new Date() }: { projectId: string; now?: Date }) {
   const [{ volumes, research }, keywords] = await Promise.all([getKeywordJobs(projectId), getKeywords(projectId)]);
   const active = keywords.filter((k) => k.active).length;
-  // the same upper estimate the task checks against the budget: every active phrase has a volume and a trend
+  // an upper bound (every active phrase has a volume and a trend), so the label says "najwyżej", never "ok."
   const estimate = estimateVolumesCost(active, active);
   return (
     <div className="flex flex-wrap items-start justify-between gap-4">
@@ -72,7 +74,7 @@ export async function KeywordStatusSection({ projectId, now = new Date() }: { pr
       </div>
       <div className="space-y-1 sm:text-right">
         <form action={refreshVolumes}>
-          <Button type="submit" disabled={active === 0}>{`Odśwież wolumeny i trendy (ok. ${usd(estimate)})`}</Button>
+          <Button type="submit" disabled={active === 0}>{`Odśwież wolumeny i trendy (najwyżej ${usd(estimate)})`}</Button>
         </form>
         {active === 0 && <Meta className="block normal-case tracking-normal">Dodaj albo włącz frazy, żeby je mierzyć.</Meta>}
       </div>
@@ -101,8 +103,23 @@ function SuggestionActions({ id, text, dismissible }: { id: string; text: string
 
 // --- Gdzie już jesteście w Google ---------------------------------------------------------------------------------
 
+/** The newest of the timestamps (ISO, Postgres may write the offset differently, so compare as instants), or null. */
+function latestStamp(stamps: string[]): string | null {
+  let best: number | null = null;
+  for (const stamp of stamps) {
+    const t = Date.parse(stamp);
+    if (Number.isFinite(t) && (best === null || t > best)) best = t;
+  }
+  return best === null ? null : new Date(best).toISOString();
+}
+
+/**
+ * Every phrase our own domain ranks for (tracked ones too: they carry a muted label instead of the "Śledź" button).
+ * The rows are refreshed together by a research run, so the newest refresh is the date of the last research.
+ */
 export async function RankedSection({ projectId }: { projectId: string }) {
   const rows = await getSuggestions(projectId, "ranked", SUGGESTION_LIMIT);
+  const researchedAt = latestStamp(rows.map((s) => s.updatedAt));
   return (
     <section>
       <SectionHead title="Gdzie już jesteście w Google" />
@@ -119,11 +136,13 @@ export async function RankedSection({ projectId }: { projectId: string }) {
                   </div>
                   <span className={figure}>{s.ownPosition === null ? NO_DATA : `pozycja ${fmtNumber(s.ownPosition)}`}</span>
                   <span className={figure}>{volumeText(s.searchVolume)}</span>
-                  <SuggestionActions id={s.id} text={s.text} dismissible={false} />
+                  {s.tracked ? <Meta>śledzona</Meta> : <SuggestionActions id={s.id} text={s.text} dismissible={false} />}
                 </Row>
               ))}
             </Rows>
-            <Meta className="mt-3 block normal-case tracking-normal">według indeksu DataForSEO z dnia wyszukiwania</Meta>
+            <Meta className="mt-3 block normal-case tracking-normal">
+              {researchedAt ? `według indeksu DataForSEO, stan na ${fmtDay(researchedAt)}` : "według indeksu DataForSEO"}
+            </Meta>
           </>
         )}
     </section>
@@ -166,6 +185,7 @@ function KeywordItem({ k }: { k: KeywordRow }) {
       </div>
       <div className="basis-44">
         <span className={`${figure} font-semibold`}>{volumeText(k.searchVolume)}</span>
+        {k.volumeUpdatedAt && <Meta className="ml-2 normal-case tracking-normal">{`stan na ${fmtDayShort(k.volumeUpdatedAt)}`}</Meta>}
         <Meta className="mt-1 block normal-case tracking-normal">{`konkurencja: ${competition}`}</Meta>
         <Meta className="block normal-case tracking-normal">{`CPC: ${k.cpc === null ? NO_DATA : usd(k.cpc)}`}</Meta>
       </div>
@@ -311,7 +331,7 @@ export async function ResearchSection({ projectId, ownDomain }: { projectId: str
           <div className="flex flex-wrap items-center gap-4">
             <Button type="submit">Szukaj fraz</Button>
             <Meta className="normal-case tracking-normal">
-              {`Koszt dla ustawień domyślnych: ok. ${usd(total)} (każde dodatkowe hasło ok. ${usd(perSeed)}, każda domena ok. ${usd(perDomain)}).`}
+              {`Koszt dla ustawień domyślnych: najwyżej ${usd(total)} (każde dodatkowe hasło najwyżej ${usdPrecise(perSeed)}, każda domena najwyżej ${usdPrecise(perDomain)}).`}
             </Meta>
           </div>
         </form>

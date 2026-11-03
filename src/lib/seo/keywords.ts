@@ -29,7 +29,11 @@ export const DEFAULT_TRENDS_ANCHOR = "szkolenia ai";
 /** Etykiety poziomu konkurencji z DataForSEO. */
 export const COMPETITION_LABEL: Record<string, string> = { LOW: "niska", MEDIUM: "średnia", HIGH: "wysoka" };
 
-/** Hasła wyjściowe formularza „Szukaj nowych fraz”, gdy użytkownik nie wpisał własnych. */
+/**
+ * Tylko wstępna zawartość pola „Hasła wyjściowe” w formularzu „Szukaj nowych fraz” (od niej liczymy też podany tam
+ * koszt domyślny). To nie jest zastępnik: akcja i zadanie biorą dokładnie to, co jest w polu, a puste pole znaczy
+ * badanie bez haseł (sama widoczność domeny), nie badanie tych haseł.
+ */
 export const DEFAULT_SEEDS: readonly string[] = [
   "szkolenia ai",
   "szkolenie chatgpt",

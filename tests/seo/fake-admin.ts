@@ -16,7 +16,7 @@ export function fakeAdmin(handler: (c: Call) => Handled) {
   const from = (table: string) => {
     const call: Call = { table, op: "select", filters: [] };
     const b: Record<string, unknown> = {};
-    for (const m of ["eq", "in", "not", "gte", "order", "limit"]) b[m] = (...args: unknown[]) => { call.filters.push([m, ...args]); return b; };
+    for (const m of ["eq", "in", "not", "gte", "lt", "order", "limit"]) b[m] = (...args: unknown[]) => { call.filters.push([m, ...args]); return b; };
     b.select = (cols: string) => { if (call.op === "select") call.cols = cols; return b; };
     b.insert = (payload: unknown) => { call.op = "insert"; call.payload = payload; return b; };
     b.update = (payload: unknown) => { call.op = "update"; call.payload = payload; return b; };

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  plainSpaces, fmtDecimal, fmtNumber, fmtCompact, fmtSignedNumber, fmtSignedPercent, positionChange, positionChangeText, fmtDayMonth,
+  plainSpaces, fmtDecimal, fmtNumber, fmtCompact, fmtSignedNumber, fmtSignedPercent, positionChange, positionChangeText, fmtDayMonth, fmtDay, fmtDayShort,
 } from "@/lib/format/number";
 
 const NO_BREAK = /[\u00a0\u202f]/;
@@ -148,5 +148,15 @@ describe("fmtDayMonth", () => {
   it("data ISO jako DD.MM", () => {
     expect(fmtDayMonth("2026-10-01")).toBe("01.10");
     expect(fmtDayMonth("2026-12-31")).toBe("31.12");
+  });
+});
+
+describe("fmtDay, fmtDayShort", () => {
+  it("znacznik czasu jako DD.MM.RRRR i DD.MM w strefie Europe/Warsaw (północ po polsku to jeszcze wczoraj w UTC)", () => {
+    expect(fmtDay("2026-11-03T10:00:00Z")).toBe("03.11.2026");
+    expect(fmtDayShort("2026-11-03T10:00:00Z")).toBe("03.11");
+    expect(fmtDay("2026-11-02T23:30:00Z")).toBe("03.11.2026");
+    expect(fmtDayShort("2026-11-02T23:30:00Z")).toBe("03.11");
+    expect(fmtDay("2026-07-01T21:59:00Z")).toBe("01.07.2026");
   });
 });

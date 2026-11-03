@@ -54,7 +54,7 @@ export interface RunKeywordResearchDeps {
 
 export interface KeywordResearchResult {
   status: SeoJobStatus;
-  /** Podpowiedzi zapisane (nowe i odświeżone) po pominięciu fraz już śledzonych. */
+  /** Wiersze skrzynki zapisane (nowe i odświeżone): bez fraz już śledzonych, poza własnymi pozycjami (`ranked`). */
   suggestions: number;
   /** Faktyczny koszt DataForSEO (suma pól `cost` odpowiedzi). */
   costUsd: number;
@@ -115,22 +115,40 @@ async function trackedAmong(admin: Admin, projectId: string, keys: string[]): Pr
   return tracked;
 }
 
-async function statusesAmong(admin: Admin, projectId: string, keys: string[]): Promise<Map<string, string>> {
-  const statuses = new Map<string, string>();
-  for (const part of chunks(keys, KEY_CHUNK)) {
-    const { data, error } = await admin.from("keyword_suggestions").select("key, status").eq("project_id", projectId).in("key", part);
-    if (error) throw new Error(error.message);
-    for (const row of data ?? []) statuses.set(row.key, row.status);
+/**
+ * Konkurenci, których sprawdza badanie (i których koszt pokazuje formularz): pierwsza domena każdego, w formie
+ * bez protokołu, www i ścieżki, bez pustych, bez naszej własnej i bez powtórzeń (dwóch konkurentów z jedną domeną
+ * to jedno zapytanie), w kolejności listy, najwyżej `MAX_COMPETITORS`. Przy powtórzeniu zostaje pierwsza nazwa.
+ */
+export function pickRivals(competitors: { name: string; domains: string[] }[], own: string): { name: string; domain: string }[] {
+  const seen = new Set<string>();
+  const rivals: { name: string; domain: string }[] = [];
+  for (const c of competitors) {
+    if (rivals.length >= MAX_COMPETITORS) break;
+    const domain = normalizeDomainInput(c.domains[0] ?? "");
+    if (domain === "" || domain === own || seen.has(domain)) continue;
+    seen.add(domain);
+    rivals.push({ name: c.name, domain });
   }
-  return statuses;
+  return rivals;
+}
+
+/** Usuwa wiersze skrzynki danego źródła ze statusem `new`, których nie odświeżyło badanie rozpoczęte o `before`. */
+async function removeStale(admin: Admin, projectId: string, source: "ranked" | "gap", before: string): Promise<void> {
+  const { error } = await admin.from("keyword_suggestions").delete()
+    .eq("project_id", projectId).eq("source", source).eq("status", "new").lt("updated_at", before);
+  if (error) throw new Error(error.message);
 }
 
 /**
  * Badanie fraz na żądanie (DataForSEO Labs): podpowiedzi do haseł, frazy, na które nasza domena już rankuje,
  * a przy `competitors` luki, czyli frazy z pierwszej dwudziestki konkurentów, na które my nie rankujemy.
- * Wyniki trafiają do skrzynki `keyword_suggestions` (klucz `project_id, key`): odświeżają dane, ale zachowują status
- * wybrany przez użytkownika, a frazy już śledzone są pomijane. Płatne, więc najpierw bramka budżetu SEO;
- * w rejestrze zostaje faktyczny koszt, także gdy zadanie padnie w trakcie.
+ * Wyniki trafiają do skrzynki `keyword_suggestions` (klucz `project_id, key`): zapis nie niesie kolumny `status`, więc
+ * odświeża dane, ale zostawia status wybrany przez użytkownika (nowy wiersz dostaje domyślny `new`). Frazy już śledzone
+ * są pomijane, z jednym wyjątkiem: własne pozycje (`ranked`) zapisujemy zawsze, bo widok „Gdzie już jesteście w Google”
+ * pokazuje wszystkie frazy, na które rankujemy. Po udanym zapisie znikają nowe (`new`) wiersze `ranked` (gdy sprawdzono
+ * własną domenę) i `gap` (gdy sprawdzono konkurencję), których to badanie nie odświeżyło: ich dane są już nieaktualne.
+ * Płatne, więc najpierw bramka budżetu SEO; w rejestrze zostaje faktyczny koszt, także gdy zadanie padnie w trakcie.
  */
 export async function runKeywordResearch(
   payload: { projectId: string; seeds: string[]; competitors: boolean },
@@ -141,6 +159,7 @@ export async function runKeywordResearch(
   const suggest = deps.keywordSuggestions ?? defaultKeywordSuggestions;
   const ranked = deps.rankedKeywords ?? defaultRankedKeywords;
   const now = deps.now ?? (() => new Date());
+  const startedAt = now().toISOString();
 
   const projectRes = await admin.from("projects").select("domains, seo_budget_usd").eq("id", projectId).single();
   if (projectRes.error) throw new Error(projectRes.error.message);
@@ -157,10 +176,7 @@ export async function runKeywordResearch(
     if (payload.competitors && own) {
       const rivalsRes = await admin.from("competitors").select("name, domains").eq("project_id", projectId).order("name", { ascending: true });
       if (rivalsRes.error) throw new Error(rivalsRes.error.message);
-      rivals = (rivalsRes.data ?? [])
-        .map((c) => ({ name: c.name, domain: normalizeDomainInput(c.domains[0] ?? "") }))
-        .filter((c) => c.domain !== "" && c.domain !== own)
-        .slice(0, MAX_COMPETITORS);
+      rivals = pickRivals(rivalsRes.data ?? [], own);
     }
 
     const domains = (own ? 1 : 0) + rivals.length;
@@ -232,13 +248,11 @@ export async function runKeywordResearch(
 
     const countBySource = (source: Source) => [...found.values()].filter((s) => s.source === source).length;
 
-    // 4. Zapis: bez fraz już śledzonych, ze statusem sprzed badania
-    const keys = [...found.keys()];
-    const tracked = await trackedAmong(admin, projectId, keys);
-    const fresh = [...found.values()].filter((s) => !tracked.has(s.key));
-    const statuses = await statusesAmong(admin, projectId, fresh.map((s) => s.key));
+    // 4. Zapis: bez fraz już śledzonych (poza własnymi pozycjami), bez kolumny `status`, żeby zostawić decyzję użytkownika
+    const tracked = await trackedAmong(admin, projectId, [...found.keys()]);
+    const toWrite = [...found.values()].filter((s) => s.source === "ranked" || !tracked.has(s.key));
     const updatedAt = now().toISOString();
-    const rows = fresh.map((s) => ({
+    const rows = toWrite.map((s) => ({
       project_id: projectId,
       key: s.key,
       text: s.key,
@@ -251,7 +265,6 @@ export async function runKeywordResearch(
       own_position: s.ownPosition,
       own_url: s.ownUrl,
       competitor_positions: s.competitorPositions,
-      status: statuses.get(s.key) ?? "new",
       updated_at: updatedAt,
     }));
     for (const part of chunks(rows, UPSERT_CHUNK)) {
@@ -259,12 +272,16 @@ export async function runKeywordResearch(
       if (error) throw new Error(error.message);
     }
 
+    // 5. Nieaktualne: nowe wiersze, których to badanie nie dotknęło (zapisane przed jego początkiem)
+    if (own) await removeStale(admin, projectId, "ranked", startedAt);
+    if (rivals.length > 0) await removeStale(admin, projectId, "gap", startedAt);
+
     await finishJob(admin, jobId, {
       status: "done",
       costUsd: spent,
       stats: {
         seeds: seeds.length, domains, labs: countBySource("labs"), ranked: countBySource("ranked"), gap: countBySource("gap"),
-        skippedTracked: found.size - fresh.length, written: rows.length, estimateUsd: estimate,
+        skippedTracked: found.size - rows.length, written: rows.length, estimateUsd: estimate,
       },
     });
     return { status: "done", suggestions: rows.length, costUsd: spent };
