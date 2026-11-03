@@ -218,7 +218,7 @@ const readingsOf = (ranks: Partial<Record<Device, RankView>> | undefined): Readi
 /**
  * Positions of a phrase and where it ranks. The computer is the reference, as in the "Kierunek" tile: the rival comes
  * from it (from the phone only when the computer has no reading); the address is the first one known. Every reading
- * says the week it comes from ("stan na", like the volume), so an old position never passes for the current one.
+ * says the week it comes from ("tydzień od"), so an old position never passes for the current one.
  */
 function RankCell({ readings }: { readings: Reading[] }) {
   if (readings.length === 0) return <Meta className="basis-52 normal-case tracking-normal">pozycja: jeszcze nie sprawdzano</Meta>;
