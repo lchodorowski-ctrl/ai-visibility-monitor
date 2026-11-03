@@ -18,7 +18,7 @@ vi.mock("@/lib/seo/queries", () => ({ getGscLastDate: h.getGscLastDate, getQuery
 
 import {
   addKeywords, toggleKeyword, deleteKeyword, setTargetPath, acceptSuggestion, dismissSuggestion,
-  importFromGsc, refreshVolumes, runResearch,
+  importFromGsc, refreshVolumes, checkRanks, runResearch,
 } from "@/app/app/google/keywords/actions";
 
 const PATH = "/app/google/keywords";
@@ -412,6 +412,56 @@ describe("refreshVolumes", () => {
   it("bez zalogowanego użytkownika (przekierowanie) nic nie uruchamia", async () => {
     h.getCurrentProject.mockRejectedValue(new Error("NEXT_REDIRECT"));
     await expect(refreshVolumes()).rejects.toThrow("NEXT_REDIRECT");
+    expect(h.trigger).not.toHaveBeenCalled();
+  });
+});
+
+describe("checkRanks", () => {
+  beforeEach(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-11-03T10:07:00Z")); });
+  afterEach(() => vi.useRealTimers());
+
+  it("uruchamia zadanie rank-check dla projektu z sesji, z kluczem idempotencji na 10 minut, i odświeża stronę", async () => {
+    await checkRanks();
+    const bucket = Math.floor(Date.parse("2026-11-03T10:07:00Z") / 600_000);
+    expect(h.trigger).toHaveBeenCalledTimes(1);
+    expect(h.trigger).toHaveBeenCalledWith(
+      "rank-check", { projectId: "p1" }, { idempotencyKey: `rank-check:p1:${bucket}`, idempotencyKeyTTL: "10m" },
+    );
+    expect(h.revalidatePath).toHaveBeenCalledWith(PATH);
+  });
+
+  it("klucz zależy od projektu: ten sam moment w innym projekcie to inny klucz", async () => {
+    await checkRanks();
+    h.getCurrentProject.mockResolvedValue({ id: "p2" });
+    await checkRanks();
+    const keys = h.trigger.mock.calls.map((c) => (c[2] as { idempotencyKey: string }).idempotencyKey);
+    expect(keys[0]).toMatch(/^rank-check:p1:\d+$/);
+    expect(keys[1]).toMatch(/^rank-check:p2:\d+$/);
+  });
+
+  it("dwa kliknięcia w jednym 10-minutowym oknie mają ten sam klucz, w następnym oknie inny", async () => {
+    await checkRanks();
+    vi.setSystemTime(new Date("2026-11-03T10:09:30Z"));
+    await checkRanks();
+    vi.setSystemTime(new Date("2026-11-03T10:10:01Z"));
+    await checkRanks();
+    const keys = h.trigger.mock.calls.map((c) => (c[2] as { idempotencyKey: string }).idempotencyKey);
+    expect(keys[0]).toBe(keys[1]);
+    expect(keys[2]).not.toBe(keys[0]);
+  });
+
+  it("gdy Trigger jest nieosiągalny, nie rzuca: loguje błąd i odświeża stronę", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    h.trigger.mockRejectedValue(new Error("Trigger niedostępny"));
+    await expect(checkRanks()).resolves.toBeUndefined();
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("rank-check"), "Trigger niedostępny");
+    expect(h.revalidatePath).toHaveBeenCalledWith(PATH);
+    log.mockRestore();
+  });
+
+  it("bez zalogowanego użytkownika (przekierowanie) nic nie uruchamia", async () => {
+    h.getCurrentProject.mockRejectedValue(new Error("NEXT_REDIRECT"));
+    await expect(checkRanks()).rejects.toThrow("NEXT_REDIRECT");
     expect(h.trigger).not.toHaveBeenCalled();
   });
 });

@@ -1,12 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { KeywordRow, SuggestionRow } from "@/lib/seo/keyword-queries";
+import type { RankView } from "@/lib/seo/rank-queries";
+import type { Device } from "@/lib/dataforseo/serp";
 
 const q = vi.hoisted(() => ({ getKeywords: vi.fn(), getSuggestions: vi.fn(), getKeywordJobs: vi.fn(), getResearchTargets: vi.fn() }));
+const r = vi.hoisted(() => ({ getLatestRanks: vi.fn() }));
 vi.mock("@/lib/seo/keyword-queries", () => q);
+vi.mock("@/lib/seo/rank-queries", () => r);
 vi.mock("@/app/app/google/keywords/actions", () => ({
   addKeywords: vi.fn(), toggleKeyword: vi.fn(), deleteKeyword: vi.fn(), setTargetPath: vi.fn(), acceptSuggestion: vi.fn(),
-  dismissSuggestion: vi.fn(), importFromGsc: vi.fn(), refreshVolumes: vi.fn(), runResearch: vi.fn(),
+  dismissSuggestion: vi.fn(), importFromGsc: vi.fn(), refreshVolumes: vi.fn(), checkRanks: vi.fn(), runResearch: vi.fn(),
 }));
 
 import {
@@ -26,6 +30,13 @@ const suggestion = (over: Partial<SuggestionRow> = {}): SuggestionRow => ({
   id: "s1", key: "kurs ai", text: "kurs ai", seed: "szkolenia ai", source: "labs", searchVolume: 880, keywordDifficulty: 38,
   cpc: 1.1, ownPosition: null, ownUrl: null, competitors: [], updatedAt: "2026-11-03T10:00:00Z", tracked: false, ...over,
 });
+const noFeatures = { aiOverview: false, aiOverviewCitesUs: false, featuredSnippet: false, featuredSnippetOurs: false, localPack: false, peopleAlsoAsk: false, knowledgePanelOurs: false };
+const rank = (over: Partial<RankView> = {}): RankView => ({
+  weekStart: "2026-11-02", position: 52, rankAbsolute: 58, url: "https://polskaszkola.ai/szkolenia-ai", breadcrumb: null,
+  features: noFeatures, competitors: [], checkedAt: "2026-11-03T04:12:00Z", prevWeekStart: "2026-10-26", prevPosition: 55, ...over,
+});
+/** Odczyty frazy `id` w mapie zwracanej przez `getLatestRanks`. */
+const withRanks = (id: string, readings: Partial<Record<Device, RankView>>) => r.getLatestRanks.mockResolvedValue(new Map([[id, readings]]));
 const job = (over: Record<string, unknown> = {}) => ({
   id: "j1", project_id: "p", kind: "keyword_volumes", status: "done", cost_usd: 0.123, started_at: "2026-11-03T10:00:00Z",
   finished_at: "2026-11-03T10:01:00Z", error: null, stats: {}, ...over,
@@ -35,8 +46,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   q.getKeywords.mockResolvedValue([]);
   q.getSuggestions.mockResolvedValue([]);
-  q.getKeywordJobs.mockResolvedValue({ volumes: null, research: null, researchDoneAt: null });
+  q.getKeywordJobs.mockResolvedValue({ volumes: null, research: null, ranks: null, researchDoneAt: null });
   q.getResearchTargets.mockResolvedValue({ own: "polskaszkola.ai", rivals: 7 });
+  r.getLatestRanks.mockResolvedValue(new Map());
 });
 
 /** The competitors checkbox tag (React writes the attributes in its own order). */
@@ -47,7 +59,7 @@ const disabledButton = (html: string, label: string) => new RegExp(`<button[^>]*
 
 describe("KeywordStatusSection", () => {
   const now = new Date("2026-11-03T12:00:00Z");
-  const withJobs = (volumes: unknown, research: unknown) => q.getKeywordJobs.mockResolvedValue({ volumes, research, researchDoneAt: null });
+  const withJobs = (volumes: unknown, research: unknown, ranks: unknown = null) => q.getKeywordJobs.mockResolvedValue({ volumes, research, ranks, researchDoneAt: null });
   const activeKeywords = (n: number) => q.getKeywords.mockResolvedValue(Array.from({ length: n }, (_, i) => keyword({ id: `k${i}`, key: `fraza ${i}` })));
 
   it("ostatnie odświeżenie wolumenów i ostatnie wyszukiwanie: status, data i koszt z przecinkiem", async () => {
@@ -95,11 +107,11 @@ describe("KeywordStatusSection", () => {
   });
 
   it("przycisk odświeżenia ma szacunek kosztu liczony dla aktywnych fraz", async () => {
-    activeKeywords(10); // 1 zadanie wolumenów 0,09 + 3 zapytania Trends po 0,011 = 0,123
+    activeKeywords(10); // 1 zadanie wolumenów 0,09 + 3 zapytania Trends po 0,011 = 0,123, w górę do centa
     const html = render(await KeywordStatusSection({ projectId: "p", now }));
-    expect(html).toContain("Odśwież wolumeny i trendy (najwyżej 0,12 USD)");
+    expect(html).toContain("Odśwież wolumeny i trendy (najwyżej 0,13 USD)");
     expect(html).not.toContain("(ok.");
-    expect(disabledButton(html, "Odśwież wolumeny i trendy \\(najwyżej 0,12 USD\\)")).toBe(false);
+    expect(disabledButton(html, "Odśwież wolumeny i trendy \\(najwyżej 0,13 USD\\)")).toBe(false);
   });
 
   it("nieaktywne frazy nie liczą się do kosztu; bez aktywnych fraz przycisk jest wyłączony z podpowiedzią", async () => {
@@ -107,6 +119,91 @@ describe("KeywordStatusSection", () => {
     const html = render(await KeywordStatusSection({ projectId: "p", now }));
     expect(disabledButton(html, "Odśwież wolumeny i trendy \\(najwyżej 0,00 USD\\)")).toBe(true);
     expect(html).toContain("Dodaj albo włącz frazy");
+  });
+
+  describe("pozycje", () => {
+    it("ostatnie sprawdzenie pozycji: status, data i koszt jak przy pozostałych zadaniach", async () => {
+      withJobs(null, null, job({ id: "j3", kind: "rank_check", cost_usd: 0.2, finished_at: "2026-11-03T11:00:00Z" }));
+      const html = render(await KeywordStatusSection({ projectId: "p", now }));
+      expect(html).toContain("Pozycje: ");
+      expect(html).toContain("zakończone");
+      expect(html).toContain("koszt 0,20 USD");
+      expect(html).not.toContain("Jeszcze nie sprawdzano pozycji.");
+      expect(html).not.toMatch(NO_DASHES);
+    });
+
+    it("bez żadnego sprawdzenia: informacja, że jeszcze nic nie uruchomiono", async () => {
+      expect(render(await KeywordStatusSection({ projectId: "p", now }))).toContain("Jeszcze nie sprawdzano pozycji.");
+    });
+
+    it("pominięte sprawdzenie podaje powód, nieudane jest czerwone", async () => {
+      withJobs(null, null, job({ kind: "rank_check", status: "skipped", error: "Pozycje z tego tygodnia są już sprawdzone" }));
+      let html = render(await KeywordStatusSection({ projectId: "p", now }));
+      expect(html).toContain("pominięte");
+      expect(html).toContain("Pozycje z tego tygodnia są już sprawdzone");
+      withJobs(null, null, job({ kind: "rank_check", status: "failed", error: "DataForSEO: brak środków na koncie" }));
+      html = render(await KeywordStatusSection({ projectId: "p", now }));
+      expect(html).toMatch(/<span class="[^"]*text-red[^"]*">nieudane<\/span>/);
+      expect(html).toContain("DataForSEO: brak środków na koncie");
+    });
+
+    it("wyniki, które czekają w kolejce DataForSEO (stats.pending > 0), są nazwane i odmienione", async () => {
+      withJobs(null, null, job({ kind: "rank_check", stats: { posted: 40, done: 37, pending: 3 } }));
+      let html = render(await KeywordStatusSection({ projectId: "p", now }));
+      expect(html).toContain("3 wyniki w kolejce DataForSEO, odbierze je następne sprawdzenie");
+      withJobs(null, null, job({ kind: "rank_check", stats: { pending: 1 } }));
+      html = render(await KeywordStatusSection({ projectId: "p", now }));
+      expect(html).toContain("1 wynik w kolejce DataForSEO, odbierze go następne sprawdzenie");
+      withJobs(null, null, job({ kind: "rank_check", stats: { pending: 12 } }));
+      html = render(await KeywordStatusSection({ projectId: "p", now }));
+      expect(html).toContain("12 wyników w kolejce DataForSEO, odbierze je następne sprawdzenie");
+      expect(html).not.toMatch(NO_DASHES);
+    });
+
+    it("bez oczekujących wyników (0, brak, liczba z tekstu spoza zakresu, stats nie jest obiektem) nie ma wiersza o kolejce", async () => {
+      for (const stats of [{ pending: 0 }, {}, { pending: "dużo" }, { pending: -2 }, null, "nie obiekt", [3]]) {
+        withJobs(null, null, job({ kind: "rank_check", stats }));
+        expect(render(await KeywordStatusSection({ projectId: "p", now }))).not.toContain("w kolejce DataForSEO");
+      }
+    });
+
+    it("liczba oczekujących może przyjść jako tekst (jsonb)", async () => {
+      withJobs(null, null, job({ kind: "rank_check", stats: { pending: "4" } }));
+      expect(render(await KeywordStatusSection({ projectId: "p", now }))).toContain("4 wyniki w kolejce DataForSEO");
+    });
+
+    it("przycisk sprawdzenia ma górny szacunek: 10 fraz × 2 urządzenia × 0,0066 = 0,132, w górę do centa 0,14", async () => {
+      activeKeywords(10);
+      const html = render(await KeywordStatusSection({ projectId: "p", now }));
+      expect(html).toContain("Sprawdź pozycje (najwyżej 0,14 USD)");
+      expect(disabledButton(html, "Sprawdź pozycje \\(najwyżej 0,14 USD\\)")).toBe(false);
+    });
+
+    it("szacunek liczy najwyżej 100 fraz tygodniowo (200 sprawdzeń), tyle ile sprawdza zadanie", async () => {
+      activeKeywords(150);
+      expect(render(await KeywordStatusSection({ projectId: "p", now }))).toContain("Sprawdź pozycje (najwyżej 1,32 USD)");
+      activeKeywords(60); // 120 × 0,0066 = 0,792 → 0,80
+      expect(render(await KeywordStatusSection({ projectId: "p", now }))).toContain("Sprawdź pozycje (najwyżej 0,80 USD)");
+    });
+
+    it("wstrzymane frazy nie liczą się do szacunku; bez aktywnych fraz przycisk jest wyłączony", async () => {
+      q.getKeywords.mockResolvedValue([keyword({ active: false })]);
+      const html = render(await KeywordStatusSection({ projectId: "p", now }));
+      expect(disabledButton(html, "Sprawdź pozycje \\(najwyżej 0,00 USD\\)")).toBe(true);
+      expect(html).toContain("Dodaj albo włącz frazy");
+    });
+
+    it("nota: frazy sprawdzone w tym tygodniu nie są sprawdzane drugi raz", async () => {
+      activeKeywords(3);
+      expect(render(await KeywordStatusSection({ projectId: "p", now }))).toContain("Frazy sprawdzone w tym tygodniu nie są sprawdzane drugi raz.");
+    });
+
+    it("kwoty „najwyżej” idą w górę do centa, także gdy szacunek ma błąd zmiennoprzecinkowy (0,15 nie staje się 0,16)", async () => {
+      q.getResearchTargets.mockResolvedValue({ own: "polskaszkola.ai", rivals: 0 });
+      const research = render(await ResearchSection({ projectId: "p", ownDomain: "polskaszkola.ai" }));
+      expect(research).toContain("Koszt dla ustawień domyślnych: najwyżej 0,15 USD");
+      expect(research).not.toContain("najwyżej 0,16 USD");
+    });
   });
 });
 
@@ -278,6 +375,165 @@ describe("TrackedSection", () => {
     expect(render(await TrackedSection(props))).toContain("Brak śledzonych fraz");
     q.getKeywords.mockResolvedValue([keyword(), keyword({ id: "k2", key: "kurs ai", text: "kurs ai" })]);
     expect(render(await TrackedSection(props))).toContain("2 frazy");
+  });
+});
+
+describe("TrackedSection: pozycje w Google", () => {
+  const props = { projectId: "p", hasGscData: true };
+  const tracked = (over: Partial<KeywordRow> = {}) => q.getKeywords.mockResolvedValue([keyword(over)]);
+
+  it("nazwa frazy jest linkiem do szczegółów frazy", async () => {
+    tracked();
+    const html = render(await TrackedSection(props));
+    expect(html).toMatch(/<a [^>]*href="\/app\/google\/keywords\/k1"[^>]*>szkolenia ai<\/a>/);
+  });
+
+  it("komputer i telefon: pozycja, zmiana tydzień do tygodnia i „poza top 100”", async () => {
+    tracked();
+    withRanks("k1", {
+      desktop: rank({ position: 52, prevPosition: 55 }),
+      mobile: rank({ position: null, url: null, prevPosition: 40 }),
+    });
+    const html = render(await TrackedSection(props));
+    expect(html).toContain("komputer 52");
+    expect(html).toContain("\u2191 3");
+    expect(html).toContain("telefon poza top 100");
+    expect(html).toContain("wypadła z top 100");
+    expect(html).not.toMatch(NO_DASHES);
+  });
+
+  it("pozostałe zmiany: spadek, bez zmian, nowa w top 100; pierwszy pomiar nie ma tekstu zmiany", async () => {
+    tracked();
+    withRanks("k1", { desktop: rank({ position: 54, prevPosition: 52 }) });
+    expect(render(await TrackedSection(props))).toContain("\u2193 2");
+    withRanks("k1", { desktop: rank({ position: 52, prevPosition: 52 }) });
+    expect(render(await TrackedSection(props))).toContain("bez zmian");
+    withRanks("k1", { desktop: rank({ position: 37, prevPosition: null }) });
+    expect(render(await TrackedSection(props))).toContain("nowa w top 100");
+    withRanks("k1", { desktop: rank({ position: 37, prevPosition: null, prevWeekStart: null }) });
+    const first = render(await TrackedSection(props));
+    expect(first).toContain("komputer 37");
+    expect(first).not.toMatch(/\u2191|\u2193|bez zmian|nowa w top 100|wypadła/);
+  });
+
+  it("tylko jedno urządzenie z pomiarem: pokazuje tylko je", async () => {
+    tracked();
+    withRanks("k1", { mobile: rank({ position: 41 }) });
+    const html = render(await TrackedSection(props));
+    expect(html).toContain("telefon 41");
+    expect(html).not.toContain("komputer");
+  });
+
+  it("fraza bez pomiaru: „pozycja: jeszcze nie sprawdzano”, bez odznak i oznaczeń", async () => {
+    tracked({ targetPath: "/szkolenia" });
+    const html = render(await TrackedSection(props));
+    expect(html).toContain("pozycja: jeszcze nie sprawdzano");
+    expect(html).not.toContain("komputer");
+    expect(html).not.toContain("blisko top 3");
+    expect(html).not.toContain("rankuje inna strona");
+  });
+
+  it("rankujący adres: adres, a gdy Google go ukrył, breadcrumb", async () => {
+    tracked();
+    withRanks("k1", { desktop: rank({ url: "https://polskaszkola.ai/szkolenia-ai" }) });
+    expect(render(await TrackedSection(props))).toContain("https://polskaszkola.ai/szkolenia-ai");
+    withRanks("k1", { desktop: rank({ url: null, breadcrumb: "https://polskaszkola.ai › szkolenia" }) });
+    const html = render(await TrackedSection(props));
+    expect(html).toContain("https://polskaszkola.ai › szkolenia");
+    expect(html).not.toContain("szkolenia-ai");
+  });
+
+  it("adres bierze się z drugiego urządzenia, gdy pierwsze go nie ma (poza top 100)", async () => {
+    tracked();
+    withRanks("k1", { desktop: rank({ position: null, url: null }), mobile: rank({ position: 41, url: "https://polskaszkola.ai/mobilna" }) });
+    const html = render(await TrackedSection(props));
+    expect(html).toContain("https://polskaszkola.ai/mobilna");
+    expect(html).toContain("komputer poza top 100");
+    expect(html).toContain("telefon 41");
+  });
+
+  it("najlepszy konkurent: nazwa i pozycja; bez konkurentów nie ma wiersza", async () => {
+    tracked();
+    withRanks("k1", {
+      desktop: rank({
+        competitors: [
+          { name: "Altkom Akademia", domain: "altkomakademia.pl", position: 7, url: "https://altkomakademia.pl/ai" },
+          { name: "Coders Lab", domain: "coderslab.pl", position: 12, url: null },
+        ],
+      }),
+    });
+    const html = render(await TrackedSection(props));
+    expect(html).toContain("najlepszy konkurent: Altkom Akademia, 7.");
+    expect(html).not.toContain("Coders Lab");
+    withRanks("k1", { desktop: rank() });
+    expect(render(await TrackedSection(props))).not.toContain("najlepszy konkurent");
+  });
+
+  it("odznaki cech SERP w ustalonej kolejności, z „AI Overview: bez Was”", async () => {
+    tracked();
+    withRanks("k1", {
+      desktop: rank({ features: { ...noFeatures, aiOverview: true, peopleAlsoAsk: true, localPack: true } }),
+    });
+    const html = render(await TrackedSection(props));
+    expect(html).toContain("AI Overview: bez Was");
+    expect(html.indexOf("AI Overview: bez Was")).toBeLessThan(html.indexOf("Mapa z firmami"));
+    expect(html.indexOf("Mapa z firmami")).toBeLessThan(html.indexOf("Pytania (PAA)"));
+  });
+
+  it("bez cech SERP nie ma odznak, a z cytowaniem jest „AI Overview: cytuje Was”", async () => {
+    tracked();
+    withRanks("k1", { desktop: rank() });
+    let html = render(await TrackedSection(props));
+    expect(html).not.toContain("AI Overview");
+    expect(html).not.toContain("Pytania (PAA)");
+    withRanks("k1", { desktop: rank({ features: { ...noFeatures, aiOverview: true, aiOverviewCitesUs: true } }) });
+    html = render(await TrackedSection(props));
+    expect(html).toContain("AI Overview: cytuje Was");
+    expect(html).not.toContain("bez Was");
+  });
+
+  it("„blisko top 3”: pozycja 4-20 i wolumen co najmniej 30; poza tym nie", async () => {
+    tracked({ searchVolume: 1900 });
+    withRanks("k1", { desktop: rank({ position: 12 }) });
+    expect(render(await TrackedSection(props))).toContain("blisko top 3");
+    withRanks("k1", { desktop: rank({ position: 2 }) });
+    expect(render(await TrackedSection(props))).not.toContain("blisko top 3");
+    withRanks("k1", { desktop: rank({ position: 21 }) });
+    expect(render(await TrackedSection(props))).not.toContain("blisko top 3");
+    tracked({ searchVolume: 10 });
+    withRanks("k1", { desktop: rank({ position: 12 }) });
+    expect(render(await TrackedSection(props))).not.toContain("blisko top 3");
+    tracked({ searchVolume: null });
+    expect(render(await TrackedSection(props))).not.toContain("blisko top 3");
+  });
+
+  it("„blisko top 3” z telefonu, gdy komputer jest poza zakresem", async () => {
+    tracked({ searchVolume: 1900 });
+    withRanks("k1", { desktop: rank({ position: 37 }), mobile: rank({ position: 15 }) });
+    expect(render(await TrackedSection(props))).toContain("blisko top 3");
+  });
+
+  it("„rankuje inna strona niż docelowa”: adres spoza docelowej ścieżki; ta sama ścieżka (też z „/” na końcu) nie", async () => {
+    tracked({ targetPath: "/szkolenia" });
+    withRanks("k1", { desktop: rank({ url: "https://polskaszkola.ai/blog/ai" }) });
+    expect(render(await TrackedSection(props))).toContain("rankuje inna strona niż docelowa");
+    withRanks("k1", { desktop: rank({ url: "https://polskaszkola.ai/szkolenia/" }) });
+    expect(render(await TrackedSection(props))).not.toContain("rankuje inna strona");
+    tracked({ targetPath: null });
+    withRanks("k1", { desktop: rank({ url: "https://polskaszkola.ai/blog/ai" }) });
+    expect(render(await TrackedSection(props))).not.toContain("rankuje inna strona");
+    tracked({ targetPath: "/szkolenia" });
+    withRanks("k1", { desktop: rank({ url: null, breadcrumb: "https://polskaszkola.ai › blog" }) });
+    expect(render(await TrackedSection(props))).not.toContain("rankuje inna strona");
+  });
+
+  it("odczyty trafiają do właściwej frazy według id, a dla innej frazy nie ma nic", async () => {
+    q.getKeywords.mockResolvedValue([keyword(), keyword({ id: "k2", text: "kurs ai", key: "kurs ai" })]);
+    withRanks("k2", { desktop: rank({ position: 8 }) });
+    const html = render(await TrackedSection(props));
+    expect(html.match(/komputer 8/g)).toHaveLength(1);
+    expect(html.match(/pozycja: jeszcze nie sprawdzano/g)).toHaveLength(1);
+    expect(r.getLatestRanks).toHaveBeenCalledWith("p");
   });
 });
 

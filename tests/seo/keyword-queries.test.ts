@@ -211,12 +211,13 @@ describe("getKeywordJobs", () => {
   const latestCalls = () => calls.filter((c) => !c.filters.some((f) => f[0] === "eq" && f[1] === "status"));
   const doneCall = () => calls.find((c) => c.filters.some((f) => f[0] === "eq" && f[1] === "status"))!;
 
-  it("ostatnie zadanie wolumenów i ostatnie badanie fraz, każde z własnym rodzajem", async () => {
+  it("ostatnie zadanie wolumenów, ostatnie badanie fraz i ostatnie sprawdzenie pozycji, każde z własnym rodzajem", async () => {
     setDb((c) => ({ data: job(String(filterValue(c, "eq", "kind"))) }));
     const jobs = await getKeywordJobs("jb-ok");
     expect(jobs.volumes?.id).toBe("j-keyword_volumes");
     expect(jobs.research?.id).toBe("j-keyword_research");
-    expect(latestCalls().map((c) => filterValue(c, "eq", "kind")).sort()).toEqual(["keyword_research", "keyword_volumes"]);
+    expect(jobs.ranks?.id).toBe("j-rank_check");
+    expect(latestCalls().map((c) => filterValue(c, "eq", "kind")).sort()).toEqual(["keyword_research", "keyword_volumes", "rank_check"]);
     for (const c of latestCalls()) {
       expect(c.table).toBe("seo_jobs");
       expect(filterValue(c, "eq", "project_id")).toBe("jb-ok");
@@ -249,7 +250,7 @@ describe("getKeywordJobs", () => {
 
   it("bez żadnego zadania: puste pola i brak daty; błąd bazy rzuca po polsku", async () => {
     setDb(() => ({ data: null }));
-    expect(await getKeywordJobs("jb-none")).toEqual({ volumes: null, research: null, researchDoneAt: null });
+    expect(await getKeywordJobs("jb-none")).toEqual({ volumes: null, research: null, ranks: null, researchDoneAt: null });
     setDb(() => ({ error: { message: "boom" } }));
     await expect(getKeywordJobs("jb-err")).rejects.toThrow("Nie udało się pobrać zadań fraz: boom");
   });
