@@ -1,0 +1,917 @@
+{
+ "version": "0.1.20261103",
+ "status_code": 20000,
+ "status_message": "Ok.",
+ "time": "0.0445 sec.",
+ "cost": 0.0012,
+ "tasks_count": 1,
+ "tasks_error": 0,
+ "tasks": [
+  {
+   "id": "11031320-2787-0066-0000-77a0b26226a0",
+   "status_code": 20000,
+   "status_message": "Ok.",
+   "time": "0.0159 sec.",
+   "cost": 0.0012,
+   "result_count": 1,
+   "path": [
+    "v3",
+    "serp",
+    "google",
+    "organic",
+    "task_get",
+    "advanced",
+    "11031320-2787-0066-0000-77a0b26226a0"
+   ],
+   "data": {
+    "api": "serp",
+    "function": "task_get",
+    "se": "google",
+    "se_type": "organic",
+    "location_code": 2616,
+    "language_code": "pl",
+    "depth": 100,
+    "load_async_ai_overview": true,
+    "stop_crawl_on_match": [
+     {
+      "match_value": "polskaszkola.ai",
+      "match_type": "with_subdomains"
+     }
+    ],
+    "keyword": "polska szkoła ai",
+    "device": "desktop",
+    "tag": "brand-desktop",
+    "os": "windows"
+   },
+   "result": [
+    {
+     "keyword": "polska szkoła ai",
+     "type": "organic",
+     "se_domain": "google.com",
+     "location_code": 2616,
+     "language_code": "pl",
+     "check_url": "https://www.google.com/search?q=polska%20szko%C5%82a%20ai&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+     "datetime": "2026-11-03 13:20:34 +00:00",
+     "spell": null,
+     "refinement_chips": {
+      "type": "refinement_chips",
+      "xpath": "/html[1]/body[1]/div[3]/div[1]/div[5]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]",
+      "items": [
+       {
+        "type": "refinement_chips_element",
+        "title": "Opinie",
+        "url": "https://www.google.com/search?sca_esv=83f312d482a6a4fe&hl=pl&gl=PL&sxsrf=AKL5yDj2eoZ8syS5_nEY98MfmkZ63aM4Lg:1793712015722&q=polska+szko%C5%82a+ai+opinie&uds=AE2AFgbf06ZzDvczg9XBG5Z3qflXbyT2W-ZyUIdqv7s2sE-FvPJyJrGrl1Ov5mi1gxbIrZ_mKgyHaksHzl7Yn-hDpxcQEaRaAw3LeqphusdkJe5cITj8faXpjyNnmxBVof-Q5UQLk9noZuMLXiyaAEToEsHnWZySevkrjpIMwSZZTIV43ACpYUU&si=AE1YtOqiKPb2pdLXAi8quZ9vbH4aVq_aX8-3H9iFBLpRNK95c9N5syp7fKdXOO-LEdOjlOOhc-6zX0OWA-iMdOYrh-kmPnLH1EUVhKzh_9uSunwMxT2OourM1qKHaCiKR3b215mke1Ucf3Nxgpb3vI4naI-TbxQ4UA%3D%3D&sa=X&ved=2ahUKEwiuxZr88euXAxWTzDgGHUf9N2MQxKsJKAB6BAgMEAE&ictx=1",
+        "domain": "www.google.com",
+        "options": null
+       }
+      ]
+     },
+     "item_types": [
+      "ai_overview",
+      "organic",
+      "people_also_search",
+      "related_searches",
+      "knowledge_graph",
+      "google_reviews"
+     ],
+     "se_results_count": 122,
+     "pages_count": 1,
+     "items_count": 14,
+     "items": [
+      {
+       "type": "ai_overview",
+       "rank_group": 1,
+       "rank_absolute": 1,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]",
+       "asynchronous_ai_overview": true,
+       "markdown": "Sztuczna inteligencja w polskiej edukacji i na rynku szkoleń rozwija się w kilku głównych kierunkach – od `inicjatyw państwowych dla nauczycieli po komercyjne akademie i kursy akademickie`.\n\n### 1. Edukacja szkolna i dla nauczycieli\n\n- **Projekt „Lekcja:AI”** – bezpłatny program szkoleniowy dla 11 tysięcy nauczycieli szkół podstawowych i średnich realizowany do czerwca 2027 roku przez Fundację Orange, Fundację Rozwoju Społeczeństwa Informacyjnego oraz No Input Signal sp. z o.o., finansowany ze środków Funduszy Europejskich (FERS 2021–2027). Rejestracja odbywa się na stronie [Portal Gov.pl](https://www.gov.pl/web/edukacja/bezplatne-szkolenia-o-ai-dla-11-tysiecy-nauczycieli).[[1]](https://www.gov.pl/web/edukacja/bezplatne-szkolenia-o-ai-dla-11-tysiecy-nauczycieli)\n- **Luka w systemie** – formalne programy nauczania w polskich szkołach często nie nadążają za tempem rozwoju technologii, dlatego wielu uczniów zdobywa wiedzę o AI na własną rękę (kursy online, webinary) [Szkoła nie nadąża za AI, więc młodzi uczą się sami](https://www.telewizjagorzow.pl/artykul/15716,szkola-nie-nadaza-za-ai-wiec-mlodzi-ucza-sie-sami).[[1]](https://www.telewizjagorzow.pl/artykul/15716,szkola-nie-nadaza-za-ai-wiec-mlodzi-ucza-sie-sami)\n\n### 2. Kursy ogólnodostępne i fundacyjne\n\n- **AI od podstaw (PFR)** – bezpłatny kurs online przygotowany przez Polski Fundusz Rozwoju S.A. skierowany do początkujących, przedsiębiorców, marketerów i małych firm, dostępny w [Strefie Wiedzy PFR](https://pfr.pl/artykul/ai-od-podstaw-wez-udzial-w-bezplatnym-kursie-online-ktory-usprawni-twoja-codzienna-prace).[[1]](https://pfr.pl/artykul/ai-od-podstaw-wez-udzial-w-bezplatnym-kursie-online-ktory-usprawni-twoja-codzienna-prace)\n- **Santander | Sztuczna Inteligencja (AI) dla każdego** – cykliczne programy stypendialne (np. we współpracy z Politechniką Łódzką i Santander Open Academy) oferujące tysiące miejsc na szkolenia z zakresu podstaw AI.[[1]](https://app.santanderopenacademy.com/pl/program/sztuczna-inteligencja-ai-dla-kazdego-2025)\n\n### 3. Akademia i rynek komercyjny\n\n- **Uczelnie wyższe** – kierunki i specjalności takie jak *Informatyka ze specjalnością sztuczna inteligencja* (np. WSPA) oraz kursy podyplomowe (np. *Gen AI od podstaw* w Akademii Leona Koźmińskiego).[[1]](https://www.kozminski.edu.pl/pl/oferta-edukacyjna/kursy-i-szkolenia/technologie-jutra-dla-kazdego-gen-ai-od-podstaw)[[2]](https://wspa.pl/blog/czego-nauczysz-sie-na-studiach-informatyka-ze-specjalnoscia-sztuczna-inteligencja/)\n- **Polska Akademia AI (PAAI)** – organizacja oferująca szkolenia i warsztaty z generatywnej AI, prompt engineeringu i wdrażania modeli językowych (ChatGPT, Gemini, Claude) dopasowane do potrzeb firm.[[1]](https://www.paai.pl/)[[2]](https://paai.pl/oferta)\n- **Comarch AI Courses** – komercyjne bootcampy, szkolenia z ChatGPT Plus oraz kursy branżowe z dofinansowaniem (np. z Krajowego Funduszu Szkoleniowego).[[1]](https://www.comarch.pl/szkolenia/ai/)\n\nJeśli szukasz konkretnego rodzaju wsparcia, napisz:\n\n- Czy interesuje Cię **nauka dla dziecka/ucznia**, **szkolenie dla nauczyciela** , czy **kurs zawodowy/biznesowy**?\n- Szukasz czegoś **bezpłatnego** czy komercyjnego z **certyfikatem**?",
+       "items": [
+        {
+         "type": "ai_overview_element",
+         "position": "left",
+         "title": null,
+         "text": "Sztuczna inteligencja w polskiej edukacji i na rynku szkoleń rozwija się w kilku głównych kierunkach – od inicjatyw państwowych dla nauczycieli po komercyjne akademie i kursy akademickie.",
+         "markdown": "Sztuczna inteligencja w polskiej edukacji i na rynku szkoleń rozwija się w kilku głównych kierunkach – od `inicjatyw państwowych dla nauczycieli po komercyjne akademie i kursy akademickie`.",
+         "links": null,
+         "images": null,
+         "references": null
+        },
+        {
+         "type": "ai_overview_element",
+         "position": "left",
+         "title": "1. Edukacja szkolna i dla nauczycieli",
+         "text": "Projekt „Lekcja:AI” – bezpłatny program szkoleniowy dla 11 tysięcy nauczycieli szkół podstawowych i średnich realizowany do czerwca 2027 roku przez Fundację Orange, Fundację Rozwoju Społeczeństwa Informacyjnego oraz No Input Signal sp. z o.o., finansowany ze środków Funduszy Europejskich (FERS 2021–2027). Rejestracja odbywa się na stronie Portal Gov.pl. Luka w systemie – formalne programy nauczania w polskich szkołach często nie nadążają za tempem rozwoju technologii, dlatego wielu uczniów zdobywa wiedzę o AI na własną rękę (kursy online, webinary) Szkoła nie nadąża za AI, więc młodzi uczą się sami.",
+         "markdown": "- **Projekt „Lekcja:AI”** – bezpłatny program szkoleniowy dla 11 tysięcy nauczycieli szkół podstawowych i średnich realizowany do czerwca 2027 roku przez Fundację Orange, Fundację Rozwoju Społeczeństwa Informacyjnego oraz No Input Signal sp. z o.o., finansowany ze środków Funduszy Europejskich (FERS 2021–2027). Rejestracja odbywa się na stronie [Portal Gov.pl](https://www.gov.pl/web/edukacja/bezplatne-szkolenia-o-ai-dla-11-tysiecy-nauczycieli).[[1]](https://www.gov.pl/web/edukacja/bezplatne-szkolenia-o-ai-dla-11-tysiecy-nauczycieli)\n- **Luka w systemie** – formalne programy nauczania w polskich szkołach często nie nadążają za tempem rozwoju technologii, dlatego wielu uczniów zdobywa wiedzę o AI na własną rękę (kursy online, webinary) [Szkoła nie nadąża za AI, więc młodzi uczą się sami](https://www.telewizjagorzow.pl/artykul/15716,szkola-nie-nadaza-za-ai-wiec-mlodzi-ucza-sie-sami).[[1]](https://www.telewizjagorzow.pl/artykul/15716,szkola-nie-nadaza-za-ai-wiec-mlodzi-ucza-sie-sami)",
+         "links": [
+          {
+           "type": "link_element",
+           "title": "Portal Gov.pl",
+           "description": null,
+           "url": "https://www.gov.pl/web/edukacja/bezplatne-szkolenia-o-ai-dla-11-tysiecy-nauczycieli",
+           "domain": "www.gov.pl"
+          },
+          {
+           "type": "link_element",
+           "title": "Szkoła nie nadąża za AI, więc młodzi uczą się sami",
+           "description": null,
+           "url": "https://www.telewizjagorzow.pl/artykul/15716,szkola-nie-nadaza-za-ai-wiec-mlodzi-ucza-sie-sami",
+           "domain": "www.telewizjagorzow.pl"
+          }
+         ],
+         "images": null,
+         "references": [
+          {
+           "type": "ai_overview_reference",
+           "position": "left",
+           "source": "Gov.pl",
+           "domain": "www.gov.pl",
+           "url": "https://www.gov.pl/web/edukacja/bezplatne-szkolenia-o-ai-dla-11-tysiecy-nauczycieli",
+           "title": "Bezpłatne szkolenia o AI dla 11 tysięcy nauczycieli - Ministerstwo Edukacji Narodowej - Portal Gov.pl",
+           "text": "* Projekt: Lekcja:AI (bezpłatne szkolenia o AI dla szkół) * Cel: 11 tys. nauczycieli szkół podstawowych i średnich * Okres: do VI ..."
+          },
+          {
+           "type": "ai_overview_reference",
+           "position": "left",
+           "source": "Telewizja Gorzów",
+           "domain": "www.telewizjagorzow.pl",
+           "url": "https://www.telewizjagorzow.pl/artykul/15716,szkola-nie-nadaza-za-ai-wiec-mlodzi-ucza-sie-sami",
+           "title": "Szkoła nie nadąża za AI, więc młodzi uczą się sami",
+           "text": "Uczniowie chcą się uczyć AI w szkołach, ale system nie nadąża. Dlatego wiedzę zdobywają poza nim – na kursach i webinarach."
+          }
+         ]
+        },
+        {
+         "type": "ai_overview_element",
+         "position": "left",
+         "title": "2. Kursy ogólnodostępne i fundacyjne",
+         "text": "AI od podstaw (PFR) – bezpłatny kurs online przygotowany przez Polski Fundusz Rozwoju S.A. skierowany do początkujących, przedsiębiorców, marketerów i małych firm, dostępny w Strefie Wiedzy PFR. Santander | Sztuczna Inteligencja (AI) dla każdego – cykliczne programy stypendialne (np. we współpracy z Politechniką Łódzką i Santander Open Academy) oferujące tysiące miejsc na szkolenia z zakresu podstaw AI.",
+         "markdown": "- **AI od podstaw (PFR)** – bezpłatny kurs online przygotowany przez Polski Fundusz Rozwoju S.A. skierowany do początkujących, przedsiębiorców, marketerów i małych firm, dostępny w [Strefie Wiedzy PFR](https://pfr.pl/artykul/ai-od-podstaw-wez-udzial-w-bezplatnym-kursie-online-ktory-usprawni-twoja-codzienna-prace).[[1]](https://pfr.pl/artykul/ai-od-podstaw-wez-udzial-w-bezplatnym-kursie-online-ktory-usprawni-twoja-codzienna-prace)\n- **Santander | Sztuczna Inteligencja (AI) dla każdego** – cykliczne programy stypendialne (np. we współpracy z Politechniką Łódzką i Santander Open Academy) oferujące tysiące miejsc na szkolenia z zakresu podstaw AI.[[1]](https://app.santanderopenacademy.com/pl/program/sztuczna-inteligencja-ai-dla-kazdego-2025)",
+         "links": [
+          {
+           "type": "link_element",
+           "title": "Strefie Wiedzy PFR",
+           "description": null,
+           "url": "https://pfr.pl/artykul/ai-od-podstaw-wez-udzial-w-bezplatnym-kursie-online-ktory-usprawni-twoja-codzienna-prace",
+           "domain": "pfr.pl"
+          }
+         ],
+         "images": null,
+         "references": [
+          {
+           "type": "ai_overview_reference",
+           "position": "left",
+           "source": "Polski Fundusz Rozwoju S.A.",
+           "domain": "pfr.pl",
+           "url": "https://pfr.pl/artykul/ai-od-podstaw-wez-udzial-w-bezplatnym-kursie-online-ktory-usprawni-twoja-codzienna-prace",
+           "title": "AI od podstaw. Weź udział w bezpłatnym kursie online, który usprawni Twoją codzienną pracę! | Serwis Spółki PFR S.A.",
+           "text": "* Org: PFR S.A. (Polski Fundusz Rozwoju) * Pub: 09.09.2024 * Prod: Free online course \"AI od podstaw\" via Strefa Wiedzy PFR platfo..."
+          },
+          {
+           "type": "ai_overview_reference",
+           "position": "left",
+           "source": "Santander Open Academy",
+           "domain": "app.santanderopenacademy.com",
+           "url": "https://app.santanderopenacademy.com/pl/program/sztuczna-inteligencja-ai-dla-kazdego-2025",
+           "title": "Kurs Santander | Sztuczna Inteligencja (AI) dla każdego 2025 | Politechnika Łódzka | Santander Open Academy",
+           "text": "Program: Santander | Sztuczna Inteligencja (AI) dla każdego 2025 Organoleptor: Politechnika Łódzka, Santander Open Academy, eksper..."
+          }
+         ]
+        },
+        {
+         "type": "ai_overview_element",
+         "position": "left",
+         "title": "3. Akademia i rynek komercyjny",
+         "text": "Uczelnie wyższe – kierunki i specjalności takie jak Informatyka ze specjalnością sztuczna inteligencja (np. WSPA) oraz kursy podyplomowe (np. Gen AI od podstaw w Akademii Leona Koźmińskiego). Polska Akademia AI (PAAI) – organizacja oferująca szkolenia i warsztaty z generatywnej AI, prompt engineeringu i wdrażania modeli językowych (ChatGPT, Gemini, Claude) dopasowane do potrzeb firm. Comarch AI Courses – komercyjne bootcampy, szkolenia z ChatGPT Plus oraz kursy branżowe z dofinansowaniem (np. z Krajowego Funduszu Szkoleniowego).",
+         "markdown": "- **Uczelnie wyższe** – kierunki i specjalności takie jak *Informatyka ze specjalnością sztuczna inteligencja* (np. WSPA) oraz kursy podyplomowe (np. *Gen AI od podstaw* w Akademii Leona Koźmińskiego).[[1]](https://www.kozminski.edu.pl/pl/oferta-edukacyjna/kursy-i-szkolenia/technologie-jutra-dla-kazdego-gen-ai-od-podstaw)[[2]](https://wspa.pl/blog/czego-nauczysz-sie-na-studiach-informatyka-ze-specjalnoscia-sztuczna-inteligencja/)\n- **Polska Akademia AI (PAAI)** – organizacja oferująca szkolenia i warsztaty z generatywnej AI, prompt engineeringu i wdrażania modeli językowych (ChatGPT, Gemini, Claude) dopasowane do potrzeb firm.[[1]](https://www.paai.pl/)[[2]](https://paai.pl/oferta)\n- **Comarch AI Courses** – komercyjne bootcampy, szkolenia z ChatGPT Plus oraz kursy branżowe z dofinansowaniem (np. z Krajowego Funduszu Szkoleniowego).[[1]](https://www.comarch.pl/szkolenia/ai/)",
+         "links": null,
+         "images": null,
+         "references": [
+          {
+           "type": "ai_overview_reference",
+           "position": "left",
+           "source": "Kozminski",
+           "domain": "www.kozminski.edu.pl",
+           "url": "https://www.kozminski.edu.pl/pl/oferta-edukacyjna/kursy-i-szkolenia/technologie-jutra-dla-kazdego-gen-ai-od-podstaw",
+           "title": "Technologie jutra dla każdego: Gen AI od podstaw",
+           "text": "Długość kursu: 4 tygodnie, 8h tygodniowo, 32h łącznie. 100% online – Kurs jest w 100% online i nie wymaga fizycznego pobytu na Ucz..."
+          },
+          {
+           "type": "ai_overview_reference",
+           "position": "left",
+           "source": "Wyższa Szkoła Przedsiębiorczości i Administracji w Lublinie",
+           "domain": "wspa.pl",
+           "url": "https://wspa.pl/blog/czego-nauczysz-sie-na-studiach-informatyka-ze-specjalnoscia-sztuczna-inteligencja/",
+           "title": "Czego nauczysz się na studiach Informatyka ze specjalnością ...",
+           "text": "Absolwenci mogą pracować jako AI Engineer, Machine Learning Engineer, Data Analyst, Data Scientist, Software Developer czy specjal..."
+          },
+          {
+           "type": "ai_overview_reference",
+           "position": "left",
+           "source": "Polska Akademia AI",
+           "domain": "www.paai.pl",
+           "url": "https://www.paai.pl/",
+           "title": "Polska Akademia AI",
+           "text": "Szkolenia i doradztwo AI szyte na miarę Twojej firmy. Od analizy potrzeb, przez szkolenia, po wdrożenie rozwiązań opartych o sztuc..."
+          },
+          {
+           "type": "ai_overview_reference",
+           "position": "left",
+           "source": "Polska Akademia AI",
+           "domain": "paai.pl",
+           "url": "https://paai.pl/oferta",
+           "title": "Oferta - Polska Akademia AI",
+           "text": "Nasze szkolenia są projektowane z myślą o konkretnych rolach i wyzwaniach w firmach – od administracji, przez marketing, po zarząd..."
+          },
+          {
+           "type": "ai_overview_reference",
+           "position": "left",
+           "source": "comarch sa",
+           "domain": "www.comarch.pl",
+           "url": "https://www.comarch.pl/szkolenia/ai/",
+           "title": "Szkolenia AI - Odkryj potencjał sztucznej inteligencji!",
+           "text": "Comarch AI Courses: Oferta obejmuje Comarch Bootcamp, AI w codziennej pracy, Masterclass AI, AI w Biznesie oraz kursy branżowe (IT..."
+          }
+         ]
+        },
+        {
+         "type": "ai_overview_element",
+         "position": "left",
+         "title": null,
+         "text": "Jeśli szukasz konkretnego rodzaju wsparcia, napisz:Czy interesuje Cię nauka dla dziecka/ucznia, szkolenie dla nauczyciela, czy kurs zawodowy/biznesowy ?\nSzukasz czegoś bezpłatnego czy komercyjnego z certyfikatem ?",
+         "markdown": "Jeśli szukasz konkretnego rodzaju wsparcia, napisz:\n\n- Czy interesuje Cię **nauka dla dziecka/ucznia**, **szkolenie dla nauczyciela** , czy **kurs zawodowy/biznesowy**?\n- Szukasz czegoś **bezpłatnego** czy komercyjnego z **certyfikatem**?",
+         "links": null,
+         "images": null,
+         "references": null
+        }
+       ],
+       "references": [
+        {
+         "type": "ai_overview_reference",
+         "position": "right",
+         "source": "Telewizja Gorzów",
+         "domain": "www.telewizjagorzow.pl",
+         "url": "https://www.telewizjagorzow.pl/artykul/15716,szkola-nie-nadaza-za-ai-wiec-mlodzi-ucza-sie-sami",
+         "title": "Szkoła nie nadąża za AI, więc młodzi uczą się sami",
+         "text": "Uczniowie chcą się uczyć AI w szkołach, ale system nie nadąża. Dlatego wiedzę zdobywają poza nim – na kursach i webinarach."
+        },
+        {
+         "type": "ai_overview_reference",
+         "position": "right",
+         "source": "Kozminski",
+         "domain": "www.kozminski.edu.pl",
+         "url": "https://www.kozminski.edu.pl/pl/oferta-edukacyjna/kursy-i-szkolenia/technologie-jutra-dla-kazdego-gen-ai-od-podstaw",
+         "title": "Technologie jutra dla każdego: Gen AI od podstaw",
+         "text": "Długość kursu: 4 tygodnie, 8h tygodniowo, 32h łącznie. 100% online – Kurs jest w 100% online i nie wymaga fizycznego pobytu na Uczelni."
+        },
+        {
+         "type": "ai_overview_reference",
+         "position": "right",
+         "source": "Polski Fundusz Rozwoju S.A.",
+         "domain": "pfr.pl",
+         "url": "https://pfr.pl/artykul/ai-od-podstaw-wez-udzial-w-bezplatnym-kursie-online-ktory-usprawni-twoja-codzienna-prace",
+         "title": "AI od podstaw. Weź udział w bezpłatnym kursie online, który usprawni Twoją codzienną pracę! | Serwis Spółki PFR S.A.",
+         "text": "* Org: PFR S.A. (Polski Fundusz Rozwoju) * Pub: 09.09.2024 * Prod: Free online course \"AI od podstaw\" via Strefa Wiedzy PFR platform. * Target: Beginners, entrepre..."
+        }
+       ],
+       "rectangle": null
+      },
+      {
+       "type": "organic",
+       "rank_group": 1,
+       "rank_absolute": 2,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[2]/div[1]/div[2]/div[1]/div[1]/div[2]/div[2]/div[1]",
+       "domain": "google.com",
+       "title": "Szkoła nie nadąża za AI, więc młodzi uczą się sami",
+       "url": "https://google.com/goto?url=CAESmQEB6zswFVRNeYyJY0u6NJNXyk-I0Ffb4IhdFCsqmSe9ezF5ZfTK52IZ_m_YC4hnN3ieKHblMOyatKkR-QFq4HljJCg64yHR6M-AqlN6Rp5aYsel3CVR5s9_baipNg5CpR4y8o41JG833QsRvzu8VcWBEixdjBY5xfB8ZAj6hVAso697DFfBkOyFIzGyT4q-_qXtKlxC3HlQn0g",
+       "cache_url": null,
+       "related_search_url": null,
+       "breadcrumb": "https://www.telewizjagorzow.pl › Artykuły › Wiadomości",
+       "website_name": "Telewizja Gorzów",
+       "is_image": false,
+       "is_video": false,
+       "is_featured_snippet": false,
+       "is_malicious": false,
+       "is_web_story": false,
+       "checks": null,
+       "description": "3 maj 2026 — Uczniowie chcą się uczyć AI w szkołach, ale system nie nadąża. Dlatego wiedzę zdobywają poza nim – na kursach i webinarach.",
+       "pre_snippet": "05/03/2026 00:00:00",
+       "extended_snippet": null,
+       "images": null,
+       "amp_version": false,
+       "rating": null,
+       "price": null,
+       "highlighted": [
+        "AI"
+       ],
+       "links": null,
+       "faq": null,
+       "extended_people_also_search": null,
+       "about_this_result": null,
+       "related_result": null,
+       "timestamp": "2026-05-03 00:00:00 +00:00",
+       "rectangle": null
+      },
+      {
+       "type": "organic",
+       "rank_group": 2,
+       "rank_absolute": 3,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[2]/div[1]/div[2]/div[1]/div[1]/div[4]/div[1]/div[1]",
+       "domain": "pfr.pl",
+       "title": "Centrum Kompetencji AI",
+       "url": "https://pfr.pl/centrum-kompetencji-ai",
+       "cache_url": null,
+       "related_search_url": null,
+       "breadcrumb": "https://pfr.pl › centrum-kompetencji-ai",
+       "website_name": "Polski Fundusz Rozwoju S.A.",
+       "is_image": false,
+       "is_video": false,
+       "is_featured_snippet": false,
+       "is_malicious": false,
+       "is_web_story": false,
+       "checks": null,
+       "description": "Rozwijamy umiejętności cyfrowe liderów i pracowników poprzez szkolenia, warsztaty i dostęp do polskich zasobów, takich jak fabryki AI i środowiska testowe.",
+       "pre_snippet": null,
+       "extended_snippet": null,
+       "images": null,
+       "amp_version": false,
+       "rating": null,
+       "price": null,
+       "highlighted": [
+        "AI"
+       ],
+       "links": null,
+       "faq": null,
+       "extended_people_also_search": null,
+       "about_this_result": null,
+       "related_result": null,
+       "timestamp": null,
+       "rectangle": null
+      },
+      {
+       "type": "organic",
+       "rank_group": 3,
+       "rank_absolute": 4,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[2]/div[1]/div[2]/div[1]/div[1]/div[6]/div[1]/div[1]",
+       "domain": "google.com",
+       "title": "Polska Szkoła AI: firma AI - AI-Katalog.pl",
+       "url": "https://google.com/goto?url=CAESaAHrOzAVZ6EXT68XZSM3rEmR1pqh_-5xuscYwGEUqFnduiGPg5lFgXqG9W8UMhZXK-iwR6r6m8_C6Xt1upXLJN8r-raFm0mz0Zsczc38BRWOXN39aSMo0Ni4S0PdCmig4qc1t2g3A_Xr",
+       "cache_url": null,
+       "related_search_url": null,
+       "breadcrumb": "https://ai-katalog.pl › firma › polska-szkola-ai",
+       "website_name": "ai-katalog.pl",
+       "is_image": false,
+       "is_video": false,
+       "is_featured_snippet": false,
+       "is_malicious": false,
+       "is_web_story": false,
+       "checks": null,
+       "description": "28 wrz 2026 — Polska Szkoła AI publicznie opisuje szkolenia w dziedzinie AI. Oficjalna strona opisuje działalność szkoleniową na polskim rynku.",
+       "pre_snippet": "09/28/2026 00:00:00",
+       "extended_snippet": null,
+       "images": null,
+       "amp_version": false,
+       "rating": null,
+       "price": null,
+       "highlighted": [
+        "publicznie opisuje szkolenia w dziedzinie AI"
+       ],
+       "links": null,
+       "faq": null,
+       "extended_people_also_search": null,
+       "about_this_result": null,
+       "related_result": null,
+       "timestamp": "2026-09-28 00:00:00 +00:00",
+       "rectangle": null
+      },
+      {
+       "type": "organic",
+       "rank_group": 4,
+       "rank_absolute": 5,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[2]/div[1]/div[2]/div[1]/div[1]/div[8]/div[1]/div[1]",
+       "domain": "www.gov.pl",
+       "title": "szkolenia AI dla 11 tys. nauczycieli",
+       "url": "https://www.gov.pl/web/edukacja/bezplatne-szkolenia-o-ai-dla-11-tysiecy-nauczycieli",
+       "cache_url": null,
+       "related_search_url": null,
+       "breadcrumb": "https://www.gov.pl › web › edukacja › bezplatne-szkol...",
+       "website_name": "Gov.pl",
+       "is_image": false,
+       "is_video": false,
+       "is_featured_snippet": false,
+       "is_malicious": false,
+       "is_web_story": false,
+       "checks": null,
+       "description": null,
+       "pre_snippet": null,
+       "extended_snippet": null,
+       "images": null,
+       "amp_version": false,
+       "rating": null,
+       "price": null,
+       "highlighted": null,
+       "links": null,
+       "faq": null,
+       "extended_people_also_search": null,
+       "about_this_result": null,
+       "related_result": null,
+       "timestamp": null,
+       "rectangle": null
+      },
+      {
+       "type": "people_also_search",
+       "rank_group": 1,
+       "rank_absolute": 6,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[2]/div[1]/div[2]/div[1]/div[1]/div[9]",
+       "title": "Znajdź powiązane produkty i usługi",
+       "items": [
+        "Kurs AI z certyfikatem online",
+        "Chat AI polski",
+        "AI w edukacji szkolenie",
+        "Szkolenie AI w administracji",
+        "Szkolenie AI dla nauczycieli",
+        "AI w budownictwie szkolenie"
+       ],
+       "rectangle": null
+      },
+      {
+       "type": "organic",
+       "rank_group": 5,
+       "rank_absolute": 7,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[2]/div[1]/div[2]/div[1]/div[1]/div[10]/div[1]/div[1]",
+       "domain": "www.instagram.com",
+       "title": "Szkoła Ai",
+       "url": "https://www.instagram.com/popular/szko%C5%82a-ai/",
+       "cache_url": null,
+       "related_search_url": null,
+       "breadcrumb": "https://www.instagram.com › popular › szkoła-ai",
+       "website_name": "Instagram",
+       "is_image": false,
+       "is_video": false,
+       "is_featured_snippet": false,
+       "is_malicious": false,
+       "is_web_story": false,
+       "checks": null,
+       "description": "⤵️Napisz AKADEMIA, a wyślę Ci szczegóły szkolenia, w którym otrzymasz gotowe pomysły, sposoby i inspiracje na pracę z narzędziami AI na lekcji w szkole.",
+       "pre_snippet": null,
+       "extended_snippet": null,
+       "images": null,
+       "amp_version": false,
+       "rating": null,
+       "price": null,
+       "highlighted": [
+        "AI"
+       ],
+       "links": null,
+       "faq": null,
+       "extended_people_also_search": null,
+       "about_this_result": null,
+       "related_result": null,
+       "timestamp": null,
+       "rectangle": null
+      },
+      {
+       "type": "organic",
+       "rank_group": 6,
+       "rank_absolute": 8,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[2]/div[1]/div[2]/div[1]/div[1]/div[12]/div[1]/div[1]",
+       "domain": "google.com",
+       "title": "Szkolenia AI - Odkryj potencjał sztucznej inteligencji!",
+       "url": "https://google.com/goto?url=CAESXwHrOzAVPno4dyRN5aIrJUw0tqREVzP6VIeIjMwdgrhj_lnSl71p7mWMiw7BVKOwXYIaSWqvGROJEqbmBm3S3AY0GOI8bWFfIw9z-__FZXsDKWI-49L28XPyQGzkjyLr",
+       "cache_url": null,
+       "related_search_url": null,
+       "breadcrumb": "https://www.comarch.pl › Szkolenia › AI",
+       "website_name": "comarch sa",
+       "is_image": false,
+       "is_video": false,
+       "is_featured_snippet": false,
+       "is_malicious": false,
+       "is_web_story": false,
+       "checks": null,
+       "description": "Rozwijaj się z szkoleniami z AI od podstaw do eksperta! Zdobądź cenne umiejętności z zakresu sztucznej inteligencji.",
+       "pre_snippet": null,
+       "extended_snippet": null,
+       "images": null,
+       "amp_version": false,
+       "rating": null,
+       "price": null,
+       "highlighted": [
+        "AI"
+       ],
+       "links": null,
+       "faq": null,
+       "extended_people_also_search": null,
+       "about_this_result": null,
+       "related_result": null,
+       "timestamp": null,
+       "rectangle": null
+      },
+      {
+       "type": "organic",
+       "rank_group": 7,
+       "rank_absolute": 9,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[2]/div[1]/div[2]/div[1]/div[1]/div[14]/div[1]/div[1]",
+       "domain": "google.com",
+       "title": "AI od podstaw. Weź udział w bezpłatnym kursie online, ...",
+       "url": "https://google.com/goto?url=CAESqgEB6zswFQURcj6cfAUDsckP6BoLdthuMqopk8-SFvF22QrqK3PhB0FO4nJDHxU83W6Oam9TidrQT4o1cWqvl_Ao394xandoWZbJKHs3oZiu3d7B-Y4BUkjB5wsxJy37yTL-Sfy0O3fyP_qd1uiCD_RR72bjmm7LT07b6FjB_sU7JC_vc8yr3Q3lwSEg6O4KdjJWX7UXnI49hbquV3Mf6LNLkwzQuvvlsYuMCw",
+       "cache_url": null,
+       "related_search_url": null,
+       "breadcrumb": "https://pfr.pl › artykul › ai-od-podstaw-wez-udzial-w-bez...",
+       "website_name": "Polski Fundusz Rozwoju S.A.",
+       "is_image": false,
+       "is_video": false,
+       "is_featured_snippet": false,
+       "is_malicious": false,
+       "is_web_story": false,
+       "checks": null,
+       "description": "9 wrz 2024 — AI od podstaw. Weź udział w bezpłatnym kursie online, który usprawni Twoją codzienną pracę! · Poznaj AI w praktyce – na własnych warunkach!",
+       "pre_snippet": "09/09/2024 00:00:00",
+       "extended_snippet": null,
+       "images": null,
+       "amp_version": false,
+       "rating": null,
+       "price": null,
+       "highlighted": [
+        "AI od podstaw"
+       ],
+       "links": null,
+       "faq": null,
+       "extended_people_also_search": null,
+       "about_this_result": null,
+       "related_result": null,
+       "timestamp": "2024-09-09 00:00:00 +00:00",
+       "rectangle": null
+      },
+      {
+       "type": "organic",
+       "rank_group": 8,
+       "rank_absolute": 10,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[2]/div[1]/div[2]/div[1]/div[1]/div[16]/div[1]/div[1]",
+       "domain": "google.com",
+       "title": "Kurs Santander | Sztuczna Inteligencja (AI) dla każdego 2025",
+       "url": "https://google.com/goto?url=CAESlAEB6zswFV6jDDMk7hm9r42f56AJZHat0bSOZHuW6kvVrF70hUVrBHYTzrK0yicN95InOXuZ__b_FIRATKaKRJwWd2pOsjFS3m5KvvDr_iqltCrpPsOUDxJxqoN87gLQWaTf0fnPRxV4mK0cERN0Vg9TKx_1q58idlcMMq9JF6fJMNW6kLccdcOryo9ZhJTWByE26CWI",
+       "cache_url": null,
+       "related_search_url": null,
+       "breadcrumb": "https://app.santanderopenacademy.com › program › szt...",
+       "website_name": "Santander Open Academy",
+       "is_image": false,
+       "is_video": false,
+       "is_featured_snippet": false,
+       "is_malicious": false,
+       "is_web_story": false,
+       "checks": null,
+       "description": "Aplikuj na bezpłatne szkolenie z zakresu sztucznej inteligencji przygotowane przez eksperta od AI - Macieja Sawickiego. Zrozum świat sztucznej inteligencji i ...",
+       "pre_snippet": null,
+       "extended_snippet": null,
+       "images": null,
+       "amp_version": false,
+       "rating": null,
+       "price": null,
+       "highlighted": [
+        "Aplikuj na bezpłatne szkolenie z zakresu sztucznej inteligencji"
+       ],
+       "links": null,
+       "faq": null,
+       "extended_people_also_search": null,
+       "about_this_result": null,
+       "related_result": null,
+       "timestamp": null,
+       "rectangle": null
+      },
+      {
+       "type": "organic",
+       "rank_group": 9,
+       "rank_absolute": 11,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[2]/div[1]/div[2]/div[1]/div[1]/div[18]/div[1]/div[1]",
+       "domain": "www.paai.pl",
+       "title": "Polska Akademia AI",
+       "url": "https://www.paai.pl/",
+       "cache_url": null,
+       "related_search_url": null,
+       "breadcrumb": "https://www.paai.pl",
+       "website_name": "Polska Akademia AI",
+       "is_image": false,
+       "is_video": false,
+       "is_featured_snippet": false,
+       "is_malicious": false,
+       "is_web_story": false,
+       "checks": null,
+       "description": "Szkolenia i doradztwo AI szyte na miarę Twojej firmy. Od analizy potrzeb, przez szkolenia, po wdrożenie rozwiązań opartych o sztuczną inteligencję.",
+       "pre_snippet": null,
+       "extended_snippet": null,
+       "images": null,
+       "amp_version": false,
+       "rating": null,
+       "price": null,
+       "highlighted": [
+        "Szkolenia i doradztwo AI szyte na miarę Twojej firmy"
+       ],
+       "links": null,
+       "faq": null,
+       "extended_people_also_search": null,
+       "about_this_result": null,
+       "related_result": null,
+       "timestamp": null,
+       "rectangle": null
+      },
+      {
+       "type": "related_searches",
+       "rank_group": 1,
+       "rank_absolute": 12,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[2]/div[2]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[2]",
+       "items": [
+        "Centrum Kompetencji AI",
+        "Darmowy kurs AI Google",
+        "Darmowy kurs AI z certyfikatem",
+        "Nauka AI od podstaw",
+        "Szkolenie AI w biznesie",
+        "Kurs AI od podstaw",
+        "Szkoła AI",
+        "AI od podstaw PFR"
+       ],
+       "rectangle": null
+      },
+      {
+       "type": "knowledge_graph",
+       "rank_group": 1,
+       "rank_absolute": 1,
+       "page": 1,
+       "position": "right",
+       "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]",
+       "title": "Polska Szkoła AI",
+       "subtitle": "Centrum szkoleniowe we Wrocławiu",
+       "description": "Dodane przez: Polska Szkoła AI \"Polska Szkoła AI szkoli zespoły i liderów w całej Polsce oraz pomaga firmom wdrażać sztuczną inteligencję. Łączymy praktykę AI, psychologię zmiany i UX: pracujemy z narzędziami i z nawykami zespołu, od których zależy, czy AI zostanie w codziennej... Więcej",
+       "card_id": null,
+       "url": "https://polskaszkola.ai/",
+       "image_url": null,
+       "logo_url": null,
+       "cid": "276745301033706330",
+       "items": [
+        {
+         "type": "knowledge_graph_images_item",
+         "rank_group": 0,
+         "rank_absolute": 0,
+         "page": 1,
+         "position": "left",
+         "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]",
+         "link": null,
+         "items": [
+          {
+           "type": "knowledge_graph_images_element",
+           "url": null,
+           "domain": null,
+           "alt": null,
+           "image_url": "https://api.dataforseo.com/cdn/i/11031320-2787-0066-0000-77a0b26226a0:0",
+           "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]"
+          },
+          {
+           "type": "knowledge_graph_images_element",
+           "url": null,
+           "domain": null,
+           "alt": "Mapa: Polska Szkoła AI",
+           "image_url": "https://api.dataforseo.com/cdn/i/11031320-2787-0066-0000-77a0b26226a0:1",
+           "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]"
+          },
+          {
+           "type": "knowledge_graph_images_element",
+           "url": "https://www.google.com/local/place/fid/0x4e88c5d0e841083d:0x3d73262915f635a/photosphere?iu=https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid%3D6I2Vnu3xUTiI4tr78mojYg%26cb_client%3Dsearch.gws-prod.grass%26yaw%3D190.66972%26pitch%3D0%26thumbfov%3D100%26w%3D0%26h%3D0&ik=CAISFjZJMlZudTN4VVRpSTR0cjc4bW9qWWc%3D&sa=X&ved=2ahUKEwiuxZr88euXAxWTzDgGHUf9N2MQpx96BAhFEBA",
+           "domain": "www.google.com",
+           "alt": null,
+           "image_url": "https://api.dataforseo.com/cdn/i/11031320-2787-0066-0000-77a0b26226a0:2",
+           "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[2]/div[1]"
+          }
+         ],
+         "rectangle": null
+        },
+        {
+         "type": "knowledge_graph_description_item",
+         "rank_group": 0,
+         "rank_absolute": 0,
+         "page": 1,
+         "position": "left",
+         "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[5]/div[1]/div[1]/div[1]/div[1]/div[1]",
+         "text": "Dodane przez: Polska Szkoła AI \"Polska Szkoła AI szkoli zespoły i liderów w całej Polsce oraz pomaga firmom wdrażać sztuczną inteligencję. Łączymy praktykę AI, psychologię zmiany i UX: pracujemy z narzędziami i z nawykami zespołu, od których zależy, czy AI zostanie w codziennej... Więcej",
+         "links": [
+          {
+           "type": "link_element",
+           "title": "Więcej",
+           "url": "https://www.google.com/#",
+           "domain": "www.google.com",
+           "description": null,
+           "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[5]/div[1]/div[1]/div[1]/div[1]/div[1]/c-wiz[1]/div[1]/div[2]/div[1]/a[1]"
+          }
+         ],
+         "rectangle": null
+        },
+        {
+         "type": "knowledge_graph_row_item",
+         "rank_group": 0,
+         "rank_absolute": 0,
+         "page": 1,
+         "position": "left",
+         "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]",
+         "title": "Adres",
+         "data_attrid": "kc:/location/location:address",
+         "text": "Plac Solny 15, 50-062 Wrocław",
+         "links": [
+          {
+           "type": "link_element",
+           "title": "Adres",
+           "url": "https://www.google.com/search?sca_esv=83f312d482a6a4fe&hl=pl&gl=PL&sxsrf=AKL5yDj2eoZ8syS5_nEY98MfmkZ63aM4Lg:1793712015722&q=polska+szko%C5%82a+ai+adres&ludocid=276745301033706330&sa=X&ved=2ahUKEwiuxZr88euXAxWTzDgGHUf9N2MQ6BN6BAg3EAI",
+           "domain": "www.google.com",
+           "description": null,
+           "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/span[1]/a[1]"
+          },
+          {
+           "type": "link_element",
+           "title": "Plac Solny 15, 50-062 Wrocław",
+           "url": "https://www.google.com/maps/place//data=!4m2!3m1!1s0x4e88c5d0e841083d:0x3d73262915f635a?sa=X&ved=1t:8290&hl=pl&gl=PL&ictx=111",
+           "domain": "www.google.com",
+           "description": null,
+           "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/a[1]"
+          }
+         ],
+         "rectangle": null
+        },
+        {
+         "type": "knowledge_graph_row_item",
+         "rank_group": 0,
+         "rank_absolute": 0,
+         "page": 1,
+         "position": "left",
+         "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[2]",
+         "title": "Telefon",
+         "data_attrid": "kc:/local:alt phone",
+         "text": "Telefon : 516 646 584",
+         "links": [
+          {
+           "type": "link_element",
+           "title": "Telefon",
+           "url": "https://www.google.com/search?sca_esv=83f312d482a6a4fe&hl=pl&gl=PL&sxsrf=AKL5yDj2eoZ8syS5_nEY98MfmkZ63aM4Lg:1793712015722&q=polska+szko%C5%82a+ai+telefon&ludocid=276745301033706330&sa=X&ved=2ahUKEwiuxZr88euXAxWTzDgGHUf9N2MQ6BN6BAg6EAI",
+           "domain": "www.google.com",
+           "description": null,
+           "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/span[1]/a[1]"
+          },
+          {
+           "type": "link_element",
+           "title": "516 646 584",
+           "url": "https://www.google.com/#",
+           "domain": "www.google.com",
+           "description": null,
+           "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/span[2]/span[1]/a[1]"
+          }
+         ],
+         "rectangle": null
+        },
+        {
+         "type": "knowledge_graph_row_item",
+         "rank_group": 0,
+         "rank_absolute": 0,
+         "page": 1,
+         "position": "left",
+         "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[3]",
+         "title": "Godziny",
+         "data_attrid": "kc:/location/location:hours",
+         "text": "Otwarte · Zamknięcie: 17:00",
+         "links": [
+          {
+           "type": "link_element",
+           "title": "Godziny",
+           "url": "https://www.google.com/search?sca_esv=83f312d482a6a4fe&hl=pl&gl=PL&sxsrf=AKL5yDj2eoZ8syS5_nEY98MfmkZ63aM4Lg:1793712015722&q=polska+szko%C5%82a+ai+godziny+otwarcia&ludocid=276745301033706330&sa=X&ved=2ahUKEwiuxZr88euXAxWTzDgGHUf9N2MQ6BN6BAg2EAI",
+           "domain": "www.google.com",
+           "description": null,
+           "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[3]/div[1]/span[1]/a[1]"
+          },
+          {
+           "type": "link_element",
+           "title": "Więcej informacji",
+           "url": "https://support.google.com/websearch/answer/3338405",
+           "domain": "support.google.com",
+           "description": null,
+           "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[2]/div[2]/div[1]/div[1]/div[1]/g-dialog[1]/div[1]/div[2]/span[1]/div[1]/div[1]/div[1]/p[2]/a[1]"
+          }
+         ],
+         "rectangle": null
+        },
+        {
+         "type": "knowledge_graph_row_item",
+         "rank_group": 0,
+         "rank_absolute": 0,
+         "page": 1,
+         "position": "left",
+         "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]",
+         "title": "Wizyty",
+         "data_attrid": "kc:/local:appointment",
+         "text": "Wizyty: Zarezerwuj z Google",
+         "links": [
+          {
+           "type": "link_element",
+           "title": "Zarezerwuj z Google",
+           "url": "https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ2M5qkuFVLO-bshlBGfHS2WYoh5hHyhEH05wNOKCuUWqL9CSDmsO6_UrRsqG_IKzDAe0lqw_mP9",
+           "domain": "calendar.google.com",
+           "description": null,
+           "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/c-wiz[1]/div[1]/div[1]/div[1]/span[2]/a[1]"
+          },
+          {
+           "type": "link_element",
+           "title": "Więcej informacji",
+           "url": "https://support.google.com/reserve?p=link_ranking&hl=pl-PL",
+           "domain": "support.google.com",
+           "description": null,
+           "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/c-wiz[1]/div[1]/div[1]/g-bubble[1]/div[1]/span[1]/div[1]/a[1]"
+          }
+         ],
+         "rectangle": null
+        },
+        {
+         "type": "knowledge_graph_carousel_item",
+         "rank_group": 0,
+         "rank_absolute": 0,
+         "page": 1,
+         "position": "left",
+         "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[7]/div[1]/div[1]/div[1]/div[1]/div[1]",
+         "title": "Profile",
+         "data_attrid": "kc:/common/topic:social media presence",
+         "link": null,
+         "items": [
+          {
+           "type": "knowledge_graph_carousel_element",
+           "title": "Instagram",
+           "subtitle": null,
+           "url": "https://www.instagram.com/polskaszkolaai",
+           "domain": "www.instagram.com",
+           "image_url": "https://ssl.gstatic.com/kpui/social/instagram_32x32.png",
+           "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[7]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/g-link[1]"
+          },
+          {
+           "type": "knowledge_graph_carousel_element",
+           "title": "LinkedIn",
+           "subtitle": null,
+           "url": "https://google.com/goto?url=CAESbQHrOzAV-9YsbH2OiiyGYBRE6pZTTwbQgG0O2jprWd4GV8qfSKJMtTraQLQ0QPI4adpKw0KlrVBn7y2ppNFQ2Fq7o-kHOXcWv8Lz4nywnAs-2kDjKV_erOIuNx3hG26cZ4QWDt6HKiVFeO-jUEk",
+           "domain": "google.com",
+           "image_url": "https://ssl.gstatic.com/kpui/social/linkedin_32x32.png",
+           "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[7]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[2]/div[1]/g-link[1]"
+          },
+          {
+           "type": "knowledge_graph_carousel_element",
+           "title": "Facebook",
+           "subtitle": null,
+           "url": "https://www.facebook.com/polskaszkolaai",
+           "domain": "www.facebook.com",
+           "image_url": "https://ssl.gstatic.com/kpui/social/fb_32x32.png",
+           "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[7]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/div[3]/div[1]/g-link[1]"
+          }
+         ],
+         "rectangle": null
+        }
+       ],
+       "rectangle": null
+      },
+      {
+       "type": "google_reviews",
+       "rank_group": 1,
+       "rank_absolute": 2,
+       "page": 1,
+       "position": "right",
+       "xpath": "/html[1]/body[1]/div[3]/div[1]/div[14]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/div[1]/div[1]/div[3]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[4]/div[1]/div[1]/div[1]/div[1]/div[1]/c-wiz[1]/c-data[1]",
+       "reviews_count": 6,
+       "rating": {
+        "rating_type": "Max5",
+        "value": 5,
+        "votes_count": 6,
+        "rating_max": 5
+       },
+       "place_id": "ChIJPQhB6NDFiE4RWmNfkWIy1wM",
+       "feature": "0x4e88c5d0e841083d:0x3d73262915f635a",
+       "cid": "276745301033706330",
+       "rectangle": null
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
