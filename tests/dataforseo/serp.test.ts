@@ -226,11 +226,53 @@ describe("getSerpTask", () => {
     await expect(getSerpTask("x")).resolves.toEqual({ state: "failed", error: "DataForSEO nie zwróciło zadania" });
   });
 
-  it("błąd HTTP 400 to failed z komunikatem", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => new Response("bad", { status: 400 })));
-    const state = await getSerpTask("x");
-    expect(state).toMatchObject({ state: "failed" });
-    expect(state.state === "failed" && state.error).toContain("HTTP 400");
+  describe("awaria po drodze nie kończy opłaconego zadania błędem (pending), błąd kodu zadania tak", () => {
+    afterEach(() => vi.useRealTimers());
+
+    /** Czeka na ponowienia `withRetry` (1 s + 2 s) bez prawdziwego czasu. */
+    const settled = async (call: () => Promise<unknown>) => {
+      vi.useFakeTimers();
+      const result = call().then((v) => v, (e: unknown) => e);
+      await vi.advanceTimersByTimeAsync(3_000);
+      return result;
+    };
+
+    it("błąd HTTP 400 to pending", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => new Response("bad", { status: 400 })));
+      await expect(getSerpTask("x")).resolves.toEqual({ state: "pending" });
+    });
+
+    it("błąd HTTP 500 po wyczerpaniu ponowień to pending", async () => {
+      const fetchMock = vi.fn().mockImplementation(async () => new Response("boom", { status: 500 }));
+      vi.stubGlobal("fetch", fetchMock);
+      await expect(settled(() => getSerpTask("x"))).resolves.toEqual({ state: "pending" });
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    it("zadanie 40101 (awaria po stronie dostawcy) po wyczerpaniu ponowień to pending, nie failed", async () => {
+      const fetchMock = respondWith(taskGet(40101, "Internal Error."));
+      vi.stubGlobal("fetch", fetchMock);
+      await expect(settled(() => getSerpTask("x"))).resolves.toEqual({ state: "pending" });
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    it("błąd sieci (fetch failed) to pending", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed")));
+      await expect(getSerpTask("x")).resolves.toEqual({ state: "pending" });
+    });
+
+    it("błąd statusu całej odpowiedzi (nie zadania) to pending", async () => {
+      vi.stubGlobal("fetch", respondWith({ status_code: 50000, status_message: "Internal Error.", tasks: [] }));
+      await expect(getSerpTask("x")).resolves.toEqual({ state: "pending" });
+    });
+
+    it("brak danych logowania to pending", async () => {
+      delete process.env.DATAFORSEO_LOGIN;
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+      await expect(getSerpTask("x")).resolves.toEqual({ state: "pending" });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
   });
 
   it("zadanie 40200 rzuca komunikat o braku środków", async () => {

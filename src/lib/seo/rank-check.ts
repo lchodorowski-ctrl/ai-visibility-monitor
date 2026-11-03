@@ -24,8 +24,8 @@ export const NOTHING_TO_CHECK_MESSAGE = "Pozycje z tego tygodnia są już sprawd
 export const NO_DOMAIN_MESSAGE = "Projekt nie ma ustawionej domeny";
 export const NOT_COLLECTED_MESSAGE = "Wynik nie został odebrany";
 
-/** Zlecone wcześniej zadanie odbieramy jeszcze tydzień po utworzeniu wiersza, starsze uznajemy za utracone. */
-const RESUME_WINDOW_MS = 7 * 86_400_000;
+/** Wiersze `pending` z poprzedniego tygodnia jeszcze odbieramy (to samo okno obejmuje bieżący tydzień), starsze uznajemy za utracone. */
+const RESUME_WEEKS = 1;
 /** Tyle odbiorów albo zapisów naraz (DataForSEO i baza nie dostają wszystkiego jednocześnie). */
 const CONCURRENCY = 5;
 
@@ -68,6 +68,9 @@ export interface RankCheckResult {
 const emptyResult = (status: SeoJobStatus): RankCheckResult => ({ status, posted: 0, done: 0, failed: 0, pending: 0, costUsd: 0 });
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/** Data poniedziałku sprzed `weeks` tygodni od poniedziałku `week` (YYYY-MM-DD). */
+const weeksBefore = (week: string, weeks: number): string => new Date(Date.parse(`${week}T00:00:00Z`) - weeks * 7 * 86_400_000).toISOString().slice(0, 10);
+
 /** Zadanie SERP u dostawcy, na którego wynik czekamy: wiersz `rank_checks` i id zadania DataForSEO. */
 interface Waiting {
   id: string;
@@ -87,18 +90,37 @@ async function inChunks<T>(items: T[], size: number, fn: (item: T) => Promise<vo
 }
 
 /**
- * Cotygodniowe sprawdzenie pozycji aktywnych fraz projektu w Google (do `MAX_RANK_KEYWORDS`, wolumen malejąco): jedno
- * zadanie SERP z kolejki standard DataForSEO na parę fraza × urządzenie, wynik odbierany po kilku minutach.
+ * Wykonuje `fn` dla każdego elementu, po `size` naraz, i nie przerywa po błędzie: wynik każdego elementu (w jego
+ * kolejności) jest w zwróconej liście. Dla zapisów, które muszą się spróbować wszystkie (id opłaconych zadań).
+ */
+async function settleInChunks<T>(items: T[], size: number, fn: (item: T) => Promise<void>): Promise<PromiseSettledResult<void>[]> {
+  const results: PromiseSettledResult<void>[] = [];
+  for (let i = 0; i < items.length; i += size) results.push(...(await Promise.allSettled(items.slice(i, i + size).map(fn))));
+  return results;
+}
+
+const rejections = (results: PromiseSettledResult<void>[]): unknown[] =>
+  results.filter((r): r is PromiseRejectedResult => r.status === "rejected").map((r) => r.reason);
+
+/**
+ * Cotygodniowe sprawdzenie pozycji aktywnych fraz projektu w Google: jedno zadanie SERP z kolejki standard DataForSEO
+ * na parę fraza × urządzenie, wynik odbierany po kilku minutach.
+ *
+ * Tygodniowy limit `MAX_RANK_KEYWORDS` fraz jest twardy: frazy, które mają już wiersz w tym tygodniu (w dowolnym
+ * statusie), zachowują miejsce, a nowe (np. fraza, która wskoczyła na górę listy wolumenów) dochodzą tylko do limitu
+ * pomniejszonego o liczbę fraz z wierszami; kolejność wśród nowych to wolumen malejąco, bez wolumenu na końcu.
  *
  * Wiersze `rank_checks` tygodnia (według daty warszawskiej) niosą stan: `done` pomijamy, `pending` z id zadania tylko
  * odbieramy (nic nie płacimy drugi raz), a brak wiersza, `failed` i `pending` bez id zadania wysyłamy. Odbieramy też
- * wiersze `pending` z wcześniejszych tygodni, o ile powstały w ostatnich 7 dniach; starsze oznaczamy jako `failed`.
+ * wiersze `pending` z id z poprzedniego tygodnia; wszystkie starsze `pending` (i te bez id) oznaczamy jako `failed`.
  * Płatne, więc przed wysyłką sprawdza budżet SEO projektu (górny szacunek na wysyłane pary), a w rejestrze zapisuje
- * najpierw szacunek (rezerwacja), a na końcu koszt wysłanych zadań. Odbiór trwa najwyżej `MAX_POLLS` podejść:
- * co nie zdążyło, zostaje `pending` i odbierze to następne uruchomienie.
- * Wyjątek zamyka zadanie jako `failed` z kosztem już wysłanych zadań i leci dalej. Gdy dostawca odrzucił wszystkie
- * zadania (np. brak danych logowania), też jest to wyjątek, a wiersze zostają `pending` bez id: ponowi je następne
- * uruchomienie.
+ * najpierw szacunek (rezerwacja), a na końcu koszt wysłanych zadań. Odmowa budżetu nie wstrzymuje odbioru już opłaconych
+ * zadań (odbiór jest darmowy): są odbierane, a wynik to `budget_exceeded` (rejestr zamyka bramka). Odbiór trwa najwyżej
+ * `MAX_POLLS` podejść: co nie zdążyło, zostaje `pending` i odbierze to następne uruchomienie.
+ * Wyjątek zamyka zadanie jako `failed` z kosztem już wysłanych zadań i leci dalej; gdy wysyłka przerwała się wyjątkiem
+ * (np. brak środków), koszt jest nieznany, więc zostaje rezerwacja (szacunek). Gdy dostawca odrzucił wszystkie zadania
+ * (np. brak danych logowania), też jest to wyjątek, a wiersze zostają `pending` bez id: ponowi je następne uruchomienie.
+ * Błąd zapisu id opłaconych zadań nie przerywa pozostałych zapisów ani odbioru: wyjątek leci dopiero na końcu.
  */
 export async function runRankCheck(payload: { projectId: string }, deps: RunRankCheckDeps = {}): Promise<RankCheckResult> {
   const { projectId } = payload;
@@ -118,21 +140,25 @@ export async function runRankCheck(payload: { projectId: string }, deps: RunRank
   /** Koszt zadań wysłanych w tym uruchomieniu po id wiersza: cena z `task_post`, po odbiorze faktyczna. */
   const sentCosts = new Map<string, number>();
   const spent = () => [...sentCosts.values()].reduce((sum, cost) => sum + cost, 0);
+  /** Koszt wysyłki, która trwa i jeszcze nie odpowiedziała: gdy przerwie ją wyjątek, nie wiemy, ile pobrano. */
+  let unconfirmedUsd = 0;
+  /** Zadanie zamknięte przez bramkę budżetu: późniejszy błąd nie może go ponownie otworzyć jako `failed`. */
+  let jobClosed = false;
   try {
     const competitorsRes = await admin.from("competitors").select("name, domains").eq("project_id", projectId);
     if (competitorsRes.error) throw new Error(competitorsRes.error.message);
     const competitors = competitorsRes.data ?? [];
 
     // Aktywne frazy: najwyższy wolumen pierwszy, bez wolumenu na końcu; `id` rozstrzyga remisy, żeby drugie uruchomienie
-    // w tym samym tygodniu wzięło dokładnie te same frazy.
+    // w tym samym tygodniu widziało tę samą kolejność.
     const keywordsRes = await admin.from("keywords").select("id, key").eq("project_id", projectId).eq("active", true)
       .order("search_volume", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: true })
       .order("id", { ascending: true })
       .limit(MAX_RANK_KEYWORDS);
     if (keywordsRes.error) throw new Error(keywordsRes.error.message);
-    const keywords = keywordsRes.data ?? [];
-    if (keywords.length === 0) {
+    const ranked = keywordsRes.data ?? [];
+    if (ranked.length === 0) {
       await finishJob(admin, jobId, { status: "skipped", error: NO_KEYWORDS_MESSAGE });
       return emptyResult("skipped");
     }
@@ -141,12 +167,35 @@ export async function runRankCheck(payload: { projectId: string }, deps: RunRank
       return emptyResult("skipped");
     }
 
-    // 1. Co z tego tygodnia jest już sprawdzone, co czeka na odbiór, a co trzeba wysłać.
+    // 1. Wiersze tego tygodnia: z nich wynika, które frazy mają już miejsce w limicie i co jest sprawdzone.
     const week = rankWeekStart(now());
     const weekRes = await admin.from("rank_checks").select("id, keyword_id, device, status, dfs_task_id")
       .eq("project_id", projectId).eq("week_start", week);
     if (weekRes.error) throw new Error(weekRes.error.message);
-    const existing = new Map((weekRes.data ?? []).map((r) => [`${r.keyword_id}:${r.device}`, r]));
+    const weekRows = weekRes.data ?? [];
+    const existing = new Map(weekRows.map((r) => [`${r.keyword_id}:${r.device}`, r]));
+    const placed = new Set(weekRows.map((r) => r.keyword_id));
+
+    // Frazy z wierszami zachowują miejsce, także gdy ich wolumen spadł poniżej pierwszych 100 (te dobieramy osobno).
+    const known = new Set(ranked.map((k) => k.id));
+    const lowerRanked = [...placed].filter((id) => !known.has(id));
+    const placedOutside: { id: string; key: string }[] = [];
+    if (lowerRanked.length > 0) {
+      const res = await admin.from("keywords").select("id, key").eq("project_id", projectId).eq("active", true).in("id", lowerRanked);
+      if (res.error) throw new Error(res.error.message);
+      placedOutside.push(...(res.data ?? []));
+    }
+    // Nowych fraz jest tyle, ile zostało z limitu po frazach, które już mają wiersze w tym tygodniu (także nieaktywnych).
+    let room = Math.max(0, MAX_RANK_KEYWORDS - placed.size);
+    const keywords: { id: string; key: string }[] = [];
+    for (const k of ranked) {
+      if (placed.has(k.id)) keywords.push(k);
+      else if (room > 0) {
+        keywords.push(k);
+        room -= 1;
+      }
+    }
+    keywords.push(...placedOutside);
 
     let waiting: Waiting[] = [];
     const toSend: { keywordId: string; key: string; device: Device }[] = [];
@@ -159,15 +208,14 @@ export async function runRankCheck(payload: { projectId: string }, deps: RunRank
       }
     }
 
-    // 2. Zlecone w poprzednich tygodniach i nieodebrane: świeże odbieramy, przeterminowane zamykamy błędem.
-    const earlierRes = await admin.from("rank_checks").select("id, dfs_task_id, created_at")
-      .eq("project_id", projectId).eq("status", "pending").not("dfs_task_id", "is", null).lt("week_start", week);
+    // 2. Zlecone w poprzednich tygodniach i nieodebrane: z id z poprzedniego tygodnia odbieramy, resztę zamykamy błędem.
+    const earlierRes = await admin.from("rank_checks").select("id, dfs_task_id, week_start")
+      .eq("project_id", projectId).eq("status", "pending").lt("week_start", week);
     if (earlierRes.error) throw new Error(earlierRes.error.message);
-    const cutoff = now().getTime() - RESUME_WINDOW_MS;
+    const oldestResumed = weeksBefore(week, RESUME_WEEKS);
     const stale: string[] = [];
     for (const row of earlierRes.data ?? []) {
-      if (!row.dfs_task_id) continue;
-      if (Date.parse(row.created_at) >= cutoff) waiting.push({ id: row.id, taskId: row.dfs_task_id });
+      if (row.dfs_task_id && row.week_start >= oldestResumed) waiting.push({ id: row.id, taskId: row.dfs_task_id });
       else stale.push(row.id);
     }
     if (stale.length > 0) {
@@ -182,15 +230,16 @@ export async function runRankCheck(payload: { projectId: string }, deps: RunRank
     }
     const resumed = waiting.length;
 
-    // 3. Wysyłka: bramka budżetu, wiersze `pending`, zadania z tagiem równym id wiersza.
+    // 3. Wysyłka: bramka budżetu, wiersze `pending`, zadania z tagiem równym id wiersza. Odmowa bramki zamyka zadanie,
+    // ale odbiór już opłaconych zadań (niżej) i tak się odbywa.
     const estimate = estimateRankCost(toSend.length);
-    if (toSend.length > 0 && !(await passSeoBudget(admin, { projectId, jobId, estimate, budget, now: now() }))) {
-      return emptyResult("budget_exceeded");
-    }
+    const mayPost = toSend.length === 0 || (await passSeoBudget(admin, { projectId, jobId, estimate, budget, now: now() }));
+    if (!mayPost) jobClosed = true;
 
     let posted = 0;
     let failed = 0;
-    if (toSend.length > 0) {
+    const writeErrors: unknown[] = [];
+    if (mayPost && toSend.length > 0) {
       // Zapis czyści też id zadania po wcześniejszej próbie: wiersz `pending` bez id jest ponawiany, a ze starym id odbierałby martwe zadanie.
       const upsertRes = await admin.from("rank_checks").upsert(
         toSend.map((s) => ({
@@ -206,26 +255,34 @@ export async function runRankCheck(payload: { projectId: string }, deps: RunRank
         return { tag, keyword: s.key, device: s.device };
       });
 
+      unconfirmedUsd = estimate;
       const sent = await post(tasks);
+      unconfirmedUsd = 0;
       // Koszt zapisujemy od razu: od tej chwili każdy wyjątek zamyka zadanie z kosztem wysłanych zadań.
       for (const p of sent.posted) sentCosts.set(p.tag, p.costUsd);
       // Nic nie przyjęto, a są odrzucenia (brak danych logowania, nieczynne API): to awaria całości, a nie pojedyncze frazy.
       // Wiersze zostają `pending` bez id, więc następne uruchomienie wyśle je ponownie.
       if (sent.posted.length === 0 && sent.failed.length > 0) throw new Error(sent.failed[0].error);
 
-      await inChunks(sent.posted, CONCURRENCY, async (p) => {
+      // Id opłaconych zadań zapisujemy wszystkie, nawet gdy któryś zapis padnie: zgubione id to ponowna wysyłka i druga opłata.
+      // Odbieramy wiersze z zapisanym id, a błąd zapisu zgłaszamy po odbiorze.
+      const idWrites = await settleInChunks(sent.posted, CONCURRENCY, async (p) => {
         const { error } = await admin.from("rank_checks").update({ dfs_task_id: p.id, cost_usd: p.costUsd })
           .eq("id", p.tag).eq("project_id", projectId);
         if (error) throw new Error(error.message);
       });
-      await inChunks(sent.failed, CONCURRENCY, async (f) => {
+      const failedWrites = await settleInChunks(sent.failed, CONCURRENCY, async (f) => {
         const { error } = await admin.from("rank_checks").update({ status: "failed", error: f.error })
           .eq("id", f.tag).eq("project_id", projectId);
         if (error) throw new Error(error.message);
       });
+      writeErrors.push(...rejections(idWrites), ...rejections(failedWrites));
       posted = sent.posted.length;
       failed = sent.failed.length;
-      waiting = [...waiting, ...sent.posted.map((p) => ({ id: p.tag, taskId: p.id }))];
+      waiting = [
+        ...waiting,
+        ...sent.posted.filter((_, i) => idWrites[i].status === "fulfilled").map((p) => ({ id: p.tag, taskId: p.id })),
+      ];
     }
 
     // 4. Odbiór: co minutę pytamy o czekające zadania (po kilka naraz), gotowe zapisujemy.
@@ -269,6 +326,10 @@ export async function runRankCheck(payload: { projectId: string }, deps: RunRank
       waiting = stillWaiting;
     }
 
+    if (writeErrors.length > 0) throw writeErrors[0];
+    // Zadanie zamknęła już bramka budżetu (`budget_exceeded`): zostaje takie, a wynik niesie to, co odebrano.
+    if (!mayPost) return { status: "budget_exceeded", posted: 0, done, failed, pending: waiting.length, costUsd: 0 };
+
     const costUsd = spent();
     await finishJob(admin, jobId, {
       status: "done",
@@ -277,7 +338,7 @@ export async function runRankCheck(payload: { projectId: string }, deps: RunRank
     });
     return { status: "done", posted, done, failed, pending: waiting.length, costUsd };
   } catch (err) {
-    await failJob(admin, jobId, err, spent(), "rank-check");
+    if (!jobClosed) await failJob(admin, jobId, err, spent() + unconfirmedUsd, "rank-check");
     throw err;
   }
 }

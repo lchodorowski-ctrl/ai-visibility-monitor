@@ -74,7 +74,13 @@ function world(w: World = {}) {
   const admin = fakeAdmin((c) => {
     if (c.table === "projects") return { data: { seo_budget_usd: w.budget ?? 10, domains: w.domains ?? ["polskaszkola.ai"] } };
     if (c.table === "competitors") return { data: w.competitors ?? [] };
-    if (c.table === "keywords" && c.op === "select") return { data: w.keywords ?? [] };
+    if (c.table === "keywords" && c.op === "select") {
+      const all = w.keywords ?? [];
+      const only = filterValue(c, "in", "id") as string[] | undefined;
+      if (only) return { data: all.filter((k) => only.includes(k.id)) };
+      const limit = c.filters.find((f) => f[0] === "limit")?.[1] as number | undefined;
+      return { data: limit === undefined ? all : all.slice(0, limit) };
+    }
     if (c.table === "rank_checks") return rankChecks(c);
     if (c.table === "seo_jobs" && c.op === "insert") return { data: { id: "job-1" } };
     if (c.table === "seo_jobs" && c.op === "select") return { data: [{ cost_usd: w.spent ?? 0 }] };
@@ -488,7 +494,7 @@ describe("runRankCheck: wznawianie i drugie uruchomienie w tym samym tygodniu", 
     expect(jobUpdate(t.calls)).toMatchObject({ status: "done", cost_usd: 0, stats: { posted: 0, resumed: 2, done: 2, estimateUsd: 0 } });
   });
 
-  it("wysyła tylko brakujące pary, a gotowe pomija i oplaca tylko je", async () => {
+  it("wysyła tylko brakujące pary, a gotowe pomija i opłaca tylko je", async () => {
     const t = setup({
       keywords: kws("szkolenia ai", "kurs ai"),
       rows: [
@@ -582,69 +588,75 @@ describe("runRankCheck: wznawianie i drugie uruchomienie w tym samym tygodniu", 
     expect(res.posted).toBe(2);
   });
 
-  describe("pending z wcześniejszych tygodni", () => {
+  describe("pending z wcześniejszych tygodni: odbieramy poprzedni tydzień (z id), starsze i bez id zamykamy", () => {
     const earlier = (over: Partial<Row>): Partial<Row> => ({ week_start: "2026-10-26", status: "pending", cost_usd: POST_COST, ...over });
+    const checkedThisWeek: Partial<Row>[] = [
+      { id: "w1", keyword_id: "k1", device: "desktop", status: "done", dfs_task_id: "x" },
+      { id: "w2", keyword_id: "k1", device: "mobile", status: "done", dfs_task_id: "y" },
+    ];
 
-    it("z id zadania i utworzone w ostatnich 7 dniach są odbierane (nawet dla frazy spoza listy)", async () => {
+    it("z id zadania i z poprzedniego tygodnia są odbierane bez względu na godzinę utworzenia (nawet dla frazy spoza listy)", async () => {
       const t = setup({
         keywords: kws("szkolenia ai"),
         rows: [
-          { id: "w1", keyword_id: "k1", device: "desktop", status: "done", dfs_task_id: "x" },
-          { id: "w2", keyword_id: "k1", device: "mobile", status: "done", dfs_task_id: "y" },
-          earlier({ id: "e1", keyword_id: "dawna-fraza", device: "desktop", dfs_task_id: "task-e1", created_at: "2026-10-30T03:00:00.000Z" }),
+          ...checkedThisWeek,
+          // poniedziałek poprzedniego tygodnia, 9 dni przed `now`: tydzień, a nie liczba dni, decyduje
+          earlier({ id: "e1", keyword_id: "dawna-fraza", device: "desktop", dfs_task_id: "task-e1", created_at: "2026-10-26T03:00:00.000Z" }),
+          earlier({ id: "e2", keyword_id: "dawna-fraza", device: "mobile", dfs_task_id: "task-e2", created_at: "2026-11-01T22:00:00.000Z" }),
         ],
       }, {
-        get: getFake({ "task-e1": done(serp(organic(9, "polskaszkola.ai")), 0.0048) }),
+        get: getFake({ "task-e1": done(serp(organic(9, "polskaszkola.ai")), 0.0048), "task-e2": done(NEVER_RANKED, 0.0049) }),
       });
 
       const res = await t.run();
 
       const read = t.calls.find((c) => c.table === "rank_checks" && c.op === "select" && filterValue(c, "lt", "week_start") !== undefined)!;
-      expect(read.filters).toEqual([
-        ["eq", "project_id", PROJECT], ["eq", "status", "pending"], ["not", "dfs_task_id", "is", null], ["lt", "week_start", WEEK],
-      ]);
+      expect(read.cols).toBe("id, dfs_task_id, week_start");
+      expect(read.filters).toEqual([["eq", "project_id", PROJECT], ["eq", "status", "pending"], ["lt", "week_start", WEEK]]);
       expect(t.post).not.toHaveBeenCalled();
-      expect(t.get.mock.calls.map((c) => c[0])).toEqual(["task-e1"]);
+      expect(t.get.mock.calls.map((c) => c[0]).sort()).toEqual(["task-e1", "task-e2"]);
       expect(t.rows.find((r) => r.id === "e1")).toMatchObject({ status: "done", position: 9, cost_usd: 0.0048 });
-      expect(res).toMatchObject({ status: "done", posted: 0, done: 1, pending: 0 });
-      expect(jobUpdate(t.calls)).toMatchObject({ stats: { resumed: 1, stale: 0 } });
+      expect(res).toMatchObject({ status: "done", posted: 0, done: 2, pending: 0 });
+      expect(jobUpdate(t.calls)).toMatchObject({ stats: { resumed: 2, stale: 0 } });
     });
 
-    it("utworzone dawniej niż 7 dni temu są oznaczane jako failed („Wynik nie został odebrany”) i nie są odbierane", async () => {
+    it("pending sprzed dwóch tygodni i starsze (z id i bez) oraz z poprzedniego tygodnia bez id są oznaczane failed i nie są odbierane", async () => {
       const t = setup({
         keywords: kws("szkolenia ai"),
         rows: [
-          { id: "w1", keyword_id: "k1", device: "desktop", status: "done", dfs_task_id: "x" },
-          { id: "w2", keyword_id: "k1", device: "mobile", status: "done", dfs_task_id: "y" },
-          earlier({ id: "fresh", keyword_id: "k1", device: "desktop", dfs_task_id: "task-fresh", created_at: "2026-10-30T03:00:00.000Z" }),
-          // dokładnie 7 dni temu jeszcze się mieści, o sekundę dawniej już nie
-          earlier({ id: "edge", keyword_id: "k1", device: "mobile", dfs_task_id: "task-edge", created_at: "2026-10-28T09:00:00.000Z" }),
-          earlier({ id: "stale-1", keyword_id: "k1", device: "mobile", week_start: "2026-10-19", dfs_task_id: "task-s1", created_at: "2026-10-28T08:59:59.000Z" }),
-          earlier({ id: "stale-2", keyword_id: "k2", device: "desktop", week_start: "2026-10-12", dfs_task_id: "task-s2", created_at: "2026-10-12T03:00:00.000Z" }),
+          ...checkedThisWeek,
+          earlier({ id: "kept", keyword_id: "k1", device: "desktop", dfs_task_id: "task-kept" }),
+          // 2026-10-19 to dwa tygodnie wstecz: już poza oknem, nawet z id zadania
+          earlier({ id: "stale-1", keyword_id: "k1", device: "mobile", week_start: "2026-10-19", dfs_task_id: "task-s1", created_at: "2026-10-27T03:00:00.000Z" }),
+          earlier({ id: "stale-2", keyword_id: "k2", device: "desktop", week_start: "2026-10-12", dfs_task_id: "task-s2" }),
+          earlier({ id: "stale-3", keyword_id: "k2", device: "mobile", week_start: "2026-10-19", dfs_task_id: null }),
+          // poprzedni tydzień bez id zadania: nie ma czego odbierać, a tydzień minął
+          earlier({ id: "stale-4", keyword_id: "k3", device: "desktop", dfs_task_id: null }),
         ],
       }, {
-        get: getFake({ "task-fresh": done(NEVER_RANKED), "task-edge": done(NEVER_RANKED) }),
+        get: getFake({ "task-kept": done(NEVER_RANKED) }),
       });
 
       const res = await t.run();
 
-      const marking = rankUpdates(t.calls).find((c) => c.payload && (c.payload as Record<string, unknown>).error === "Wynik nie został odebrany")!;
+      const marking = rankUpdates(t.calls).find((c) => (c.payload as Record<string, unknown>).error === "Wynik nie został odebrany")!;
       expect(marking.payload).toEqual({ status: "failed", error: "Wynik nie został odebrany" });
-      expect(marking.filters).toEqual([["in", "id", ["stale-1", "stale-2"]], ["eq", "project_id", PROJECT]]);
-      expect(t.rows.find((r) => r.id === "stale-1")).toMatchObject({ status: "failed" });
-      expect(t.rows.find((r) => r.id === "stale-2")).toMatchObject({ status: "failed" });
-      expect(t.get.mock.calls.map((c) => c[0]).sort()).toEqual(["task-edge", "task-fresh"]);
-      expect(res).toMatchObject({ status: "done", done: 2, failed: 0 });
-      expect(jobUpdate(t.calls)).toMatchObject({ stats: { resumed: 2, stale: 2 } });
+      expect(marking.filters).toEqual([["in", "id", ["stale-1", "stale-2", "stale-3", "stale-4"]], ["eq", "project_id", PROJECT]]);
+      for (const id of ["stale-1", "stale-2", "stale-3", "stale-4"]) {
+        expect(t.rows.find((r) => r.id === id)).toMatchObject({ status: "failed", error: "Wynik nie został odebrany" });
+      }
+      expect(t.get.mock.calls.map((c) => c[0])).toEqual(["task-kept"]);
+      expect(t.rows.find((r) => r.id === "kept")).toMatchObject({ status: "done" });
+      expect(res).toMatchObject({ status: "done", done: 1, failed: 0 });
+      expect(jobUpdate(t.calls)).toMatchObject({ stats: { resumed: 1, stale: 4 } });
     });
 
-    it("same przeterminowane wiersze: są oznaczane failed, a zadanie kończy się jako skipped (nic do odbioru)", async () => {
+    it("tylko przeterminowane wiersze: są oznaczane failed, a zadanie kończy się jako skipped (nic do odbioru)", async () => {
       const t = setup({
         keywords: kws("szkolenia ai"),
         rows: [
-          { id: "w1", keyword_id: "k1", device: "desktop", status: "done", dfs_task_id: "x" },
-          { id: "w2", keyword_id: "k1", device: "mobile", status: "done", dfs_task_id: "y" },
-          earlier({ id: "stale-1", keyword_id: "k1", device: "mobile", dfs_task_id: "task-s1", created_at: "2026-10-01T03:00:00.000Z" }),
+          ...checkedThisWeek,
+          earlier({ id: "stale-1", keyword_id: "k1", device: "mobile", week_start: "2026-10-19", dfs_task_id: "task-s1", created_at: "2026-10-26T03:00:00.000Z" }),
         ],
       });
 
@@ -655,6 +667,133 @@ describe("runRankCheck: wznawianie i drugie uruchomienie w tym samym tygodniu", 
       expect(t.get).not.toHaveBeenCalled();
       expect(jobUpdate(t.calls)).toMatchObject({ status: "skipped", error: NOTHING_TO_CHECK_MESSAGE, stats: { stale: 1 } });
     });
+  });
+});
+
+describe("runRankCheck: odmowa budżetu nie wstrzymuje odbioru opłaconych zadań", () => {
+  const paidRow = { id: rowId("k1", "desktop"), keyword_id: "k1", device: "desktop", status: "pending", dfs_task_id: "old-task-d", cost_usd: POST_COST };
+
+  it("odbiera czekające zadania, niczego nie wysyła, wynik to budget_exceeded, a zadanie zostaje zamknięte przez bramkę", async () => {
+    const t = setup({ keywords: kws("szkolenia ai"), budget: 10, spent: 9.999, rows: [paidRow] }, {
+      get: getFake({ "old-task-d": done(serp(organic(4, "polskaszkola.ai")), 0.0049) }),
+    });
+
+    const res = await t.run();
+
+    expect(t.post).not.toHaveBeenCalled();
+    expect(t.calls.some((c) => c.table === "rank_checks" && c.op === "upsert")).toBe(false);
+    expect(t.sleep).toHaveBeenCalledTimes(1);
+    expect(t.get.mock.calls.map((c) => c[0])).toEqual(["old-task-d"]);
+    expect(rowOf(t.rows, "k1", "desktop")).toMatchObject({ status: "done", position: 4, cost_usd: 0.0049 });
+    // para bez wiersza nie została wysłana
+    expect(t.rows.find((r) => r.id === rowId("k1", "mobile"))).toBeUndefined();
+    expect(res).toEqual({ status: "budget_exceeded", posted: 0, done: 1, failed: 0, pending: 0, costUsd: 0 });
+    // rejestr: tylko zamknięcie przez bramkę, bez ponownego zapisu po odbiorze
+    expect(jobWrites(t.calls)).toHaveLength(1);
+    expect(jobWrites(t.calls)[0]).toMatchObject({ status: "budget_exceeded" });
+  });
+
+  it("wynik niegotowy do końca odbioru zostaje pending (pending w wyniku), zadanie nadal budget_exceeded", async () => {
+    const t = setup({ keywords: kws("szkolenia ai"), budget: 10, spent: 9.999, rows: [paidRow] });
+
+    const res = await t.run();
+
+    expect(t.sleep).toHaveBeenCalledTimes(MAX_POLLS);
+    expect(rowOf(t.rows, "k1", "desktop")).toMatchObject({ status: "pending", dfs_task_id: "old-task-d" });
+    expect(res).toEqual({ status: "budget_exceeded", posted: 0, done: 0, failed: 0, pending: 1, costUsd: 0 });
+    expect(jobWrites(t.calls)).toHaveLength(1);
+  });
+
+  it("błąd odbioru po odmowie leci dalej, ale nie otwiera zamkniętego zadania ponownie jako failed", async () => {
+    const get = vi.fn<typeof getFn>(async () => { throw new Error(PAYMENT_REQUIRED_MESSAGE); });
+    const t = setup({ keywords: kws("szkolenia ai"), budget: 10, spent: 9.999, rows: [paidRow] }, { get });
+
+    await expect(t.run()).rejects.toThrow(PAYMENT_REQUIRED_MESSAGE);
+
+    expect(jobWrites(t.calls)).toHaveLength(1);
+    expect(jobWrites(t.calls)[0]).toMatchObject({ status: "budget_exceeded" });
+  });
+});
+
+describe("runRankCheck: tygodniowy limit fraz", () => {
+  const many = (n: number) => kws(...Array.from({ length: n }, (_, i) => `fraza ${i + 1}`));
+  const allDone = () => vi.fn<typeof getFn>(async () => done(NEVER_RANKED));
+  const rowsFor = (ids: string[], status = "done"): Partial<Row>[] =>
+    ids.flatMap((id) => DEVICES.map((device) => ({ id: rowId(id, device), keyword_id: id, device, status, dfs_task_id: `t-${id}-${device}` })));
+  const idsUpTo = (n: number) => Array.from({ length: n }, (_, i) => `k${i + 1}`);
+  const tagsOf = (post: ReturnType<typeof postFake>, call = 0) => post.mock.calls[call][0].map((x) => x.tag);
+
+  it("fraza, która wskoczyła na górę po pierwszym uruchomieniu tygodnia, nie wypycha żadnej z 100 sprawdzonych", async () => {
+    const keywords = many(100);
+    const t = setup({ keywords }, { get: allDone() });
+
+    const first = await t.run();
+    expect(first).toMatchObject({ status: "done", posted: 200, done: 200 });
+    expect(t.post).toHaveBeenCalledTimes(1);
+
+    // nowa fraza o największym wolumenie: pierwsza w kolejności, 100. z poprzedniego uruchomienia wypada poza pierwszą setkę
+    keywords.unshift({ id: "nowa", key: "nowa fraza" });
+    const second = await t.run();
+
+    expect(second.status).toBe("skipped");
+    expect(t.post).toHaveBeenCalledTimes(1);
+    expect(t.rows.some((r) => r.keyword_id === "nowa")).toBe(false);
+    // k100 wypadła z pierwszych 100 wyników zapytania, ale zachowała miejsce: została dobrana po id
+    const lookup = t.calls.filter((c) => c.table === "keywords" && filterValue(c, "in", "id") !== undefined);
+    expect(lookup).toHaveLength(1);
+    expect(lookup[0].filters).toEqual([["eq", "project_id", PROJECT], ["eq", "active", true], ["in", "id", ["k100"]]]);
+  });
+
+  it("pozostałe miejsce w limicie dostają nowe frazy według wolumenu, reszta czeka do następnego tygodnia", async () => {
+    const keywords = many(98);
+    const t = setup({ keywords }, { get: allDone() });
+    await t.run();
+
+    keywords.unshift({ id: "n1", key: "nowa 1" }, { id: "n2", key: "nowa 2" }, { id: "n3", key: "nowa 3" });
+    const second = await t.run();
+
+    // 98 fraz z wierszami + 2 nowe = 100: n1 i n2 dochodzą, n3 nie
+    expect(second).toMatchObject({ status: "done", posted: 4, done: 4 });
+    expect(tagsOf(t.post, 1)).toEqual([rowId("n1", "desktop"), rowId("n1", "mobile"), rowId("n2", "desktop"), rowId("n2", "mobile")]);
+
+    const third = await t.run();
+    expect(third.status).toBe("skipped");
+    expect(t.post).toHaveBeenCalledTimes(2);
+    expect(t.rows.some((r) => r.keyword_id === "n3")).toBe(false);
+  });
+
+  it("do limitu liczą się frazy z wierszem w dowolnym statusie, a fraza z wierszem zachowuje miejsce i jest ponawiana", async () => {
+    const existing = idsUpTo(98);
+    const t = setup({
+      keywords: [{ id: "n1", key: "nowa 1" }, { id: "n2", key: "nowa 2" }, { id: "n3", key: "nowa 3" }, ...many(98)],
+      rows: [
+        ...rowsFor(existing.slice(0, 97)),
+        // k98: wiersz failed (mobile gotowy) liczy się do limitu i jest wysyłany ponownie
+        { id: rowId("k98", "desktop"), keyword_id: "k98", device: "desktop", status: "failed", dfs_task_id: "stare" },
+        ...rowsFor(["k98"]).filter((r) => r.device === "mobile"),
+      ],
+    }, { get: allDone() });
+
+    const res = await t.run();
+
+    expect(res).toMatchObject({ status: "done", posted: 5, done: 5 });
+    expect(tagsOf(t.post).sort()).toEqual(
+      [rowId("k98", "desktop"), rowId("n1", "desktop"), rowId("n1", "mobile"), rowId("n2", "desktop"), rowId("n2", "mobile")].sort(),
+    );
+    expect(jobUpdate(t.calls)).toMatchObject({ stats: { posted: 5, estimateUsd: estimateRankCost(5) } });
+  });
+
+  it("wiersze nieaktywnej frazy też zajmują miejsce w limicie, a sama fraza nie wraca do wysyłki", async () => {
+    const t = setup({
+      // 99 aktywnych z wierszami + 1 nieaktywna z wierszami = 100: nowa fraza już się nie mieści
+      keywords: [{ id: "n1", key: "nowa 1" }, ...many(99)],
+      rows: rowsFor([...idsUpTo(99), "nieaktywna"]),
+    });
+
+    const res = await t.run();
+
+    expect(res.status).toBe("skipped");
+    expect(t.post).not.toHaveBeenCalled();
   });
 });
 
@@ -674,13 +813,14 @@ describe("runRankCheck: błędy", () => {
     expect(t.sleep).not.toHaveBeenCalled();
   });
 
-  it("brak środków przy wysyłce: zadanie failed z komunikatem, wiersze pending bez id, nic nie jest odbierane", async () => {
+  it("brak środków przy wysyłce: zadanie failed z komunikatem i kosztem szacunku (wydatek nieznany), wiersze pending bez id, nic nie jest odbierane", async () => {
     const post = vi.fn<typeof postFn>(async () => { throw new Error(PAYMENT_REQUIRED_MESSAGE); });
     const t = setup({ keywords: kws("szkolenia ai") }, { post });
 
     await expect(t.run()).rejects.toThrow(PAYMENT_REQUIRED_MESSAGE);
 
-    expect(jobUpdate(t.calls)).toMatchObject({ status: "failed", error: PAYMENT_REQUIRED_MESSAGE, cost_usd: 0 });
+    // wysyłka przerwana wyjątkiem: nie wiemy, ile pobrano, więc w rejestrze zostaje rezerwacja, a nie 0
+    expect(jobUpdate(t.calls)).toMatchObject({ status: "failed", error: PAYMENT_REQUIRED_MESSAGE, cost_usd: estimateRankCost(2) });
     expect(rowOf(t.rows, "k1", "desktop")).toMatchObject({ status: "pending", dfs_task_id: null });
     expect(t.get).not.toHaveBeenCalled();
   });
@@ -702,6 +842,45 @@ describe("runRankCheck: błędy", () => {
     expect(job.cost_usd as number).toBeCloseTo(0.004 + POST_COST, 6);
     expect(rowOf(t.rows, "k1", "desktop")).toMatchObject({ status: "done" });
     expect(rowOf(t.rows, "k1", "mobile")).toMatchObject({ status: "pending", dfs_task_id: taskId("k1", "mobile") });
+  });
+
+  it("inny wyjątek wysyłki też zostawia w rejestrze szacunek jako koszt nieznany", async () => {
+    const post = vi.fn<typeof postFn>(async () => { throw new Error("socket hang up"); });
+    const t = setup({ keywords: kws("szkolenia ai", "kurs ai") }, { post });
+
+    await expect(t.run()).rejects.toThrow("socket hang up");
+
+    expect(jobUpdate(t.calls)).toMatchObject({ status: "failed", error: "socket hang up", cost_usd: estimateRankCost(4) });
+  });
+
+  it("błąd zapisu id jednego opłaconego zadania nie gubi id pozostałych: wszystkie zapisy są próbowane, wiersze z id odebrane, błąd dopiero na końcu", async () => {
+    let failedOnce = false;
+    const t = setup({
+      keywords: kws("a", "b", "c"),
+      failWrite: (c) => {
+        const isIdWrite = c.op === "update" && "dfs_task_id" in (c.payload as Record<string, unknown>);
+        if (!isIdWrite || failedOnce) return undefined;
+        failedOnce = true;
+        return "zapis id nie powiódł się";
+      },
+    }, {
+      get: vi.fn<typeof getFn>(async () => done(NEVER_RANKED, 0.005)),
+    });
+
+    await expect(t.run()).rejects.toThrow("zapis id nie powiódł się");
+
+    // sześć zadań to dwie paczki zapisów (5 + 1): pierwszy zapis padł, ale pozostałe pięć, także z drugiej paczki, się udało
+    const ids = t.rows.filter((r) => r.dfs_task_id !== null).map((r) => r.id).sort();
+    expect(ids).toEqual([rowId("k1", "mobile"), rowId("k2", "desktop"), rowId("k2", "mobile"), rowId("k3", "desktop"), rowId("k3", "mobile")].sort());
+    expect(rowOf(t.rows, "k1", "desktop")).toMatchObject({ status: "pending", dfs_task_id: null });
+    // wiersze z zapisanym id zostały odebrane i zapisane jako done; wiersz bez id nie był odbierany
+    expect(t.get.mock.calls.map((c) => c[0]).sort()).toEqual(ids.map((id) => `dfs-${id}`).sort());
+    for (const id of ids) expect(t.rows.find((r) => r.id === id)).toMatchObject({ status: "done" });
+    expect(t.sleep).toHaveBeenCalledTimes(1);
+    // zadanie failed z kosztem wszystkiego, co wysłano: 5 odebranych po faktycznym koszcie i 1 z task_post
+    const job = jobUpdate(t.calls);
+    expect(job).toMatchObject({ status: "failed", error: "zapis id nie powiódł się" });
+    expect(job.cost_usd as number).toBeCloseTo(5 * 0.005 + POST_COST, 6);
   });
 
   it("błąd zapisu wyniku zamyka zadanie jako failed i leci dalej", async () => {

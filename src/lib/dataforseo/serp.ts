@@ -1,4 +1,5 @@
 import { dfsRequest, dfsLocationCode, PAYMENT_REQUIRED_MESSAGE, type DfsResponse } from "@/lib/dataforseo/client";
+import { TransientError } from "@/lib/engines/retry";
 import { SERP_DEPTH } from "@/lib/seo/costs";
 
 const TASK_POST_PATH = "/serp/google/organic/task_post";
@@ -30,6 +31,11 @@ export type SerpTaskState =
 
 const errorMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 const isPaymentRequired = (err: unknown): boolean => errorMessage(err) === PAYMENT_REQUIRED_MESSAGE;
+/**
+ * Błąd z kodem zadania („DataForSEO task 40501: …”): dostawca odrzucił samo zadanie. Przejściowy 40101 (awaria po stronie
+ * dostawcy, `TransientError` po wyczerpaniu ponowień) tu nie należy: nic nie mówi o zadaniu.
+ */
+const isTaskCodeError = (err: unknown): boolean => !(err instanceof TransientError) && /^DataForSEO task \d+:/.test(errorMessage(err));
 
 /**
  * Wysyła zadania SERP do kolejki standard (paczki po 100), głębokość 100 z AI Overview, bez `stop_crawl_on_match`.
@@ -93,7 +99,9 @@ function toIso(datetime: unknown): string | null {
 
 /**
  * Odbiera wynik zadania SERP. 40601 i 40602 (w toku) to `pending`, 40102 (brak wyników) to `done` z pustym wynikiem.
- * Brak środków leci dalej jako wyjątek, każdy inny błąd to `failed` z komunikatem.
+ * Brak środków leci dalej jako wyjątek. `failed` z komunikatem jest tylko dla kodu zadania (dostawca odrzucił zadanie).
+ * Każda inna awaria po drodze (sieć, HTTP, błąd przejściowy po ponowieniach, brak danych logowania) to `pending`:
+ * zadanie jest już opłacone i nic nie mówi o jego losie, więc wiersz ma czekać dalej, a nie zostać ponowiony za drugie pieniądze.
  */
 export async function getSerpTask(id: string): Promise<SerpTaskState> {
   let res: DfsResponse;
@@ -103,7 +111,7 @@ export async function getSerpTask(id: string): Promise<SerpTaskState> {
     });
   } catch (err) {
     if (isPaymentRequired(err)) throw err;
-    return { state: "failed", error: errorMessage(err) };
+    return isTaskCodeError(err) ? { state: "failed", error: errorMessage(err) } : { state: "pending" };
   }
 
   const task = res.tasks?.[0];
