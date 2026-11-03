@@ -1,0 +1,1577 @@
+{
+ "version": "0.1.20261022",
+ "status_code": 20000,
+ "status_message": "Ok.",
+ "time": "0.4180 sec.",
+ "cost": 0.01332,
+ "tasks_count": 1,
+ "tasks_error": 0,
+ "tasks": [
+  {
+   "id": "11030756-2787-0381-0000-07a1434767ba",
+   "status_code": 20000,
+   "status_message": "Ok.",
+   "time": "0.3874 sec.",
+   "cost": 0.01332,
+   "result_count": 1,
+   "path": [
+    "v3",
+    "dataforseo_labs",
+    "google",
+    "ranked_keywords",
+    "live"
+   ],
+   "data": {
+    "api": "dataforseo_labs",
+    "function": "ranked_keywords",
+    "se_type": "google",
+    "target": "altkomakademia.pl",
+    "location_code": 2616,
+    "language_code": "pl",
+    "limit": 20,
+    "filters": [
+     "keyword_data.keyword",
+     "like",
+     "%ai%"
+    ]
+   },
+   "result": [
+    {
+     "se_type": "google",
+     "target": "altkomakademia.pl",
+     "location_code": 2616,
+     "language_code": "pl",
+     "total_count": 11,
+     "items_count": 11,
+     "metrics": {
+      "organic": {
+       "pos_1": 0,
+       "pos_2_3": 0,
+       "pos_4_10": 4,
+       "pos_11_20": 3,
+       "pos_21_30": 2,
+       "pos_31_40": 0,
+       "pos_41_50": 1,
+       "pos_51_60": 0,
+       "pos_61_70": 0,
+       "pos_71_80": 0,
+       "pos_81_90": 0,
+       "pos_91_100": 1,
+       "etv": 34.84584330022335,
+       "count": 11,
+       "estimated_paid_traffic_cost": 96.73412671685219,
+       "is_new": 4,
+       "is_up": 2,
+       "is_down": 5,
+       "is_lost": 0,
+       "clickstream_etv": null,
+       "clickstream_gender_distribution": null,
+       "clickstream_age_distribution": null
+      },
+      "paid": {
+       "pos_1": 0,
+       "pos_2_3": 0,
+       "pos_4_10": 0,
+       "pos_11_20": 0,
+       "pos_21_30": 0,
+       "pos_31_40": 0,
+       "pos_41_50": 0,
+       "pos_51_60": 0,
+       "pos_61_70": 0,
+       "pos_71_80": 0,
+       "pos_81_90": 0,
+       "pos_91_100": 0,
+       "etv": 0,
+       "count": 0,
+       "estimated_paid_traffic_cost": 0,
+       "is_new": 0,
+       "is_up": 0,
+       "is_down": 0,
+       "is_lost": 0,
+       "clickstream_etv": null,
+       "clickstream_gender_distribution": null,
+       "clickstream_age_distribution": null
+      },
+      "featured_snippet": null,
+      "local_pack": null,
+      "ai_overview_reference": null
+     },
+     "metrics_absolute": null,
+     "items": [
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "szkolenia ai",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-10-17 16:35:50 +00:00",
+         "competition": 0.75,
+         "competition_level": "HIGH",
+         "cpc": 2.4000000953674316,
+         "search_volume": 1900,
+         "low_top_of_page_bid": 0.75,
+         "high_top_of_page_bid": 2.3899998664855957,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 9,
+           "search_volume": 1600
+          },
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 1300
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 1300
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 1600
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 1900
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 1900
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 2400
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 2400
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 2400
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 1600
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 1900
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 2900
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": 23,
+          "quarterly": 23,
+          "yearly": -16
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": "szkolenie ai",
+         "synonym_clustering_algorithm": "keyword_metrics",
+         "keyword_difficulty": 8,
+         "detected_language": "pl",
+         "is_another_language": false
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 7,
+         "rank_absolute": 9,
+         "position": "left",
+         "domain": "www.altkomakademia.pl",
+         "title": "AI – Artificial Intelligence",
+         "url": "https://www.altkomakademia.pl/product-category/szkolenia-it/data-ai/ai-artificial-intelligence-data-ai/",
+         "website_name": "Altkom Akademia",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "AI ACT w praktyce - budowanie w firmie zgodności i zarządzanie ryzykiem w erze sztucznej inteligencji i automatyzacji zgodnie z prawem. kod szkolenia: HR-AI ...",
+         "main_domain": "altkomakademia.pl",
+         "relative_url": "/product-category/szkolenia-it/data-ai/ai-artificial-intelligence-data-ai/",
+         "etv": 6.67960786819458,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 255
+         }
+        },
+        "check_url": "https://www.google.com/search?q=szkolenia%20ai&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "ai_overview",
+         "organic",
+         "people_also_ask",
+         "related_searches"
+        ],
+        "se_results_count": 133,
+        "keyword_difficulty": 8,
+        "is_lost": false,
+        "last_updated_time": "2026-09-02 23:18:10 +00:00",
+        "previous_updated_time": "2026-07-14 18:54:24 +00:00"
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "szkolenie ai",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-10-18 05:50:02 +00:00",
+         "competition": 0.75,
+         "competition_level": "HIGH",
+         "cpc": 2.4000000953674316,
+         "search_volume": 1900,
+         "low_top_of_page_bid": 0.75,
+         "high_top_of_page_bid": 2.3899998664855957,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 9,
+           "search_volume": 1600
+          },
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 1300
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 1300
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 1600
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 1900
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 1900
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 2400
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 2400
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 2400
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 1600
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 1900
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 2900
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": 23,
+          "quarterly": 23,
+          "yearly": -16
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": null,
+         "synonym_clustering_algorithm": "text_processing",
+         "keyword_difficulty": 0,
+         "detected_language": "pl",
+         "is_another_language": false
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 8,
+         "rank_absolute": 10,
+         "position": "left",
+         "domain": "www.altkomakademia.pl",
+         "title": "AI – Artificial Intelligence",
+         "url": "https://www.altkomakademia.pl/product-category/szkolenia-it/data-ai/ai-artificial-intelligence-data-ai/",
+         "website_name": "Altkom Akademia",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "AI ACT w praktyce - budowanie w firmie zgodności i zarządzanie ryzykiem w erze sztucznej inteligencji i automatyzacji zgodnie z prawem. kod szkolenia: HR-AI ...",
+         "main_domain": "altkomakademia.pl",
+         "relative_url": "/product-category/szkolenia-it/data-ai/ai-artificial-intelligence-data-ai/",
+         "etv": 8.10555648803711,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 255
+         }
+        },
+        "check_url": "https://www.google.com/search?q=szkolenie%20ai&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "ai_overview",
+         "organic",
+         "people_also_ask",
+         "related_searches"
+        ],
+        "se_results_count": 133,
+        "keyword_difficulty": 0,
+        "is_lost": false,
+        "last_updated_time": "2026-09-02 23:04:03 +00:00",
+        "previous_updated_time": null
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "szkolenie z ai",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-09-17 01:15:21 +00:00",
+         "competition": 0.7599999904632568,
+         "competition_level": "HIGH",
+         "cpc": 2.450000047683716,
+         "search_volume": 720,
+         "low_top_of_page_bid": 0.6800000071525574,
+         "high_top_of_page_bid": 2.4200000762939453,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 480
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 590
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 590
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 720
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 880
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 880
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 720
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 720
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 480
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 720
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 880
+          },
+          {
+           "year": 2025,
+           "month": 9,
+           "search_volume": 720
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": -19,
+          "quarterly": -19,
+          "yearly": -19
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": "szkolenie ai",
+         "synonym_clustering_algorithm": "text_processing",
+         "keyword_difficulty": 4,
+         "detected_language": "pl",
+         "is_another_language": false
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 9,
+         "rank_absolute": 13,
+         "position": "left",
+         "domain": "www.altkomakademia.pl",
+         "title": "AI – Artificial Intelligence",
+         "url": "https://www.altkomakademia.pl/product-category/szkolenia-it/data-ai/ai-artificial-intelligence-data-ai/",
+         "website_name": "Altkom Akademia",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "AI ACT w praktyce - budowanie w firmie zgodności i zarządzanie ryzykiem w erze sztucznej inteligencji i automatyzacji zgodnie z prawem. kod szkolenia: HR-AI ...",
+         "main_domain": "altkomakademia.pl",
+         "relative_url": "/product-category/szkolenia-it/data-ai/ai-artificial-intelligence-data-ai/",
+         "etv": 2.369868040084839,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 253
+         }
+        },
+        "check_url": "https://www.google.com/search?q=szkolenie%20z%20ai&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "ai_overview",
+         "organic",
+         "people_also_ask",
+         "video",
+         "related_searches"
+        ],
+        "se_results_count": 133,
+        "keyword_difficulty": 4,
+        "is_lost": false,
+        "last_updated_time": "2026-09-14 01:06:38 +00:00",
+        "previous_updated_time": "2026-07-29 23:30:08 +00:00"
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "agenci ai",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-10-16 10:20:59 +00:00",
+         "competition": 0.550000011920929,
+         "competition_level": "MEDIUM",
+         "cpc": 3.190000057220459,
+         "search_volume": 1300,
+         "low_top_of_page_bid": 0.7900000214576721,
+         "high_top_of_page_bid": 2.880000114440918,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 9,
+           "search_volume": 1300
+          },
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 720
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 720
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 720
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 1000
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 1000
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 1600
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 1900
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 1900
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 880
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 1300
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 1000
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": 81,
+          "quarterly": 81,
+          "yearly": -19
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": null,
+         "synonym_clustering_algorithm": "text_processing",
+         "keyword_difficulty": 0,
+         "detected_language": "fr",
+         "is_another_language": true
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 10,
+         "rank_absolute": 14,
+         "position": "left",
+         "domain": "www.altkomakademia.pl",
+         "title": "Agenci AI – od podstaw do wdrożenia - Szkolenia",
+         "url": "https://www.altkomakademia.pl/szkolenia/agenci-ai-od-podstaw-do-wdrozenia/",
+         "website_name": "Altkom Akademia",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "Szkolenie wprowadza uczestników w świat agentów AI – autonomicznych systemów opartych na sztucznej inteligencji, które potrafią analizować dane, podejmować ...",
+         "main_domain": "altkomakademia.pl",
+         "relative_url": "/szkolenia/agenci-ai-od-podstaw-do-wdrozenia/",
+         "etv": 11.455768585205078,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 253
+         }
+        },
+        "check_url": "https://www.google.com/search?q=agenci%20ai&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "ai_overview",
+         "organic",
+         "people_also_ask",
+         "video",
+         "related_searches",
+         "knowledge_graph",
+         "google_reviews",
+         "third_party_reviews"
+        ],
+        "se_results_count": 119,
+        "keyword_difficulty": 0,
+        "is_lost": false,
+        "last_updated_time": "2026-09-07 21:26:49 +00:00",
+        "previous_updated_time": "2026-07-19 14:12:13 +00:00"
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "szkolenie ai w biznesie",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-10-18 16:19:22 +00:00",
+         "competition": 0.8500000238418579,
+         "competition_level": "HIGH",
+         "cpc": 3.430000066757202,
+         "search_volume": 260,
+         "low_top_of_page_bid": 0.9399999976158142,
+         "high_top_of_page_bid": 2.809999942779541,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 9,
+           "search_volume": 140
+          },
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 140
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 140
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 170
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 260
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 320
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 480
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 320
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 320
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 210
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 260
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 390
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": 0,
+          "quarterly": 0,
+          "yearly": -56
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": null,
+         "synonym_clustering_algorithm": "text_processing",
+         "keyword_difficulty": 0,
+         "detected_language": "pl",
+         "is_another_language": false
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 12,
+         "rank_absolute": 16,
+         "position": "left",
+         "domain": "www.altkomakademia.pl",
+         "title": "AI w mojej firmie – Praktyczne wykorzystanie sztucznej ...",
+         "url": "https://www.altkomakademia.pl/szkolenia/ai-w-mojej-firmie-praktyczne-wykorzystanie-sztucznej-inteligencji-w-przedsiebiorstwie/",
+         "website_name": "Altkom Akademia",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "Trening obejmuje zarówno aspekty teoretyczne dotyczące sztucznej inteligencji, takie jak etyka rozwiązań, bezpieczeństwo i aspekty prawne, jak i praktyczne ...",
+         "main_domain": "altkomakademia.pl",
+         "relative_url": "/szkolenia/ai-w-mojej-firmie-praktyczne-wykorzystanie-sztucznej-inteligencji-w-przedsiebiorstwie/",
+         "etv": 0.9056699872016907,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 255
+         }
+        },
+        "check_url": "https://www.google.com/search?q=szkolenie%20ai%20w%20biznesie&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "organic",
+         "ai_overview",
+         "people_also_ask",
+         "scholarly_articles",
+         "related_searches"
+        ],
+        "se_results_count": 132,
+        "keyword_difficulty": 0,
+        "is_lost": false,
+        "last_updated_time": "2026-08-11 13:49:14 +00:00",
+        "previous_updated_time": "2026-04-29 21:27:00 +00:00"
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "excel ai",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-10-17 20:06:37 +00:00",
+         "competition": 0.46000000834465027,
+         "competition_level": "MEDIUM",
+         "cpc": 1.7400000095367432,
+         "search_volume": 390,
+         "low_top_of_page_bid": 0.2800000011920929,
+         "high_top_of_page_bid": 1.5699999332427979,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 9,
+           "search_volume": 210
+          },
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 170
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 210
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 320
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 390
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 480
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 480
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 480
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 590
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 480
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 480
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 590
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": 24,
+          "quarterly": 0,
+          "yearly": -46
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": null,
+         "synonym_clustering_algorithm": "text_processing",
+         "keyword_difficulty": 17,
+         "detected_language": "it",
+         "is_another_language": true
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 14,
+         "rank_absolute": 16,
+         "position": "left",
+         "domain": "www.altkomakademia.pl",
+         "title": "ExcelAI – Wykorzystanie sztucznej inteligencji i chatbotów ...",
+         "url": "https://www.altkomakademia.pl/szkolenia/excelai-wykorzystanie-sztucznej-inteligencji-i-chatbotow-do-efektywnej-pracy-w-excelu_aa/",
+         "website_name": "Altkom Akademia",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "Chcemy nauczyć uczestników automatyzacji zadań w Excelu za pomocą AI i czat botów, co pozwoli na zwiększenie wydajności i efektywności pracy. Szkolenie ma na ...",
+         "main_domain": "altkomakademia.pl",
+         "relative_url": "/szkolenia/excelai-wykorzystanie-sztucznej-inteligencji-i-chatbotow-do-efektywnej-pracy-w-excelu_aa/",
+         "etv": 2.175158977508545,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 253
+         }
+        },
+        "check_url": "https://www.google.com/search?q=excel%20ai&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "ai_overview",
+         "organic",
+         "related_searches"
+        ],
+        "se_results_count": 100,
+        "keyword_difficulty": 17,
+        "is_lost": false,
+        "last_updated_time": "2026-10-01 02:59:27 +00:00",
+        "previous_updated_time": "2026-07-06 10:10:40 +00:00"
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "szkolenia ai dla firm",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-09-17 02:17:03 +00:00",
+         "competition": 0.07999999821186066,
+         "competition_level": "LOW",
+         "cpc": 8.199999809265137,
+         "search_volume": 480,
+         "low_top_of_page_bid": 2.140000104904175,
+         "high_top_of_page_bid": 7.349999904632568,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 1300
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 1900
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 590
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 210
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 170
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 170
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 210
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 90
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 70
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 170
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 170
+          },
+          {
+           "year": 2025,
+           "month": 9,
+           "search_volume": 140
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": -32,
+          "quarterly": 120,
+          "yearly": 1082
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": null,
+         "synonym_clustering_algorithm": "text_processing",
+         "keyword_difficulty": 0,
+         "detected_language": "pl",
+         "is_another_language": false
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 19,
+         "rank_absolute": 22,
+         "position": "left",
+         "domain": "www.altkomakademia.pl",
+         "title": "Agenci AI – od podstaw do wdrożenia",
+         "url": "https://www.altkomakademia.pl/szkolenia/agenci-ai-od-podstaw-do-wdrozenia/",
+         "website_name": "Altkom Akademia",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "Szkolenie wprowadza uczestników w świat agentów AI – autonomicznych systemów opartych na sztucznej inteligencji, które potrafią analizować dane, ...",
+         "main_domain": "altkomakademia.pl",
+         "relative_url": "/szkolenia/agenci-ai-od-podstaw-do-wdrozenia/",
+         "etv": 0.7414227724075317,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 252
+         }
+        },
+        "check_url": "https://www.google.com/search?q=szkolenia%20ai%20dla%20firm&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "ai_overview",
+         "organic",
+         "people_also_search",
+         "related_searches"
+        ],
+        "se_results_count": 121,
+        "keyword_difficulty": 0,
+        "is_lost": false,
+        "last_updated_time": "2026-10-05 01:39:13 +00:00",
+        "previous_updated_time": null
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "tworzenie agentów ai",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-09-17 17:10:29 +00:00",
+         "competition": 0.699999988079071,
+         "competition_level": "HIGH",
+         "cpc": 3.8499999046325684,
+         "search_volume": 480,
+         "low_top_of_page_bid": 0.5799999833106995,
+         "high_top_of_page_bid": 2.880000114440918,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 210
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 260
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 260
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 480
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 390
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 390
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 480
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 1000
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 390
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 590
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 480
+          },
+          {
+           "year": 2025,
+           "month": 9,
+           "search_volume": 590
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": -19,
+          "quarterly": -19,
+          "yearly": -71
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": null,
+         "synonym_clustering_algorithm": null,
+         "keyword_difficulty": 0,
+         "detected_language": "pl",
+         "is_another_language": false
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 25,
+         "rank_absolute": 30,
+         "position": "left",
+         "domain": "www.altkomakademia.pl",
+         "title": "Agenci AI – od podstaw do wdrożenia - Szkolenia",
+         "url": "https://www.altkomakademia.pl/szkolenia/agenci-ai-od-podstaw-do-wdrozenia/",
+         "website_name": "Altkom Akademia",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "Szkolenie wprowadza uczestników w świat agentów AI – autonomicznych systemów opartych na sztucznej inteligencji, które potrafią analizować dane, ...",
+         "main_domain": "altkomakademia.pl",
+         "relative_url": "/szkolenia/agenci-ai-od-podstaw-do-wdrozenia/",
+         "etv": 0.7983646988868713,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 256
+         }
+        },
+        "check_url": "https://www.google.com/search?q=tworzenie%20agent%C3%B3w%20ai&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "ai_overview",
+         "video",
+         "people_also_ask",
+         "organic",
+         "related_searches"
+        ],
+        "se_results_count": 115,
+        "keyword_difficulty": 0,
+        "is_lost": false,
+        "last_updated_time": "2026-09-20 16:27:46 +00:00",
+        "previous_updated_time": "2026-06-16 19:41:08 +00:00"
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "ai-900",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-10-19 11:17:37 +00:00",
+         "competition": 0.20000000298023224,
+         "competition_level": "LOW",
+         "cpc": 1.6100000143051147,
+         "search_volume": 480,
+         "low_top_of_page_bid": 0.36000001430511475,
+         "high_top_of_page_bid": 1.7200000286102295,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 9,
+           "search_volume": 170
+          },
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 170
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 260
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 480
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 480
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 480
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 590
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 590
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 590
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 480
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 590
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 720
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": 0,
+          "quarterly": -35,
+          "yearly": -71
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": null,
+         "synonym_clustering_algorithm": null,
+         "keyword_difficulty": 0,
+         "detected_language": "en",
+         "is_another_language": true
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 27,
+         "rank_absolute": 32,
+         "position": "left",
+         "domain": "www.altkomakademia.pl",
+         "title": "Introduction to AI in Azure",
+         "url": "https://www.altkomakademia.pl/szkolenia/introduction-to-ai-in-azure-ai-901/",
+         "website_name": "Altkom Akademia",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "Kurs AI-901 zastępuje wygaszony przez Microsoft kurs AI-900 i jest przeznaczony dla osób, które chcą rozpocząć rozwój kompetencji w obszarze sztucznej ...",
+         "main_domain": "altkomakademia.pl",
+         "relative_url": "/szkolenia/introduction-to-ai-in-azure-ai-901/",
+         "etv": 0.862476646900177,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 256
+         }
+        },
+        "check_url": "https://www.google.com/search?q=ai-900&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "organic",
+         "people_also_ask",
+         "ai_overview",
+         "video",
+         "related_searches"
+        ],
+        "se_results_count": 129,
+        "keyword_difficulty": 0,
+        "is_lost": false,
+        "last_updated_time": "2026-09-25 05:43:41 +00:00",
+        "previous_updated_time": "2026-07-01 00:06:08 +00:00"
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "kurs ai",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-10-18 05:23:08 +00:00",
+         "competition": 0.9100000262260437,
+         "competition_level": "HIGH",
+         "cpc": 1.7599999904632568,
+         "search_volume": 1300,
+         "low_top_of_page_bid": 0.5400000214576721,
+         "high_top_of_page_bid": 1.7100000381469727,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 9,
+           "search_volume": 1000
+          },
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 880
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 1000
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 1000
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 1600
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 1600
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 1900
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 1300
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 1600
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 1300
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 1600
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 1900
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": 14,
+          "quarterly": 0,
+          "yearly": -38
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": null,
+         "synonym_clustering_algorithm": "text_processing",
+         "keyword_difficulty": 4,
+         "detected_language": "fr",
+         "is_another_language": true
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 43,
+         "rank_absolute": 49,
+         "position": "left",
+         "domain": "www.altkomakademia.pl",
+         "title": "AI – Artificial Intelligence",
+         "url": "https://www.altkomakademia.pl/product-category/szkolenia-it/data-ai/ai-artificial-intelligence-data-ai/",
+         "website_name": "Altkom Akademia",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "AI - Artificial Intelligence 127 szkoleń ; Advanced Techniques for building smart agents in Copilot Studio. kod szkolenia: MS Copilot Studio_level 2 / ENG DL 2d ...",
+         "main_domain": "altkomakademia.pl",
+         "relative_url": "/product-category/szkolenia-it/data-ai/ai-artificial-intelligence-data-ai/",
+         "etv": 0.6144087910652161,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 253
+         }
+        },
+        "check_url": "https://www.google.com/search?q=kurs%20ai&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "ai_overview",
+         "organic",
+         "people_also_ask",
+         "related_searches"
+        ],
+        "se_results_count": 138,
+        "keyword_difficulty": 4,
+        "is_lost": false,
+        "last_updated_time": "2026-09-05 02:49:10 +00:00",
+        "previous_updated_time": "2026-07-16 21:00:17 +00:00"
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "ai marketing",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-10-17 08:05:34 +00:00",
+         "competition": 0.6100000143051147,
+         "competition_level": "MEDIUM",
+         "cpc": 2.799999952316284,
+         "search_volume": 590,
+         "low_top_of_page_bid": 1.1699999570846558,
+         "high_top_of_page_bid": 10,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 9,
+           "search_volume": 480
+          },
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 390
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 390
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 320
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 720
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 1000
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 720
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 480
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 480
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 320
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 390
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 720
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": 23,
+          "quarterly": 23,
+          "yearly": -63
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": null,
+         "synonym_clustering_algorithm": "text_processing",
+         "keyword_difficulty": 0,
+         "detected_language": "en",
+         "is_another_language": true
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 93,
+         "rank_absolute": 105,
+         "position": "left",
+         "domain": "www.altkomakademia.pl",
+         "title": "AI w marketingu",
+         "url": "https://www.altkomakademia.pl/product-category/szkolenia-biznesowe/digital-marketing/ai-w-marketingu/",
+         "website_name": "Altkom Akademia",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "AI w marketingu. Szkolenia Szkolenia biznesowe Digital Marketing AI w marketingu. Wróć do Digital Marketing ... AI in Marketing – Fundamentals and Effective ...",
+         "main_domain": "altkomakademia.pl",
+         "relative_url": "/product-category/szkolenia-biznesowe/digital-marketing/ai-w-marketingu/",
+         "etv": 0.13754044473171234,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 256
+         }
+        },
+        "check_url": "https://www.google.com/search?q=ai%20marketing&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "ai_overview",
+         "organic",
+         "people_also_ask",
+         "video",
+         "related_searches"
+        ],
+        "se_results_count": 123,
+        "keyword_difficulty": 0,
+        "is_lost": false,
+        "last_updated_time": "2026-09-19 23:29:47 +00:00",
+        "previous_updated_time": "2026-06-30 22:21:46 +00:00"
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

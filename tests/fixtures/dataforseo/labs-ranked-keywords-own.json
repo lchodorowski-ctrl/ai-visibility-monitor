@@ -1,0 +1,900 @@
+{
+ "version": "0.1.20261022",
+ "status_code": 20000,
+ "status_message": "Ok.",
+ "time": "0.3335 sec.",
+ "cost": 0.01272,
+ "tasks_count": 1,
+ "tasks_error": 0,
+ "tasks": [
+  {
+   "id": "11030756-2787-0381-0000-1e3b865ef5e9",
+   "status_code": 20000,
+   "status_message": "Ok.",
+   "time": "0.2970 sec.",
+   "cost": 0.01272,
+   "result_count": 1,
+   "path": [
+    "v3",
+    "dataforseo_labs",
+    "google",
+    "ranked_keywords",
+    "live"
+   ],
+   "data": {
+    "api": "dataforseo_labs",
+    "function": "ranked_keywords",
+    "se_type": "google",
+    "target": "polskaszkola.ai",
+    "location_code": 2616,
+    "language_code": "pl",
+    "limit": 30
+   },
+   "result": [
+    {
+     "se_type": "google",
+     "target": "polskaszkola.ai",
+     "location_code": 2616,
+     "language_code": "pl",
+     "total_count": 6,
+     "items_count": 6,
+     "metrics": {
+      "organic": {
+       "pos_1": 0,
+       "pos_2_3": 0,
+       "pos_4_10": 0,
+       "pos_11_20": 0,
+       "pos_21_30": 0,
+       "pos_31_40": 0,
+       "pos_41_50": 0,
+       "pos_51_60": 1,
+       "pos_61_70": 2,
+       "pos_71_80": 2,
+       "pos_81_90": 1,
+       "pos_91_100": 0,
+       "etv": 1.0863514132797718,
+       "count": 6,
+       "estimated_paid_traffic_cost": 2.357708156108856,
+       "is_new": 2,
+       "is_up": 3,
+       "is_down": 1,
+       "is_lost": 0,
+       "clickstream_etv": null,
+       "clickstream_gender_distribution": null,
+       "clickstream_age_distribution": null
+      },
+      "paid": {
+       "pos_1": 0,
+       "pos_2_3": 0,
+       "pos_4_10": 0,
+       "pos_11_20": 0,
+       "pos_21_30": 0,
+       "pos_31_40": 0,
+       "pos_41_50": 0,
+       "pos_51_60": 0,
+       "pos_61_70": 0,
+       "pos_71_80": 0,
+       "pos_81_90": 0,
+       "pos_91_100": 0,
+       "etv": 0,
+       "count": 0,
+       "estimated_paid_traffic_cost": 0,
+       "is_new": 0,
+       "is_up": 0,
+       "is_down": 0,
+       "is_lost": 0,
+       "clickstream_etv": null,
+       "clickstream_gender_distribution": null,
+       "clickstream_age_distribution": null
+      },
+      "featured_snippet": null,
+      "local_pack": null,
+      "ai_overview_reference": null
+     },
+     "metrics_absolute": null,
+     "items": [
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "szkolenia ai",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-10-17 16:35:50 +00:00",
+         "competition": 0.75,
+         "competition_level": "HIGH",
+         "cpc": 2.4000000953674316,
+         "search_volume": 1900,
+         "low_top_of_page_bid": 0.75,
+         "high_top_of_page_bid": 2.3899998664855957,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 9,
+           "search_volume": 1600
+          },
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 1300
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 1300
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 1600
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 1900
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 1900
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 2400
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 2400
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 2400
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 1600
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 1900
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 2900
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": 23,
+          "quarterly": 23,
+          "yearly": -16
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": "szkolenie ai",
+         "synonym_clustering_algorithm": "keyword_metrics",
+         "keyword_difficulty": 8,
+         "detected_language": "pl",
+         "is_another_language": false
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 52,
+         "rank_absolute": 59,
+         "position": "left",
+         "domain": "www.polskaszkola.ai",
+         "title": "Polska Szkoła AI: Szkolenia AI i kompetencje cyfrowe dla firm",
+         "url": "https://www.polskaszkola.ai/",
+         "website_name": "Polska Szkoła AI",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "Pomagamy firmom, MŚP i administracji bezpiecznie wdrażać AI. Łączymy sztuczną inteligencję, psychologię zmiany i UX, szkoląc pracowników i liderów na ...",
+         "main_domain": "polskaszkola.ai",
+         "relative_url": "/",
+         "etv": 0.2786286473274231,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 38
+         }
+        },
+        "check_url": "https://www.google.com/search?q=szkolenia%20ai&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "ai_overview",
+         "organic",
+         "people_also_ask",
+         "related_searches"
+        ],
+        "se_results_count": 133,
+        "keyword_difficulty": 8,
+        "is_lost": false,
+        "last_updated_time": "2026-09-02 23:18:10 +00:00",
+        "previous_updated_time": "2026-07-14 18:54:24 +00:00"
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "szkolenie ai",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-10-18 05:50:02 +00:00",
+         "competition": 0.75,
+         "competition_level": "HIGH",
+         "cpc": 2.4000000953674316,
+         "search_volume": 1900,
+         "low_top_of_page_bid": 0.75,
+         "high_top_of_page_bid": 2.3899998664855957,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 9,
+           "search_volume": 1600
+          },
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 1300
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 1300
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 1600
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 1900
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 1900
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 2400
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 2400
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 2400
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 1600
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 1900
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 2900
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": 23,
+          "quarterly": 23,
+          "yearly": -16
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": null,
+         "synonym_clustering_algorithm": "text_processing",
+         "keyword_difficulty": 0,
+         "detected_language": "pl",
+         "is_another_language": false
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 62,
+         "rank_absolute": 70,
+         "position": "left",
+         "domain": "www.polskaszkola.ai",
+         "title": "Polska Szkoła AI: Szkolenia AI i kompetencje cyfrowe dla firm",
+         "url": "https://www.polskaszkola.ai/",
+         "website_name": "Polska Szkoła AI",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "Pomagamy firmom, MŚP i administracji bezpiecznie wdrażać AI. Łączymy sztuczną inteligencję, psychologię zmiany i UX, szkoląc pracowników i liderów na ...",
+         "main_domain": "polskaszkola.ai",
+         "relative_url": "/",
+         "etv": 0.2503860592842102,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 38
+         }
+        },
+        "check_url": "https://www.google.com/search?q=szkolenie%20ai&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "ai_overview",
+         "organic",
+         "people_also_ask",
+         "related_searches"
+        ],
+        "se_results_count": 133,
+        "keyword_difficulty": 0,
+        "is_lost": false,
+        "last_updated_time": "2026-09-02 23:04:03 +00:00",
+        "previous_updated_time": null
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "szkolenie z ai",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-09-17 01:15:21 +00:00",
+         "competition": 0.7599999904632568,
+         "competition_level": "HIGH",
+         "cpc": 2.450000047683716,
+         "search_volume": 720,
+         "low_top_of_page_bid": 0.6800000071525574,
+         "high_top_of_page_bid": 2.4200000762939453,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 480
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 590
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 590
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 720
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 880
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 880
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 720
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 720
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 480
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 720
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 880
+          },
+          {
+           "year": 2025,
+           "month": 9,
+           "search_volume": 720
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": -19,
+          "quarterly": -19,
+          "yearly": -19
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": "szkolenie ai",
+         "synonym_clustering_algorithm": "text_processing",
+         "keyword_difficulty": 4,
+         "detected_language": "pl",
+         "is_another_language": false
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 64,
+         "rank_absolute": 73,
+         "position": "left",
+         "domain": "www.polskaszkola.ai",
+         "title": "Polska Szkoła AI: Szkolenia AI i kompetencje cyfrowe dla firm",
+         "url": "https://www.polskaszkola.ai/",
+         "website_name": "Polska Szkoła AI",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "Pomagamy firmom, MŚP i administracji bezpiecznie wdrażać AI. Łączymy sztuczną inteligencję, psychologię zmiany i UX, szkoląc pracowników i liderów na ...",
+         "main_domain": "polskaszkola.ai",
+         "relative_url": "/",
+         "etv": 0.13786669075489044,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 38
+         }
+        },
+        "check_url": "https://www.google.com/search?q=szkolenie%20z%20ai&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "ai_overview",
+         "organic",
+         "people_also_ask",
+         "video",
+         "related_searches"
+        ],
+        "se_results_count": 133,
+        "keyword_difficulty": 4,
+        "is_lost": false,
+        "last_updated_time": "2026-09-14 01:06:38 +00:00",
+        "previous_updated_time": "2026-07-29 23:30:08 +00:00"
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "kurs ai",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-10-18 05:23:08 +00:00",
+         "competition": 0.9100000262260437,
+         "competition_level": "HIGH",
+         "cpc": 1.7599999904632568,
+         "search_volume": 1300,
+         "low_top_of_page_bid": 0.5400000214576721,
+         "high_top_of_page_bid": 1.7100000381469727,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 9,
+           "search_volume": 1000
+          },
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 880
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 1000
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 1000
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 1600
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 1600
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 1900
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 1300
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 1600
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 1300
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 1600
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 1900
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": 14,
+          "quarterly": 0,
+          "yearly": -38
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": null,
+         "synonym_clustering_algorithm": "text_processing",
+         "keyword_difficulty": 4,
+         "detected_language": "fr",
+         "is_another_language": true
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 78,
+         "rank_absolute": 87,
+         "position": "left",
+         "domain": "www.polskaszkola.ai",
+         "title": "Polska Szkoła AI: Szkolenia AI i kompetencje cyfrowe dla firm",
+         "url": "https://www.polskaszkola.ai/",
+         "website_name": "Polska Szkoła AI",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "Pomagamy firmom, MŚP i administracji bezpiecznie wdrażać AI. Łączymy sztuczną inteligencję, psychologię zmiany i UX, szkoląc pracowników i liderów na ...",
+         "main_domain": "polskaszkola.ai",
+         "relative_url": "/",
+         "etv": 0.2913951873779297,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 38
+         }
+        },
+        "check_url": "https://www.google.com/search?q=kurs%20ai&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "ai_overview",
+         "organic",
+         "people_also_ask",
+         "related_searches"
+        ],
+        "se_results_count": 138,
+        "keyword_difficulty": 4,
+        "is_lost": false,
+        "last_updated_time": "2026-09-05 02:49:10 +00:00",
+        "previous_updated_time": "2026-07-16 21:00:17 +00:00"
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "kurs sztuczna inteligencja",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-09-17 05:38:33 +00:00",
+         "competition": 0.7699999809265137,
+         "competition_level": "HIGH",
+         "cpc": 1.690000057220459,
+         "search_volume": 320,
+         "low_top_of_page_bid": 0.5400000214576721,
+         "high_top_of_page_bid": 1.600000023841858,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 140
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 140
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 140
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 260
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 320
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 320
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 390
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 390
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 320
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 390
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 480
+          },
+          {
+           "year": 2025,
+           "month": 9,
+           "search_volume": 320
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": 0,
+          "quarterly": 0,
+          "yearly": -56
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": null,
+         "synonym_clustering_algorithm": "text_processing",
+         "keyword_difficulty": 4,
+         "detected_language": "pl",
+         "is_another_language": false
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 80,
+         "rank_absolute": 90,
+         "position": "left",
+         "domain": "www.polskaszkola.ai",
+         "title": "Polska Szkoła AI: Szkolenia AI i kompetencje cyfrowe dla firm",
+         "url": "https://www.polskaszkola.ai/",
+         "website_name": "Polska Szkoła AI",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "Pomagamy firmom, MŚP i administracji bezpiecznie wdrażać AI. Łączymy sztuczną inteligencję, psychologię zmiany i UX, szkoląc pracowników i liderów na ...",
+         "main_domain": "polskaszkola.ai",
+         "relative_url": "/",
+         "etv": 0.07132475078105927,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 38
+         }
+        },
+        "check_url": "https://www.google.com/search?q=kurs%20sztuczna%20inteligencja&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "ai_overview",
+         "organic",
+         "people_also_ask",
+         "related_searches"
+        ],
+        "se_results_count": 136,
+        "keyword_difficulty": 4,
+        "is_lost": false,
+        "last_updated_time": "2026-08-14 00:15:25 +00:00",
+        "previous_updated_time": "2026-04-28 22:28:28 +00:00"
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword_data": {
+        "se_type": "google",
+        "keyword": "szkolenie sztuczna inteligencja",
+        "location_code": 2616,
+        "language_code": "pl",
+        "keyword_info": {
+         "se_type": "google",
+         "last_updated_time": "2026-10-18 21:28:28 +00:00",
+         "competition": 0.8100000023841858,
+         "competition_level": "HIGH",
+         "cpc": 2.059999942779541,
+         "search_volume": 260,
+         "low_top_of_page_bid": 0.7099999785423279,
+         "high_top_of_page_bid": 2.2100000381469727,
+         "monthly_searches": [
+          {
+           "year": 2026,
+           "month": 9,
+           "search_volume": 90
+          },
+          {
+           "year": 2026,
+           "month": 8,
+           "search_volume": 90
+          },
+          {
+           "year": 2026,
+           "month": 7,
+           "search_volume": 110
+          },
+          {
+           "year": 2026,
+           "month": 6,
+           "search_volume": 140
+          },
+          {
+           "year": 2026,
+           "month": 5,
+           "search_volume": 260
+          },
+          {
+           "year": 2026,
+           "month": 4,
+           "search_volume": 390
+          },
+          {
+           "year": 2026,
+           "month": 3,
+           "search_volume": 480
+          },
+          {
+           "year": 2026,
+           "month": 2,
+           "search_volume": 390
+          },
+          {
+           "year": 2026,
+           "month": 1,
+           "search_volume": 390
+          },
+          {
+           "year": 2025,
+           "month": 12,
+           "search_volume": 210
+          },
+          {
+           "year": 2025,
+           "month": 11,
+           "search_volume": 260
+          },
+          {
+           "year": 2025,
+           "month": 10,
+           "search_volume": 320
+          }
+         ],
+         "search_volume_trend": {
+          "monthly": 0,
+          "quarterly": -18,
+          "yearly": -65
+         }
+        },
+        "keyword_properties": {
+         "se_type": "google",
+         "core_keyword": null,
+         "synonym_clustering_algorithm": "text_processing",
+         "keyword_difficulty": 4,
+         "detected_language": "pl",
+         "is_another_language": false
+        }
+       },
+       "ranked_serp_element": {
+        "se_type": "google",
+        "serp_item": {
+         "se_type": "google",
+         "type": "organic",
+         "rank_group": 88,
+         "rank_absolute": 98,
+         "position": "left",
+         "domain": "www.polskaszkola.ai",
+         "title": "Polska Szkoła AI: Szkolenia AI i kompetencje cyfrowe dla firm",
+         "url": "https://www.polskaszkola.ai/",
+         "website_name": "Polska Szkoła AI",
+         "is_image": false,
+         "is_video": false,
+         "is_featured_snippet": false,
+         "is_malicious": false,
+         "description": "Pomagamy firmom, MŚP i administracji bezpiecznie wdrażać AI. Łączymy sztuczną inteligencję, psychologię zmiany i UX, szkoląc pracowników i liderów na ...",
+         "main_domain": "polskaszkola.ai",
+         "relative_url": "/",
+         "etv": 0.05675007775425911,
+         "backlinks_info": null,
+         "rank_info": {
+          "page_rank": 0,
+          "main_domain_rank": 38
+         }
+        },
+        "check_url": "https://www.google.com/search?q=szkolenie%20sztuczna%20inteligencja&hl=pl&gl=PL&ie=UTF-8&uule=w+CAIQIFISCbsLZKRkmQBHEepVzEnKc3UJ",
+        "serp_item_types": [
+         "organic",
+         "ai_overview",
+         "people_also_ask",
+         "related_searches"
+        ],
+        "se_results_count": 132,
+        "keyword_difficulty": 4,
+        "is_lost": false,
+        "last_updated_time": "2026-08-11 13:48:38 +00:00",
+        "previous_updated_time": "2026-04-10 01:31:22 +00:00"
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
