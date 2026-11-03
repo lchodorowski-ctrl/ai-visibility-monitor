@@ -132,6 +132,18 @@ describe("KeywordStatusSection", () => {
       expect(html).not.toMatch(NO_DASHES);
     });
 
+    it("sprawdzenie pozycji w toku od 50 minut jeszcze trwa (odbiór wyników bywa godzinny), po 95 minutach jest przerwane", async () => {
+      const running = (startedAt: string) => job({ kind: "rank_check", status: "running", finished_at: null, started_at: startedAt });
+      withJobs(null, null, running("2026-11-03T11:10:00Z")); // 50 minut przed 12:00
+      let html = render(await KeywordStatusSection({ projectId: "p", now }));
+      expect(html).toContain("w toku");
+      expect(html).not.toContain("przerwane");
+      withJobs(null, null, running("2026-11-03T10:25:00Z")); // 95 minut przed 12:00
+      html = render(await KeywordStatusSection({ projectId: "p", now }));
+      expect(html).toMatch(/<span class="[^"]*text-red[^"]*">przerwane<\/span>/);
+      expect(html).not.toContain("w toku");
+    });
+
     it("bez żadnego sprawdzenia: informacja, że jeszcze nic nie uruchomiono", async () => {
       expect(render(await KeywordStatusSection({ projectId: "p", now }))).toContain("Jeszcze nie sprawdzano pozycji.");
     });
@@ -184,6 +196,28 @@ describe("KeywordStatusSection", () => {
       expect(render(await KeywordStatusSection({ projectId: "p", now }))).toContain("Sprawdź pozycje (najwyżej 1,32 USD)");
       activeKeywords(60); // 120 × 0,0066 = 0,792 → 0,80
       expect(render(await KeywordStatusSection({ projectId: "p", now }))).toContain("Sprawdź pozycje (najwyżej 0,80 USD)");
+    });
+
+    it("powyżej 100 aktywnych fraz nota mówi, że co tydzień sprawdzamy 100 z największym wolumenem; do 100 jej nie ma", async () => {
+      const note = "Co tydzień sprawdzamy 100 fraz z największym wolumenem.";
+      activeKeywords(101);
+      expect(render(await KeywordStatusSection({ projectId: "p", now }))).toContain(note);
+      activeKeywords(150);
+      const html = render(await KeywordStatusSection({ projectId: "p", now }));
+      expect(html).toContain(note);
+      expect(html).not.toMatch(NO_DASHES);
+      activeKeywords(100);
+      expect(render(await KeywordStatusSection({ projectId: "p", now }))).not.toContain("Co tydzień sprawdzamy");
+      activeKeywords(3);
+      expect(render(await KeywordStatusSection({ projectId: "p", now }))).not.toContain("Co tydzień sprawdzamy");
+    });
+
+    it("do limitu liczą się tylko aktywne frazy: 100 aktywnych i dużo wstrzymanych to jeszcze brak noty", async () => {
+      q.getKeywords.mockResolvedValue([
+        ...Array.from({ length: 100 }, (_, i) => keyword({ id: `a${i}`, key: `aktywna ${i}` })),
+        ...Array.from({ length: 30 }, (_, i) => keyword({ id: `p${i}`, key: `wstrzymana ${i}`, active: false })),
+      ]);
+      expect(render(await KeywordStatusSection({ projectId: "p", now }))).not.toContain("Co tydzień sprawdzamy");
     });
 
     it("wstrzymane frazy nie liczą się do szacunku; bez aktywnych fraz przycisk jest wyłączony", async () => {
@@ -414,6 +448,22 @@ describe("TrackedSection: pozycje w Google", () => {
     const first = render(await TrackedSection(props));
     expect(first).toContain("komputer 37");
     expect(first).not.toMatch(/\u2191|\u2193|bez zmian|nowa w top 100|wypadła/);
+  });
+
+  it("każdy odczyt podaje tydzień pomiaru („stan na DD.MM”), więc stara pozycja nie wygląda na bieżącą", async () => {
+    tracked({ volumeUpdatedAt: null });
+    withRanks("k1", {
+      desktop: rank({ weekStart: "2026-10-12", position: 52 }),
+      mobile: rank({ weekStart: "2026-10-26", position: 41 }),
+    });
+    const html = render(await TrackedSection(props));
+    const desktop = html.slice(html.indexOf("komputer 52"), html.indexOf("telefon 41"));
+    const mobile = html.slice(html.indexOf("telefon 41"));
+    expect(desktop).toContain("stan na 12.10");
+    expect(desktop).not.toContain("26.10");
+    expect(mobile).toContain("stan na 26.10");
+    expect(html.match(/stan na /g)).toHaveLength(2);
+    expect(html).not.toMatch(NO_DASHES);
   });
 
   it("tylko jedno urządzenie z pomiarem: pokazuje tylko je", async () => {

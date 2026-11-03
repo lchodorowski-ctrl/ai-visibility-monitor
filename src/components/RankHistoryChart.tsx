@@ -39,10 +39,11 @@ function RankTooltip({ active, payload, label }: { active?: boolean; payload?: r
 /**
  * Weekly Google positions of a phrase. A lower number is better, so the axis is reversed: position 1 on top. A week
  * without a position (`null`) is a gap in the line, not a point at the bottom; the dots keep a week that stands alone
- * between two gaps visible.
+ * between two gaps visible. When no week has a position on either device, a sentence replaces the empty plot.
  */
 export function RankHistoryChart({ points }: { points: RankHistoryPoint[] }) {
   if (points.length < 2) return <p className="text-t1">Historia pojawi się po drugim pomiarze.</p>;
+  if (points.every((p) => p.desktop === null && p.mobile === null)) return <p className="text-t1">We wszystkich pomiarach fraza była poza top 100.</p>;
   return (
     <div>
       <div className="mb-4 flex flex-wrap gap-x-6 gap-y-1 text-sm text-t1">
@@ -58,7 +59,7 @@ export function RankHistoryChart({ points }: { points: RankHistoryPoint[] }) {
           <CartesianGrid vertical={false} stroke="var(--color-line)" strokeWidth={1} />
           <XAxis dataKey="weekStart" tickFormatter={fmtDayMonth} tick={tick} tickLine={false} axisLine={{ stroke: "var(--color-line-2)" }} minTickGap={24} />
           <YAxis reversed domain={DOMAIN} ticks={TICKS} interval={0} allowDecimals={false} tick={tick} tickLine={false} axisLine={false} width={40} />
-          <Tooltip content={RankTooltip} cursor={{ stroke: "var(--color-line-3)", strokeWidth: 1 }} />
+          <Tooltip content={RankTooltip} filterNull={false} cursor={{ stroke: "var(--color-line-3)", strokeWidth: 1 }} />
           <Line
             type="linear" dataKey="desktop" name="Komputer" stroke={DESKTOP} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
             dot={{ r: 3, fill: DESKTOP, stroke: DESKTOP }} activeDot={{ r: 5, fill: DESKTOP, stroke: "var(--color-bg)", strokeWidth: 2 }} isAnimationActive={false}

@@ -203,11 +203,15 @@ describe("DirectionSection", () => {
     expect(html).toContain("Brak danych: pozycje fraz.");
   });
 
-  it("błąd odczytu pozycji nie psuje przeglądu: kafel pozycji pokazuje brak danych, reszta działa", async () => {
+  it("błąd odczytu pozycji nie psuje przeglądu: kafel pozycji mówi o błędzie odczytu (nie o braku fraz), reszta działa", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
     r.getRankDirectionRows.mockRejectedValue(new Error("Nie udało się pobrać pozycji do podsumowania: boom"));
     const html = render(await section());
-    expect(html).toContain("Brak pomiarów pozycji");
+    expect(html).toContain("Brak danych o pozycjach");
+    expect(html).toContain("Nie udało się wczytać pomiarów pozycji.");
+    expect(html).not.toContain("Brak pomiarów pozycji");
+    expect(html).not.toContain("Dodaj frazy w Google");
+    expect(html).not.toContain("Kliknij Sprawdź pozycje");
     expect(html).toContain("Score 54, +6 pkt");
     expect(html).toContain("142 kliknięcia, +18%");
     expect(html).toContain("Brak danych: pozycje fraz.");
@@ -215,14 +219,24 @@ describe("DirectionSection", () => {
     expect(String(error.mock.calls[0][0])).toContain("boom");
   });
 
-  it("błąd liczenia fraz też jest tylko zalogowany", async () => {
+  it("błąd liczenia fraz też jest tylko zalogowany, a kafel nie podpowiada dodania fraz", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
     r.getRankDirectionRows.mockResolvedValue([]);
     r.countActiveKeywords.mockRejectedValue(new Error("Nie udało się policzyć fraz: boom"));
     const html = render(await section());
-    expect(html).toContain("Brak pomiarów pozycji");
+    expect(html).toContain("Brak danych o pozycjach");
+    expect(html).not.toContain("Dodaj frazy w Google");
     expect(error).toHaveBeenCalledOnce();
     expect(String(error.mock.calls[0][0])).toContain("boom");
+  });
+
+  it("pomiary pozycji starsze niż poprzedni tydzień (liczone od `now` przeglądu): kafel mówi, że są nieaktualne, i podaje datę ostatniego pomiaru", async () => {
+    const later = new Date("2026-12-14T10:00:00Z"); // najnowszy pomiar to 2026-11-02, czyli siedem tygodni wcześniej
+    const html = render(await DirectionSection({ projectId: "p", gscProperty: "sc-domain:polskaszkola.ai", now: later }));
+    expect(html).toContain("Pozycje fraz są nieaktualne");
+    expect(html).toContain("ostatni pomiar: 02.11. Sprawdź pozycje w Google → Frazy.");
+    expect(html).not.toContain("w top 10");
+    expect(html).toMatch(/Brak danych: [^.]*pozycje fraz\./);
   });
 
   it("kafel Google podaje okres porównania z datą ostatnich danych", async () => {

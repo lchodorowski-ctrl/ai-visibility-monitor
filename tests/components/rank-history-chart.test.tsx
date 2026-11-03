@@ -49,6 +49,29 @@ describe("RankHistoryChart", () => {
     }
   });
 
+  it("każdy pomiar bez pozycji na obu urządzeniach: zdanie zamiast pustego wykresu", () => {
+    const html = render([
+      { weekStart: "2026-10-26", desktop: null, mobile: null },
+      { weekStart: "2026-11-02", desktop: null, mobile: null },
+    ]);
+    expect(html).toContain("We wszystkich pomiarach fraza była poza top 100.");
+    expect(html).not.toContain("data-chart");
+    expect(html).not.toContain("Historia pojawi się po drugim pomiarze.");
+    expect(html).not.toMatch(NO_DASHES);
+  });
+
+  it("jeden pomiar z pozycją (na którymkolwiek urządzeniu) to już wykres, nie zdanie", () => {
+    for (const withPosition of [{ desktop: 80, mobile: null }, { desktop: null, mobile: 100 }]) {
+      const html = render([{ weekStart: "2026-10-26", desktop: null, mobile: null }, { weekStart: "2026-11-02", ...withPosition }]);
+      expect(html).toContain('data-chart="LineChart"');
+      expect(html).not.toContain("We wszystkich pomiarach");
+    }
+  });
+
+  it("podpowiedź pokazuje też tydzień, w którym oba urządzenia nie mają pozycji (filterNull wyłączone)", () => {
+    expect(element(render(points), "Tooltip").props.filterNull).toBe(false);
+  });
+
   it("oś Y jest odwrócona: pozycja 1 na górze, skala 1 do 100", () => {
     const { props } = element(render(points), "YAxis");
     expect(props.reversed).toBe(true);

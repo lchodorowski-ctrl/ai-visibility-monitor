@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { EmptyState } from "@/components/psai";
 import { Button } from "@/components/ui/button";
 
-/** Błąd odczytu danych z Search Console. Produkcja ukrywa treść błędów serwera, więc zdanie jest zawsze to samo. */
+/** Błąd odczytu danych Google (Search Console i pozycje fraz). Produkcja ukrywa treść błędów serwera, więc zdanie jest zawsze to samo. */
 export default function GoogleError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => {
     console.error(error);
@@ -13,7 +13,7 @@ export default function GoogleError({ error, retry }: { error: Error & { digest?
   return (
     <EmptyState
       tone="error"
-      title="Nie udało się wczytać danych z Search Console"
+      title="Nie udało się wczytać danych Google."
       description="Spróbuj ponownie za chwilę. Jeśli błąd się powtarza, sprawdź ustawienia Google i status synchronizacji."
       action={<Button type="button" onClick={() => retry()}>Spróbuj ponownie</Button>}
     />

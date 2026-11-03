@@ -70,22 +70,22 @@ async function loadGscWindows(projectId: string): Promise<GscWindowData> {
   }
 }
 
-interface RankData { rows: RankDirectionRow[]; activeKeywords: number }
+interface RankData { rows: RankDirectionRow[]; activeKeywords: number; readFailed: boolean }
 
-const NO_RANKS: RankData = { rows: [], activeKeywords: 0 };
+const FAILED_RANKS: RankData = { rows: [], activeKeywords: 0, readFailed: true };
 
 /**
  * Desktop positions of the last weeks, and the number of active phrases when there are none (it only picks the hint on
- * the card). A failed read must not take the whole overview down either: it is logged and the card says there is no
- * data (the phrases page shows the real error).
+ * the card). A failed read must not take the whole overview down either: it is logged and the card says it could not
+ * load the positions, not that there are none to show (the phrases page shows the real error).
  */
 async function loadRanks(projectId: string): Promise<RankData> {
   try {
     const rows = await getRankDirectionRows(projectId);
-    return { rows, activeKeywords: rows.length > 0 ? 0 : await countActiveKeywords(projectId) };
+    return { rows, activeKeywords: rows.length > 0 ? 0 : await countActiveKeywords(projectId), readFailed: false };
   } catch (e) {
     console.error(`DirectionSection: nie udało się pobrać pozycji fraz: ${e instanceof Error ? e.message : String(e)}`);
-    return NO_RANKS;
+    return FAILED_RANKS;
   }
 }
 
@@ -96,7 +96,7 @@ export async function DirectionSection({ projectId, gscProperty, now }: { projec
     aiSummary(rows),
     aioSummary(rows),
     googleSummary(gsc.cur, gsc.prev, configured, { lastDate: gsc.lastDate, firstDate: gsc.firstDate, now }),
-    rankSummary(ranks.rows, { activeKeywords: ranks.activeKeywords }),
+    rankSummary(ranks.rows, { activeKeywords: ranks.activeKeywords, readFailed: ranks.readFailed, now }),
   ];
   return <DirectionCards summaries={summaries} headline={overallHeadline(summaries)} />;
 }

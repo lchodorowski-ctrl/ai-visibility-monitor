@@ -26,7 +26,7 @@ export default async function OverviewPage() {
         <TileInverse eyebrow="Pierwszy krok" title={`Uruchom pierwszy pomiar i sprawdź, czy asystenci AI polecają markę ${project.brand_name}.`}
           action={<form action={runNow}><Button type="submit" className="bg-bg text-ink hover:bg-bg/90">Uruchom pomiar</Button></form>} />
       )}
-      <Suspense fallback={<div className="grid gap-6 md:grid-cols-3"><TileSkeleton /><TileSkeleton /><TileSkeleton /></div>}>
+      <Suspense fallback={<div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4"><TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton /></div>}>
         <DirectionSection projectId={project.id} gscProperty={project.gsc_property} />
       </Suspense>
       <Suspense fallback={<div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4"><TileSkeleton /><TileSkeleton /><TileSkeleton /><TileSkeleton /></div>}>

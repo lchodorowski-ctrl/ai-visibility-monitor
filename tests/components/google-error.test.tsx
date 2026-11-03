@@ -9,7 +9,8 @@ describe("GoogleError", () => {
 
   it("po polsku: tytuł, wskazówka i przycisk „Spróbuj ponownie”", () => {
     const html = render("Nie udało się pobrać sumy z Search Console: boom");
-    expect(html).toContain("Nie udało się wczytać danych z Search Console");
+    expect(html).toContain("Nie udało się wczytać danych Google.");
+    expect(html).not.toContain("Search Console");
     expect(html).toContain("Spróbuj ponownie za chwilę");
     expect(html).toMatch(/<button[^>]*type="button"[^>]*>Spróbuj ponownie<\/button>/);
   });

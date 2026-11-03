@@ -49,7 +49,7 @@ const figure = "font-mono text-sm tabular-nums";
 const JOB_STATUS: Record<string, string> = {
   running: "w toku", done: "zakończone", failed: "nieudane", skipped: "pominięte", budget_exceeded: "limit SEO wyczerpany",
 };
-/** A job `running` for more than 45 minutes will never finish: the task died without closing its entry. */
+/** A job `running` past its limit (`isInterruptedJob`) will never finish: the task died without closing its entry. */
 const INTERRUPTED = "przerwane";
 /** Statuses whose `error` explains what happened (a finished job has none). */
 const EXPLAINED = new Set(["failed", "budget_exceeded", "skipped"]);
@@ -112,6 +112,9 @@ export async function KeywordStatusSection({ projectId, now = new Date() }: { pr
             <Button type="submit" disabled={active === 0}>{`Sprawdź pozycje (najwyżej ${usdUpTo(ranksEstimate)})`}</Button>
           </form>
           <Meta className="block normal-case tracking-normal">Frazy sprawdzone w tym tygodniu nie są sprawdzane drugi raz.</Meta>
+          {active > MAX_RANK_KEYWORDS && (
+            <Meta className="block normal-case tracking-normal">{`Co tydzień sprawdzamy ${MAX_RANK_KEYWORDS} fraz z największym wolumenem.`}</Meta>
+          )}
         </div>
         {active === 0 && <Meta className="block normal-case tracking-normal">Dodaj albo włącz frazy, żeby je mierzyć.</Meta>}
       </div>
@@ -214,7 +217,8 @@ const readingsOf = (ranks: Partial<Record<Device, RankView>> | undefined): Readi
 
 /**
  * Positions of a phrase and where it ranks. The computer is the reference, as in the "Kierunek" tile: the rival comes
- * from it (from the phone only when the computer has no reading); the address is the first one known.
+ * from it (from the phone only when the computer has no reading); the address is the first one known. Every reading
+ * says the week it comes from ("stan na", like the volume), so an old position never passes for the current one.
  */
 function RankCell({ readings }: { readings: Reading[] }) {
   if (readings.length === 0) return <Meta className="basis-52 normal-case tracking-normal">pozycja: jeszcze nie sprawdzano</Meta>;
@@ -228,6 +232,7 @@ function RankCell({ readings }: { readings: Reading[] }) {
           <p key={device} className="flex flex-wrap items-baseline gap-x-2">
             <span className={`${figure} font-semibold`}>{`${DEVICE_LABEL[device]} ${positionText(view.position)}`}</span>
             {change.kind !== "none" && <span className={`text-sm ${CHANGE_TONE[change.kind]}`}>{rankChangeText(change)}</span>}
+            <Meta className="normal-case tracking-normal">{`stan na ${fmtDayShort(view.weekStart)}`}</Meta>
           </p>
         );
       })}
