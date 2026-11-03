@@ -276,7 +276,7 @@ export function rankSummary(rows: RankDirectionRow[], ctx: RankSummaryContext): 
   if (latestWeek < shiftDate(rankWeekStart(ctx.now ?? new Date()), -RANK_STALE_DAYS)) {
     return {
       ...id, direction: "unknown", headline: "Pozycje fraz są nieaktualne", since: null,
-      detail: `ostatni pomiar: ${fmtDayMonth(latestWeek)}. Sprawdź pozycje w Google → Frazy.`,
+      detail: `ostatni pomiar: tydzień od ${fmtDayMonth(latestWeek)}. Sprawdź pozycje w Google → Frazy.`,
     };
   }
   const latest = weeks.get(latestWeek)!;
@@ -284,7 +284,7 @@ export function rankSummary(rows: RankDirectionRow[], ctx: RankSummaryContext): 
   const headline = `${fmtNumber(inTop10)} z ${fmtNumber(latest.size)} ${latest.size === 1 ? "frazy" : "fraz"} w top 10`;
 
   const base = pickBaseline([...weeks.keys()].map((date) => ({ date })), latestWeek, TH.baselineDays);
-  if (!base) return { ...id, direction: "unknown", headline, detail: `pomiar z ${fmtDayMonth(latestWeek)}, ${NO_BASELINE}`, since: null };
+  if (!base) return { ...id, direction: "unknown", headline, detail: `pomiar z tygodnia od ${fmtDayMonth(latestWeek)}, ${NO_BASELINE}`, since: null };
 
   const before = weeks.get(base.date)!;
   let better = 0;

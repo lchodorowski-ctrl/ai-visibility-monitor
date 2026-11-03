@@ -232,7 +232,7 @@ function RankCell({ readings }: { readings: Reading[] }) {
           <p key={device} className="flex flex-wrap items-baseline gap-x-2">
             <span className={`${figure} font-semibold`}>{`${DEVICE_LABEL[device]} ${positionText(view.position)}`}</span>
             {change.kind !== "none" && <span className={`text-sm ${CHANGE_TONE[change.kind]}`}>{rankChangeText(change)}</span>}
-            <Meta className="normal-case tracking-normal">{`stan na ${fmtDayShort(view.weekStart)}`}</Meta>
+            <Meta className="normal-case tracking-normal">{`tydzień od ${fmtDayShort(view.weekStart)}`}</Meta>
           </p>
         );
       })}

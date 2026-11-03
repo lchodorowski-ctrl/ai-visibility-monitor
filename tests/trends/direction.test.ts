@@ -520,7 +520,7 @@ describe("rankSummary", () => {
   it("jeden tydzień: nieznany kierunek, ale nagłówek z liczbą fraz w top 10 i brak bazy w opisie", () => {
     const s = rankSummary(rk(NEW, 3, 10, 11, null, 45), none);
     expect(s).toMatchObject({ key: "rank", direction: "unknown", headline: "2 z 5 fraz w top 10", since: null, href: "/app/google/keywords" });
-    expect(s.detail).toBe("pomiar z 02.11, brak wcześniejszego pomiaru do porównania");
+    expect(s.detail).toBe("pomiar z tygodnia od 02.11, brak wcześniejszego pomiaru do porównania");
   });
 
   it("odmiana w nagłówku: „1 z 1 frazy”, „0 z 4 fraz”, „3 z 12 fraz”; pozycja 10 jest w top 10, 11 już nie", () => {
@@ -621,7 +621,7 @@ describe("rankSummary", () => {
     it("najnowszy tydzień sprzed dwóch tygodni: kierunek nieznany, nagłówek i opis o nieaktualnych pomiarach", () => {
       expect(rankSummary(stale(STALE), none)).toEqual({
         key: "rank", label: "Google: pozycje fraz", direction: "unknown",
-        headline: "Pozycje fraz są nieaktualne", detail: "ostatni pomiar: 19.10. Sprawdź pozycje w Google → Frazy.", since: null, href: "/app/google/keywords",
+        headline: "Pozycje fraz są nieaktualne", detail: "ostatni pomiar: tydzień od 19.10. Sprawdź pozycje w Google → Frazy.", since: null, href: "/app/google/keywords",
       });
     });
 
@@ -636,7 +636,7 @@ describe("rankSummary", () => {
     });
 
     it("jeden stary tydzień też jest nieaktualny, a data to najnowszy tydzień pomiaru", () => {
-      expect(rankSummary(rk(STALE, 3, 10), none)).toMatchObject({ direction: "unknown", headline: "Pozycje fraz są nieaktualne", detail: "ostatni pomiar: 19.10. Sprawdź pozycje w Google → Frazy." });
+      expect(rankSummary(rk(STALE, 3, 10), none)).toMatchObject({ direction: "unknown", headline: "Pozycje fraz są nieaktualne", detail: "ostatni pomiar: tydzień od 19.10. Sprawdź pozycje w Google → Frazy." });
     });
 
     it("tydzień pomiaru liczy się według kalendarza warszawskiego: w niedzielę wieczorem poprzedni poniedziałek jest jeszcze bieżący", () => {

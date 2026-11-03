@@ -234,7 +234,7 @@ describe("DirectionSection", () => {
     const later = new Date("2026-12-14T10:00:00Z"); // najnowszy pomiar to 2026-11-02, czyli siedem tygodni wcześniej
     const html = render(await DirectionSection({ projectId: "p", gscProperty: "sc-domain:polskaszkola.ai", now: later }));
     expect(html).toContain("Pozycje fraz są nieaktualne");
-    expect(html).toContain("ostatni pomiar: 02.11. Sprawdź pozycje w Google → Frazy.");
+    expect(html).toContain("ostatni pomiar: tydzień od 02.11. Sprawdź pozycje w Google → Frazy.");
     expect(html).not.toContain("w top 10");
     expect(html).toMatch(/Brak danych: [^.]*pozycje fraz\./);
   });

@@ -450,7 +450,7 @@ describe("TrackedSection: pozycje w Google", () => {
     expect(first).not.toMatch(/\u2191|\u2193|bez zmian|nowa w top 100|wypadła/);
   });
 
-  it("każdy odczyt podaje tydzień pomiaru („stan na DD.MM”), więc stara pozycja nie wygląda na bieżącą", async () => {
+  it("każdy odczyt podaje tydzień pomiaru („tydzień od DD.MM”), więc stara pozycja nie wygląda na bieżącą", async () => {
     tracked({ volumeUpdatedAt: null });
     withRanks("k1", {
       desktop: rank({ weekStart: "2026-10-12", position: 52 }),
@@ -459,10 +459,10 @@ describe("TrackedSection: pozycje w Google", () => {
     const html = render(await TrackedSection(props));
     const desktop = html.slice(html.indexOf("komputer 52"), html.indexOf("telefon 41"));
     const mobile = html.slice(html.indexOf("telefon 41"));
-    expect(desktop).toContain("stan na 12.10");
+    expect(desktop).toContain("tydzień od 12.10");
     expect(desktop).not.toContain("26.10");
-    expect(mobile).toContain("stan na 26.10");
-    expect(html.match(/stan na /g)).toHaveLength(2);
+    expect(mobile).toContain("tydzień od 26.10");
+    expect(html.match(/tydzień od /g)).toHaveLength(2);
     expect(html).not.toMatch(NO_DASHES);
   });
 
