@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { seoMonthSpend, decideSeoSpend } from "@/lib/seo/budget";
+import { seoMonthSpend, decideSeoSpend, budgetExceededMessage } from "@/lib/seo/budget";
 
 function fakeAdmin(rows: unknown[], error: { message: string } | null = null) {
   const calls: { table: string; cols?: string; filters: unknown[][] } = { table: "", filters: [] };
@@ -38,5 +38,16 @@ describe("decideSeoSpend", () => {
   });
   it("pozwala dokładnie na granicy budżetu", () => {
     expect(decideSeoSpend(10, 0, 10)).toEqual({ kind: "go" });
+  });
+  it("NaN w dowolnym argumencie to budget_exceeded (brama zamknięta)", () => {
+    expect(decideSeoSpend(NaN, 1, 10).kind).toBe("budget_exceeded");
+    expect(decideSeoSpend(1, NaN, 10).kind).toBe("budget_exceeded");
+    expect(decideSeoSpend(1, 1, NaN).kind).toBe("budget_exceeded");
+  });
+});
+
+describe("budgetExceededMessage", () => {
+  it("podaje wydane, budżet i szacunek z przecinkiem dziesiętnym", () => {
+    expect(budgetExceededMessage(9.95, 0.101, 10)).toBe("Limit SEO: wydano 9,95 USD z 10,00 USD, to zadanie kosztuje ok. 0,10 USD");
   });
 });

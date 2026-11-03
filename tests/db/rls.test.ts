@@ -195,6 +195,64 @@ describe.skipIf(!url)("RLS", () => {
     }
   });
 
+  it("anon i nie-członek nie widzą fraz ani podpowiedzi, członek widzi", async () => {
+    const c = new Client({ connectionString: url });
+    await c.connect();
+
+    const countKeywordRowsAs = async (role: "anon" | "authenticated", claims: object, keywordId: string, suggestionId: string) => {
+      try {
+        await c.query(`set role ${role}`);
+        await c.query(`select set_config('request.jwt.claims', $1, false)`, [JSON.stringify(claims)]);
+        const keywords = await c.query(`select count(*)::int as n from keywords where id = $1`, [keywordId]);
+        const suggestions = await c.query(`select count(*)::int as n from keyword_suggestions where id = $1`, [suggestionId]);
+        return { keywords: keywords.rows[0].n as number, suggestions: suggestions.rows[0].n as number };
+      } finally {
+        await c.query(`reset role`);
+        await c.query(`select set_config('request.jwt.claims', '', false)`);
+      }
+    };
+
+    let keywordId: string | undefined;
+    let suggestionId: string | undefined;
+    try {
+      for (const uid of [MEMBER, OUTSIDER]) {
+        await c.query(`insert into auth.users (id, email) values ($1, $2) on conflict do nothing`, [uid, `${uid}@rls.test.local`]);
+      }
+      await c.query(`insert into memberships (org_id, user_id) values ($1, $2) on conflict do nothing`, [ORG, MEMBER]);
+
+      const keyword = await c.query(
+        `insert into keywords (project_id, text, key, source) values ($1, 'Szkolenia AI Łódź', 'szkolenia ai łódź', 'manual') returning id`,
+        [PROJECT],
+      );
+      keywordId = keyword.rows[0].id as string;
+      const suggestion = await c.query(
+        `insert into keyword_suggestions (project_id, key, text, source) values ($1, 'kursy ai łódź', 'Kursy AI Łódź', 'labs') returning id`,
+        [PROJECT],
+      );
+      suggestionId = suggestion.rows[0].id as string;
+
+      const anon = await countKeywordRowsAs("anon", {}, keywordId, suggestionId);
+      const outsider = await countKeywordRowsAs("authenticated", { sub: OUTSIDER, role: "authenticated" }, keywordId, suggestionId);
+      const member = await countKeywordRowsAs("authenticated", { sub: MEMBER, role: "authenticated" }, keywordId, suggestionId);
+
+      expect(anon).toEqual({ keywords: 0, suggestions: 0 });
+      expect(outsider).toEqual({ keywords: 0, suggestions: 0 });
+      expect(member).toEqual({ keywords: 1, suggestions: 1 });
+    } finally {
+      await c.query(`reset role`);
+      await c.query(`select set_config('request.jwt.claims', '', false)`);
+      if (keywordId) {
+        await c.query(`delete from keywords where id = $1`, [keywordId]);
+      }
+      if (suggestionId) {
+        await c.query(`delete from keyword_suggestions where id = $1`, [suggestionId]);
+      }
+      await c.query(`delete from memberships where user_id = any($1::uuid[])`, [[MEMBER, OUTSIDER]]);
+      await c.query(`delete from auth.users where id = any($1::uuid[])`, [[MEMBER, OUTSIDER]]);
+      await c.end();
+    }
+  });
+
   describe("Search Console", () => {
     const PHRASE = "szkolenia ai wrocław łódź";
     const PREV_DAY = "2020-01-01";

@@ -1,0 +1,1982 @@
+{
+ "version": "0.1.20261022",
+ "status_code": 20000,
+ "status_message": "Ok.",
+ "time": "0.2015 sec.",
+ "cost": 0.0144,
+ "tasks_count": 1,
+ "tasks_error": 0,
+ "tasks": [
+  {
+   "id": "11030756-2787-0399-0000-e7ed34a62f22",
+   "status_code": 20000,
+   "status_message": "Ok.",
+   "time": "0.1298 sec.",
+   "cost": 0.0144,
+   "result_count": 1,
+   "path": [
+    "v3",
+    "dataforseo_labs",
+    "google",
+    "keyword_suggestions",
+    "live"
+   ],
+   "data": {
+    "api": "dataforseo_labs",
+    "function": "keyword_suggestions",
+    "se_type": "google",
+    "keyword": "szkolenia ai",
+    "location_code": 2616,
+    "language_code": "pl",
+    "limit": 20,
+    "include_seed_keyword": true
+   },
+   "result": [
+    {
+     "se_type": "google",
+     "seed_keyword": "szkolenia ai",
+     "seed_keyword_data": {
+      "se_type": "google",
+      "keyword": "szkolenia ai",
+      "location_code": 2616,
+      "language_code": "pl",
+      "keyword_info": {
+       "se_type": "google",
+       "last_updated_time": "2026-10-17 16:35:50 +00:00",
+       "competition": 0.75,
+       "competition_level": "HIGH",
+       "cpc": 2.4,
+       "search_volume": 1900,
+       "low_top_of_page_bid": 0.75,
+       "high_top_of_page_bid": 2.39,
+       "monthly_searches": [
+        {
+         "year": 2026,
+         "month": 9,
+         "search_volume": 1600
+        },
+        {
+         "year": 2026,
+         "month": 8,
+         "search_volume": 1300
+        },
+        {
+         "year": 2026,
+         "month": 7,
+         "search_volume": 1300
+        },
+        {
+         "year": 2026,
+         "month": 6,
+         "search_volume": 1600
+        },
+        {
+         "year": 2026,
+         "month": 5,
+         "search_volume": 1900
+        },
+        {
+         "year": 2026,
+         "month": 4,
+         "search_volume": 1900
+        },
+        {
+         "year": 2026,
+         "month": 3,
+         "search_volume": 2400
+        },
+        {
+         "year": 2026,
+         "month": 2,
+         "search_volume": 2400
+        },
+        {
+         "year": 2026,
+         "month": 1,
+         "search_volume": 2400
+        },
+        {
+         "year": 2025,
+         "month": 12,
+         "search_volume": 1600
+        },
+        {
+         "year": 2025,
+         "month": 11,
+         "search_volume": 1900
+        },
+        {
+         "year": 2025,
+         "month": 10,
+         "search_volume": 2900
+        }
+       ],
+       "search_volume_trend": {
+        "monthly": 23,
+        "quarterly": 23,
+        "yearly": -16
+       }
+      },
+      "keyword_properties": {
+       "se_type": "google",
+       "core_keyword": "szkolenie ai",
+       "synonym_clustering_algorithm": "keyword_metrics",
+       "keyword_difficulty": 8,
+       "detected_language": "pl",
+       "is_another_language": false,
+       "words_count": 2
+      }
+     },
+     "location_code": 2616,
+     "language_code": "pl",
+     "total_count": 23,
+     "items_count": 20,
+     "offset": 0,
+     "offset_token": "eyJDdXJyZW50T2Zmc2V0IjoyMCwiUmVxdWVzdERhdGEiOnsia2V5d29yZCI6InN6a29sZW5pYSBhaSIsImluY2x1ZGVfc2VlZF9rZXl3b3JkIjp0cnVlLCJmdWxsX21hdGNoIjpmYWxzZSwibG9hZF9zZXJwX2luZm8iOmZhbHNlLCJzZWFyY2hfYWZ0ZXJfdG9rZW4iOm51bGwsImlnbm9yZV9zeW5vbnltcyI6ZmFsc2UsImxhbmd1YWdlIjoicGwiLCJzZWFyY2hfZW5naW5lIjoiZ29vZ2xlIiwibG9jYXRpb24iOjI2MTYsInVzZV9uZXdfY2F0ZWdvcmllcyI6dHJ1ZSwib3JkZXJfYnkiOnsib3JkZXJfZmllbGQiOiJrZXl3b3JkX2luZm8uc2VhcmNoX3ZvbHVtZSIsIm9yZGVyX3R5cGUiOiJEZXNjIiwibmV4dCI6bnVsbH0sImxpbWl0IjoyMCwib2Zmc2V0IjowLCJhaWQiOjI3ODc2NiwidXNlX2NhY2hlIjp0cnVlLCJ0YXNrX2lkIjoiMTEwMzA3NTYtMjc4Ny0wMzk5LTAwMDAtZTdlZDM0YTYyZjIyIiwiZmxhZ3MiOm51bGx9LCJSYXdRdWVyeSI6bnVsbCwiSWQiOiIyZDMzOWJkNS02M2IzLTRlZDEtODYxMy0yZWYzYzAyN2M0MGYiLCJTZWFyY2hBZnRlckRhdGEiOlstOTIyMzM3MjAzNjg1NDc3NTgwOCwiMWVhMDY4YjItYjY1NS0wMTZmLTlmODMtZGMyYWMyNTZkNjFlIl0sIkV4ZWN1dG9yIjotOTE4NDQwNTk0MDQ0NDUxNzYzM30=",
+     "items": [
+      {
+       "se_type": "google",
+       "keyword": "szkolenia ai",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-10-17 16:35:50 +00:00",
+        "competition": 0.75,
+        "competition_level": "HIGH",
+        "cpc": 2.4,
+        "search_volume": 1900,
+        "low_top_of_page_bid": 0.75,
+        "high_top_of_page_bid": 2.39,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 9,
+          "search_volume": 1600
+         },
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 1300
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 1300
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 1600
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 1900
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 1900
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 2400
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 2400
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 2400
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 1600
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 1900
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 2900
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": 23,
+         "quarterly": 23,
+         "yearly": -16
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": "szkolenie ai",
+        "synonym_clustering_algorithm": "keyword_metrics",
+        "keyword_difficulty": 8,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 2
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "szkolenia ai dla firm",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-09-17 02:17:03 +00:00",
+        "competition": 0.08,
+        "competition_level": "LOW",
+        "cpc": 8.2,
+        "search_volume": 480,
+        "low_top_of_page_bid": 2.14,
+        "high_top_of_page_bid": 7.35,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 1300
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 1900
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 590
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 210
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 170
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 170
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 210
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 90
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 70
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 170
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 170
+         },
+         {
+          "year": 2025,
+          "month": 9,
+          "search_volume": 140
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": -32,
+         "quarterly": 120,
+         "yearly": 1082
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": null,
+        "synonym_clustering_algorithm": "text_processing",
+        "keyword_difficulty": 0,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 4
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "szkolenia ai w biznesie",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-09-16 22:57:40 +00:00",
+        "competition": 0.8,
+        "competition_level": "HIGH",
+        "cpc": 3.2,
+        "search_volume": 260,
+        "low_top_of_page_bid": 1.05,
+        "high_top_of_page_bid": 4.12,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 140
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 140
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 170
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 260
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 320
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 480
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 320
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 320
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 210
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 260
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 390
+         },
+         {
+          "year": 2025,
+          "month": 9,
+          "search_volume": 320
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": 0,
+         "quarterly": -18,
+         "yearly": -46
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": "szkolenie ai w biznesie",
+        "synonym_clustering_algorithm": "keyword_metrics",
+        "keyword_difficulty": 0,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 4
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "szkolenia ai google",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-10-15 09:35:46 +00:00",
+        "competition": 0.69,
+        "competition_level": "HIGH",
+        "cpc": 1.94,
+        "search_volume": 210,
+        "low_top_of_page_bid": 0.52,
+        "high_top_of_page_bid": 1.73,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 9,
+          "search_volume": 90
+         },
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 110
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 140
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 260
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 320
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 260
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 320
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 140
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 140
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 140
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 170
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 390
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": -18,
+         "quarterly": -36,
+         "yearly": -57
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": "google szkolenia ai",
+        "synonym_clustering_algorithm": "text_processing",
+        "keyword_difficulty": 8,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 3
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "szkolenia ai dla nauczycieli",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-10-17 01:47:28 +00:00",
+        "competition": 0.69,
+        "competition_level": "HIGH",
+        "cpc": 0.9,
+        "search_volume": 140,
+        "low_top_of_page_bid": 0.27,
+        "high_top_of_page_bid": 0.79,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 9,
+          "search_volume": 170
+         },
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 90
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 70
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 170
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 140
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 140
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 170
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 170
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 210
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 90
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 140
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 170
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": 89,
+         "quarterly": 143,
+         "yearly": -35
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": null,
+        "synonym_clustering_algorithm": "keyword_metrics",
+        "keyword_difficulty": null,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 4
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "szkolenia ai w marketingu",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-10-17 05:26:27 +00:00",
+        "competition": 0.74,
+        "competition_level": "HIGH",
+        "cpc": 4.59,
+        "search_volume": 110,
+        "low_top_of_page_bid": 1.4,
+        "high_top_of_page_bid": 3.71,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 9,
+          "search_volume": 70
+         },
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 50
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 70
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 40
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 90
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 140
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 170
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 110
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 170
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 90
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 140
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 210
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": 40,
+         "quarterly": 0,
+         "yearly": -50
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": "szkolenie ai w marketingu",
+        "synonym_clustering_algorithm": "keyword_metrics",
+        "keyword_difficulty": 0,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 4
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "darmowe szkolenia ai",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-10-19 01:25:46 +00:00",
+        "competition": 0.7,
+        "competition_level": "HIGH",
+        "cpc": 1.06,
+        "search_volume": 110,
+        "low_top_of_page_bid": 0.28,
+        "high_top_of_page_bid": 1.35,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 9,
+          "search_volume": 90
+         },
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 70
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 90
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 140
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 140
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 110
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 110
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 110
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 140
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 90
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 110
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 210
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": 29,
+         "quarterly": 0,
+         "yearly": -36
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": "szkolenia ai darmowe",
+        "synonym_clustering_algorithm": "text_processing",
+        "keyword_difficulty": null,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 3
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "szkolenia ai z certyfikatem",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-10-19 14:59:27 +00:00",
+        "competition": 0.87,
+        "competition_level": "HIGH",
+        "cpc": 1.96,
+        "search_volume": 90,
+        "low_top_of_page_bid": 0.6,
+        "high_top_of_page_bid": 1.91,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 9,
+          "search_volume": 140
+         },
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 110
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 70
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 110
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 140
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 110
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 140
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 110
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 90
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 50
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 20
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 30
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": 27,
+         "quarterly": 100,
+         "yearly": 367
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": null,
+        "synonym_clustering_algorithm": "keyword_metrics",
+        "keyword_difficulty": null,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 4
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "szkolenia ai darmowe",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-09-17 17:19:35 +00:00",
+        "competition": 0.75,
+        "competition_level": "HIGH",
+        "cpc": 1.02,
+        "search_volume": 70,
+        "low_top_of_page_bid": 0.43,
+        "high_top_of_page_bid": 1.39,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 50
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 70
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 110
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 90
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 70
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 90
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 90
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 70
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 40
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 50
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 70
+         },
+         {
+          "year": 2025,
+          "month": 9,
+          "search_volume": 70
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": -29,
+         "quarterly": -55,
+         "yearly": 25
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": null,
+        "synonym_clustering_algorithm": "text_processing",
+        "keyword_difficulty": null,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 3
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "szkolenia z ai dla firm",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-10-18 04:30:02 +00:00",
+        "competition": 0.77,
+        "competition_level": "HIGH",
+        "cpc": 8.39,
+        "search_volume": 50,
+        "low_top_of_page_bid": 1.99,
+        "high_top_of_page_bid": 7.52,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 9,
+          "search_volume": 50
+         },
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 40
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 50
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 40
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 70
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 70
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 90
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 70
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 30
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 10
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 10
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 20
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": 25,
+         "quarterly": 0,
+         "yearly": 150
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": "szkolenia ai dla firm",
+        "synonym_clustering_algorithm": "text_processing",
+        "keyword_difficulty": 0,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 5
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "szkolenia ai warszawa",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-10-16 09:02:40 +00:00",
+        "competition": 0.7,
+        "competition_level": "HIGH",
+        "cpc": 2.9,
+        "search_volume": 50,
+        "low_top_of_page_bid": 0.86,
+        "high_top_of_page_bid": 2.86,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 9,
+          "search_volume": 90
+         },
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 70
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 70
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 70
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 50
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 40
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 50
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 50
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 40
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 40
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 50
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 30
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": 29,
+         "quarterly": 29,
+         "yearly": 200
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": null,
+        "synonym_clustering_algorithm": "keyword_metrics",
+        "keyword_difficulty": null,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 3
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "szkolenia ai dla managerów",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-10-20 09:35:37 +00:00",
+        "competition": 0.81,
+        "competition_level": "HIGH",
+        "cpc": 6.76,
+        "search_volume": 50,
+        "low_top_of_page_bid": 1.96,
+        "high_top_of_page_bid": 6.96,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 9,
+          "search_volume": 30
+         },
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 40
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 50
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 70
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 40
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 70
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 90
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 40
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 70
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 70
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": 50,
+         "quarterly": 50,
+         "yearly": -40
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": null,
+        "synonym_clustering_algorithm": "keyword_metrics",
+        "keyword_difficulty": null,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 4
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "szkolenia ai online",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-10-19 09:43:37 +00:00",
+        "competition": 0.97,
+        "competition_level": "HIGH",
+        "cpc": 2.78,
+        "search_volume": 40,
+        "low_top_of_page_bid": 0.85,
+        "high_top_of_page_bid": 2.5,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 9,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 40
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 30
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 40
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 40
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 90
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 50
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 40
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 30
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 10
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 40
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": 0,
+         "quarterly": -50,
+         "yearly": 0
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": null,
+        "synonym_clustering_algorithm": "keyword_metrics",
+        "keyword_difficulty": null,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 3
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "szkolenia google ai",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-10-18 22:41:21 +00:00",
+        "competition": 0.69,
+        "competition_level": "HIGH",
+        "cpc": 1.27,
+        "search_volume": 30,
+        "low_top_of_page_bid": 0.4,
+        "high_top_of_page_bid": 1.39,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 9,
+          "search_volume": 10
+         },
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 10
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 40
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 40
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 40
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 40
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 30
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 30
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 20
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 50
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": 0,
+         "quarterly": -50,
+         "yearly": -67
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": "google szkolenia ai",
+        "synonym_clustering_algorithm": "text_processing",
+        "keyword_difficulty": null,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 3
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "google szkolenia ai",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-09-17 00:02:44 +00:00",
+        "competition": 0.3,
+        "competition_level": "LOW",
+        "cpc": 3.2,
+        "search_volume": 30,
+        "low_top_of_page_bid": 0.82,
+        "high_top_of_page_bid": 4.36,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 10
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 40
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 40
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 30
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 50
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 30
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 20
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 30
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 50
+         },
+         {
+          "year": 2025,
+          "month": 9,
+          "search_volume": 40
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": -50,
+         "quarterly": -75,
+         "yearly": -50
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": null,
+        "synonym_clustering_algorithm": "text_processing",
+        "keyword_difficulty": null,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 3
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "najlepsze szkolenia z ai",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-10-20 06:47:35 +00:00",
+        "competition": 0.84,
+        "competition_level": "HIGH",
+        "cpc": 2.74,
+        "search_volume": 20,
+        "low_top_of_page_bid": 0.68,
+        "high_top_of_page_bid": 2.54,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 9,
+          "search_volume": 10
+         },
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 10
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 30
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 30
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 20
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 10
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 20
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 30
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": -50,
+         "quarterly": 0,
+         "yearly": 0
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": null,
+        "synonym_clustering_algorithm": "keyword_metrics",
+        "keyword_difficulty": null,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 4
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "comarch szkolenia ai",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-09-16 20:32:55 +00:00",
+        "competition": 0.6,
+        "competition_level": "MEDIUM",
+        "cpc": 1.56,
+        "search_volume": 20,
+        "low_top_of_page_bid": 0.72,
+        "high_top_of_page_bid": 2.26,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 30
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 20
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 10
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 20
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 20
+         },
+         {
+          "year": 2025,
+          "month": 9,
+          "search_volume": 20
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": 0,
+         "quarterly": 0,
+         "yearly": null
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": null,
+        "synonym_clustering_algorithm": "keyword_metrics",
+        "keyword_difficulty": null,
+        "detected_language": "es",
+        "is_another_language": true,
+        "words_count": 3
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "sekurak szkolenia ai",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-09-17 14:05:42 +00:00",
+        "competition": 0.4,
+        "competition_level": "MEDIUM",
+        "cpc": 3.16,
+        "search_volume": 10,
+        "low_top_of_page_bid": 0.48,
+        "high_top_of_page_bid": 1.55,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 10
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 10
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 10
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 10
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 0
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 0
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 0
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 0
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 0
+         },
+         {
+          "year": 2025,
+          "month": 9,
+          "search_volume": 0
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": 100,
+         "quarterly": 100,
+         "yearly": null
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": null,
+        "synonym_clustering_algorithm": "keyword_metrics",
+        "keyword_difficulty": null,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 3
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "ey szkolenia ai",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-09-17 00:31:58 +00:00",
+        "competition": 0.79,
+        "competition_level": "HIGH",
+        "cpc": 0.72,
+        "search_volume": 10,
+        "low_top_of_page_bid": 1.08,
+        "high_top_of_page_bid": 2.64,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 8,
+          "search_volume": 10
+         },
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 10
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 10
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 10
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 10
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 10
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 20
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 0
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 0
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 0
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 0
+         },
+         {
+          "year": 2025,
+          "month": 9,
+          "search_volume": 0
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": 0,
+         "quarterly": 0,
+         "yearly": null
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": null,
+        "synonym_clustering_algorithm": "keyword_metrics",
+        "keyword_difficulty": null,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 3
+       }
+      },
+      {
+       "se_type": "google",
+       "keyword": "szkolenia ai w księgowości",
+       "location_code": 2616,
+       "language_code": "pl",
+       "keyword_info": {
+        "se_type": "google",
+        "last_updated_time": "2026-09-03 02:12:48 +00:00",
+        "competition": null,
+        "competition_level": null,
+        "cpc": null,
+        "search_volume": null,
+        "low_top_of_page_bid": null,
+        "high_top_of_page_bid": null,
+        "monthly_searches": [
+         {
+          "year": 2026,
+          "month": 7,
+          "search_volume": 0
+         },
+         {
+          "year": 2026,
+          "month": 6,
+          "search_volume": 0
+         },
+         {
+          "year": 2026,
+          "month": 5,
+          "search_volume": 0
+         },
+         {
+          "year": 2026,
+          "month": 4,
+          "search_volume": 0
+         },
+         {
+          "year": 2026,
+          "month": 3,
+          "search_volume": 0
+         },
+         {
+          "year": 2026,
+          "month": 2,
+          "search_volume": 0
+         },
+         {
+          "year": 2026,
+          "month": 1,
+          "search_volume": 0
+         },
+         {
+          "year": 2025,
+          "month": 12,
+          "search_volume": 0
+         },
+         {
+          "year": 2025,
+          "month": 11,
+          "search_volume": 0
+         },
+         {
+          "year": 2025,
+          "month": 10,
+          "search_volume": 0
+         },
+         {
+          "year": 2025,
+          "month": 9,
+          "search_volume": 0
+         },
+         {
+          "year": 2025,
+          "month": 8,
+          "search_volume": 0
+         }
+        ],
+        "search_volume_trend": {
+         "monthly": 0,
+         "quarterly": 0,
+         "yearly": 0
+        }
+       },
+       "keyword_properties": {
+        "se_type": "google",
+        "core_keyword": null,
+        "synonym_clustering_algorithm": null,
+        "keyword_difficulty": null,
+        "detected_language": "pl",
+        "is_another_language": false,
+        "words_count": 4
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

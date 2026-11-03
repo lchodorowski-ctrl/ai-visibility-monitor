@@ -5,6 +5,12 @@ const dateFmt = new Intl.DateTimeFormat("pl-PL", {
 });
 export const fmtDate = (iso: string) => dateFmt.format(new Date(iso));
 
+const dayFmt = new Intl.DateTimeFormat("pl-PL", { timeZone: "Europe/Warsaw", day: "2-digit", month: "2-digit", year: "numeric" });
+/** Day of a timestamp in Warsaw time: "03.11.2026". */
+export const fmtDay = (iso: string) => dayFmt.format(new Date(iso));
+/** Day and month of a timestamp in Warsaw time: "03.11". */
+export const fmtDayShort = (iso: string) => fmtDay(iso).slice(0, 5);
+
 // --- Polish number formatting (decimal comma, plain spaces) ---------------------------------------------------------
 
 const MINUS = "\u2212";

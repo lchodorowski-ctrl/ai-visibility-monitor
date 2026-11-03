@@ -26,11 +26,16 @@ describe("startJob", () => {
 });
 
 describe("finishJob", () => {
-  function fakeUpdateAdmin(error: { message: string } | null = null) {
-    const calls: { table: string; update?: Record<string, unknown>; filters: unknown[][] } = { table: "", filters: [] };
+  function fakeUpdateAdmin(opts: { error?: { message: string } | null; rows?: { id: string }[] } = {}) {
+    const calls: { table: string; update?: Record<string, unknown>; filters: unknown[][]; cols?: string } = { table: "", filters: [] };
     const b: Record<string, unknown> = {};
     b.update = (patch: Record<string, unknown>) => { calls.update = patch; return b; };
-    b.eq = (...a: unknown[]) => { calls.filters.push(["eq", ...a]); return Promise.resolve({ error }); };
+    b.eq = (...a: unknown[]) => { calls.filters.push(["eq", ...a]); return b; };
+    b.select = (cols: string) => {
+      calls.cols = cols;
+      const error = opts.error ?? null;
+      return Promise.resolve({ data: error ? null : (opts.rows ?? [{ id: "job" }]), error });
+    };
     return { client: { from: (t: string) => { calls.table = t; return b; } } as never, calls };
   }
 
@@ -39,16 +44,31 @@ describe("finishJob", () => {
     await finishJob(client, "job-1", { status: "done", costUsd: 0.42, stats: { rows: 12 } });
     expect(calls.table).toBe("seo_jobs");
     expect(calls.filters).toEqual([["eq", "id", "job-1"]]);
+    expect(calls.cols).toBe("id");
     expect(calls.update).toMatchObject({ status: "done", cost_usd: 0.42, stats: { rows: 12 }, error: null });
     expect(new Date(calls.update!.finished_at as string).toISOString()).toBe(calls.update!.finished_at);
   });
-  it("zapisuje błąd i domyślne wartości kosztu oraz statystyk", async () => {
+  it("zapisuje błąd i domyślne statystyki", async () => {
     const { client, calls } = fakeUpdateAdmin();
     await finishJob(client, "job-2", { status: "failed", error: "GSC 403" });
-    expect(calls.update).toMatchObject({ status: "failed", cost_usd: 0, stats: {}, error: "GSC 403" });
+    expect(calls.update).toMatchObject({ status: "failed", stats: {}, error: "GSC 403" });
+  });
+  it("finishJob bez costUsd nie wysyła cost_usd", async () => {
+    const { client, calls } = fakeUpdateAdmin();
+    await finishJob(client, "job-2", { status: "failed", error: "GSC 403" });
+    expect(calls.update).not.toHaveProperty("cost_usd");
+  });
+  it("zapisuje jawne costUsd równe 0", async () => {
+    const { client, calls } = fakeUpdateAdmin();
+    await finishJob(client, "job-2", { status: "done", costUsd: 0 });
+    expect(calls.update).toHaveProperty("cost_usd", 0);
   });
   it("rzuca przy błędzie zapisu", async () => {
-    const { client } = fakeUpdateAdmin({ message: "boom" });
+    const { client } = fakeUpdateAdmin({ error: { message: "boom" } });
     await expect(finishJob(client, "job-3", { status: "done" })).rejects.toThrow("boom");
+  });
+  it("finishJob dla nieznanego id rzuca", async () => {
+    const { client } = fakeUpdateAdmin({ rows: [] });
+    await expect(finishJob(client, "job-x", { status: "done" })).rejects.toThrow("seo_jobs: brak zadania job-x");
   });
 });

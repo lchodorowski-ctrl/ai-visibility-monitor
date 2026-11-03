@@ -219,6 +219,46 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"keyword_suggestions": {
+                  Row: {
+                    "competitor_positions": NonNullable<Json>,"cpc": number | null,"created_at": string,"id": string,"key": string,"keyword_difficulty": number | null,"own_position": number | null,"own_url": string | null,"project_id": string,"search_volume": number | null,"seed": string | null,"source": string,"status": string,"text": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "competitor_positions"?: NonNullable<Json>,"cpc"?: number | null,"created_at"?: string,"id"?: string,"key": string,"keyword_difficulty"?: number | null,"own_position"?: number | null,"own_url"?: string | null,"project_id": string,"search_volume"?: number | null,"seed"?: string | null,"source": string,"status"?: string,"text": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "competitor_positions"?: NonNullable<Json>,"cpc"?: number | null,"created_at"?: string,"id"?: string,"key"?: string,"keyword_difficulty"?: number | null,"own_position"?: number | null,"own_url"?: string | null,"project_id"?: string,"search_volume"?: number | null,"seed"?: string | null,"source"?: string,"status"?: string,"text"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "keyword_suggestions_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"keywords": {
+                  Row: {
+                    "active": boolean,"competition": string | null,"competition_index": number | null,"cpc": number | null,"created_at": string,"id": string,"key": string,"monthly_searches": Json | null,"project_id": string,"search_volume": number | null,"source": string,"target_path": string | null,"text": string,"trend": Json | null,"trend_updated_at": string | null,"volume_updated_at": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"competition"?: string | null,"competition_index"?: number | null,"cpc"?: number | null,"created_at"?: string,"id"?: string,"key": string,"monthly_searches"?: Json | null,"project_id": string,"search_volume"?: number | null,"source": string,"target_path"?: string | null,"text": string,"trend"?: Json | null,"trend_updated_at"?: string | null,"volume_updated_at"?: string | null
+                  }
+                  Update: {
+                    "active"?: boolean,"competition"?: string | null,"competition_index"?: number | null,"cpc"?: number | null,"created_at"?: string,"id"?: string,"key"?: string,"monthly_searches"?: Json | null,"project_id"?: string,"search_volume"?: number | null,"source"?: string,"target_path"?: string | null,"text"?: string,"trend"?: Json | null,"trend_updated_at"?: string | null,"volume_updated_at"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "keywords_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"memberships": {
                   Row: {
                     "org_id": string,"role": string,"user_id": string
