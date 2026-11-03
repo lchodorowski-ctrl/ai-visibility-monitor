@@ -3,7 +3,7 @@ import type { Database } from "@/lib/db-types";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { getGoogleAuth, type GoogleAuth } from "@/lib/google/auth";
 import { fetchAllRows, type GscRow } from "@/lib/google/gsc";
-import { startJob, finishJob, type SeoJobStatus } from "./jobs";
+import { startJob, finishJob, failJob, type SeoJobStatus } from "./jobs";
 
 type Admin = SupabaseClient<Database>;
 
@@ -24,7 +24,6 @@ const DAY_MS = 86_400_000;
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 const addDays = (day: string, n: number) => isoDay(new Date(Date.parse(`${day}T00:00:00Z`) + n * DAY_MS));
-const errorMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 /**
  * Okna dat do pobrania (włącznie z oboma końcami). Koniec to zawsze dziś − 2 dni (UTC).
@@ -188,12 +187,8 @@ export async function runGscSync(payload: { projectId: string; backfill?: boolea
     await finishJob(admin, jobId, { status: "done", stats: { days, windows: windows.length, siteRows, pageRows, queryRows, invalidRows } });
     return { status: "done", days, siteRows, pageRows, queryRows };
   } catch (err) {
-    try {
-      await finishJob(admin, jobId, { status: "failed", error: errorMessage(err) });
-    } catch (finishErr) {
-      // oryginalny błąd jest ważniejszy niż nieudany zapis do rejestru
-      console.error("gsc-sync: nie udało się zamknąć zadania w rejestrze:", errorMessage(finishErr));
-    }
+    // Search Console jest bezpłatne, więc koszt zadania to 0
+    await failJob(admin, jobId, err, 0, "gsc-sync");
     throw err;
   }
 }

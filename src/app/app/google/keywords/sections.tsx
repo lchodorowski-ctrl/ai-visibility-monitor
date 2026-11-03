@@ -103,23 +103,13 @@ function SuggestionActions({ id, text, dismissible }: { id: string; text: string
 
 // --- Gdzie już jesteście w Google ---------------------------------------------------------------------------------
 
-/** The newest of the timestamps (ISO, Postgres may write the offset differently, so compare as instants), or null. */
-function latestStamp(stamps: string[]): string | null {
-  let best: number | null = null;
-  for (const stamp of stamps) {
-    const t = Date.parse(stamp);
-    if (Number.isFinite(t) && (best === null || t > best)) best = t;
-  }
-  return best === null ? null : new Date(best).toISOString();
-}
-
 /**
  * Every phrase our own domain ranks for (tracked ones too: they carry a muted label instead of the "Śledź" button).
- * The rows are refreshed together by a research run, so the newest refresh is the date of the last research.
+ * The "stan na" date is the end of the last research that finished (`researchDoneAt`), not the rows' `updated_at`,
+ * which a click on "Śledź" moves as well.
  */
 export async function RankedSection({ projectId }: { projectId: string }) {
-  const rows = await getSuggestions(projectId, "ranked", SUGGESTION_LIMIT);
-  const researchedAt = latestStamp(rows.map((s) => s.updatedAt));
+  const [rows, { researchDoneAt }] = await Promise.all([getSuggestions(projectId, "ranked", SUGGESTION_LIMIT), getKeywordJobs(projectId)]);
   return (
     <section>
       <SectionHead title="Gdzie już jesteście w Google" />
@@ -141,7 +131,7 @@ export async function RankedSection({ projectId }: { projectId: string }) {
               ))}
             </Rows>
             <Meta className="mt-3 block normal-case tracking-normal">
-              {researchedAt ? `według indeksu DataForSEO, stan na ${fmtDay(researchedAt)}` : "według indeksu DataForSEO"}
+              {researchDoneAt ? `według indeksu DataForSEO, stan na ${fmtDay(researchDoneAt)}` : "według indeksu DataForSEO"}
             </Meta>
           </>
         )}

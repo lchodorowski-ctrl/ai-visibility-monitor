@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { startJob, finishJob } from "@/lib/seo/jobs";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { startJob, finishJob, reserveJobCost, failJob, errorMessage } from "@/lib/seo/jobs";
+import { fakeAdmin, jobUpdate } from "./fake-admin";
 
 describe("startJob", () => {
   it("wstawia running i zwraca id", async () => {
@@ -70,5 +71,47 @@ describe("finishJob", () => {
   it("finishJob dla nieznanego id rzuca", async () => {
     const { client } = fakeUpdateAdmin({ rows: [] });
     await expect(finishJob(client, "job-x", { status: "done" })).rejects.toThrow("seo_jobs: brak zadania job-x");
+  });
+});
+
+describe("errorMessage", () => {
+  it("komunikat błędu, a dla innych wartości ich tekst", () => {
+    expect(errorMessage(new Error("boom"))).toBe("boom");
+    expect(errorMessage("tekst")).toBe("tekst");
+    expect(errorMessage(42)).toBe("42");
+  });
+});
+
+describe("reserveJobCost", () => {
+  it("zapisuje w zadaniu samą kwotę cost_usd, bez ruszania statusu", async () => {
+    const { client, calls } = fakeAdmin(() => ({ data: [{ id: "job-1" }] }));
+    await reserveJobCost(client, "job-1", 0.1);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ table: "seo_jobs", op: "update", payload: { cost_usd: 0.1 }, filters: [["eq", "id", "job-1"]] });
+  });
+  it("rzuca przy błędzie zapisu", async () => {
+    const { client } = fakeAdmin(() => ({ error: { message: "boom" } }));
+    await expect(reserveJobCost(client, "job-1", 0.1)).rejects.toThrow("boom");
+  });
+  it("rzuca, gdy zadanie nie istnieje (rezerwacja nie jest widoczna dla innych)", async () => {
+    const { client } = fakeAdmin(() => ({ data: [] }));
+    await expect(reserveJobCost(client, "job-x", 0.1)).rejects.toThrow("seo_jobs: brak zadania job-x");
+  });
+});
+
+describe("failJob", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("zamyka zadanie jako failed z komunikatem błędu i kosztem", async () => {
+    const { client, calls } = fakeAdmin(() => ({ data: [{ id: "job-1" }] }));
+    await failJob(client, "job-1", new Error("DataForSEO 40501"), 0.09, "keyword-volumes");
+    expect(jobUpdate(calls)).toMatchObject({ status: "failed", error: "DataForSEO 40501", cost_usd: 0.09 });
+    expect(calls[0].filters).toEqual([["eq", "id", "job-1"]]);
+  });
+  it("failJob nie rzuca, gdy zapis rejestru się nie uda, tylko loguje z etykietą", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { client } = fakeAdmin(() => ({ error: { message: "ledger down" } }));
+    await expect(failJob(client, "job-1", new Error("pierwotny błąd"), 0, "keyword-volumes")).resolves.toBeUndefined();
+    expect(spy).toHaveBeenCalledWith("keyword-volumes: nie udało się zamknąć zadania w rejestrze:", "ledger down");
   });
 });

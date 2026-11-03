@@ -35,7 +35,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   q.getKeywords.mockResolvedValue([]);
   q.getSuggestions.mockResolvedValue([]);
-  q.getKeywordJobs.mockResolvedValue({ volumes: null, research: null });
+  q.getKeywordJobs.mockResolvedValue({ volumes: null, research: null, researchDoneAt: null });
   q.getResearchTargets.mockResolvedValue({ own: "polskaszkola.ai", rivals: 7 });
 });
 
@@ -47,7 +47,7 @@ const disabledButton = (html: string, label: string) => new RegExp(`<button[^>]*
 
 describe("KeywordStatusSection", () => {
   const now = new Date("2026-11-03T12:00:00Z");
-  const withJobs = (volumes: unknown, research: unknown) => q.getKeywordJobs.mockResolvedValue({ volumes, research });
+  const withJobs = (volumes: unknown, research: unknown) => q.getKeywordJobs.mockResolvedValue({ volumes, research, researchDoneAt: null });
   const activeKeywords = (n: number) => q.getKeywords.mockResolvedValue(Array.from({ length: n }, (_, i) => keyword({ id: `k${i}`, key: `fraza ${i}` })));
 
   it("ostatnie odświeżenie wolumenów i ostatnie wyszukiwanie: status, data i koszt z przecinkiem", async () => {
@@ -112,6 +112,7 @@ describe("KeywordStatusSection", () => {
 
 describe("RankedSection", () => {
   it("fraza, pozycja, wolumen, adres i przycisk „Śledź”; nota o źródle danych", async () => {
+    q.getKeywordJobs.mockResolvedValue({ volumes: null, research: null, researchDoneAt: "2026-11-03T10:01:00Z" });
     q.getSuggestions.mockResolvedValue([
       suggestion({ id: "s9", key: "szkolenia ai", text: "szkolenia ai", source: "ranked", searchVolume: 1900, ownPosition: 52, ownUrl: "https://polskaszkola.ai/szkolenia-ai" }),
     ]);
@@ -143,15 +144,32 @@ describe("RankedSection", () => {
     expect(html).not.toContain("Odrzuć");
   });
 
-  it("nota podaje datę ostatniego badania: najnowsze odświeżenie wśród wierszy, w czasie warszawskim", async () => {
-    q.getSuggestions.mockResolvedValue([
-      suggestion({ id: "s1", source: "ranked", updatedAt: "2026-10-12T08:00:00Z" }),
-      suggestion({ id: "s2", source: "ranked", updatedAt: "2026-11-02T23:30:00Z" }),
-      suggestion({ id: "s3", source: "ranked", updatedAt: "2026-11-01T10:00:00Z" }),
-    ]);
+  it("nota podaje datę ostatniego zakończonego badania (researchDoneAt), w czasie warszawskim", async () => {
+    q.getKeywordJobs.mockResolvedValue({ volumes: null, research: null, researchDoneAt: "2026-11-02T23:30:00Z" });
+    q.getSuggestions.mockResolvedValue([suggestion({ source: "ranked" })]);
     const html = render(await RankedSection({ projectId: "p" }));
     expect(html).toContain("według indeksu DataForSEO, stan na 03.11.2026");
     expect(html).not.toMatch(NO_DASHES);
+    expect(q.getKeywordJobs).toHaveBeenCalledWith("p");
+  });
+
+  it("data nie zależy od updatedAt wierszy, które podbija też „Śledź”: liczy się tylko badanie", async () => {
+    q.getKeywordJobs.mockResolvedValue({ volumes: null, research: null, researchDoneAt: "2026-10-12T08:00:00Z" });
+    q.getSuggestions.mockResolvedValue([
+      suggestion({ id: "s1", source: "ranked", updatedAt: "2026-11-02T08:00:00Z" }),
+      suggestion({ id: "s2", source: "ranked", updatedAt: "2026-11-03T10:00:00Z" }),
+    ]);
+    const html = render(await RankedSection({ projectId: "p" }));
+    expect(html).toContain("stan na 12.10.2026");
+    expect(html).not.toContain("03.11.2026");
+    expect(html).not.toContain("02.11.2026");
+  });
+
+  it("bez zakończonego badania nota nie podaje daty", async () => {
+    q.getSuggestions.mockResolvedValue([suggestion({ source: "ranked", updatedAt: "2026-11-03T10:00:00Z" })]);
+    const html = render(await RankedSection({ projectId: "p" }));
+    expect(html).toContain("według indeksu DataForSEO");
+    expect(html).not.toContain("stan na");
   });
 
   it("brak wolumenu to „brak danych”, nie 0", async () => {

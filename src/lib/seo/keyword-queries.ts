@@ -186,16 +186,29 @@ export const getSuggestions = cache(async (projectId: string, source: Suggestion
     }));
 });
 
-/** The latest volume measurement and the latest phrase research of a project (null before the first run). */
-export const getKeywordJobs = cache(async (projectId: string): Promise<{ volumes: Tables<"seo_jobs"> | null; research: Tables<"seo_jobs"> | null }> => {
+/**
+ * The latest volume measurement and the latest phrase research of a project (null before the first run), plus
+ * `researchDoneAt`: when the newest research that finished (status `done`) ended. A research that failed or hit the
+ * budget did not complete, so it never moves that date; neither do clicks on "Śledź" or "Odrzuć" (they only touch
+ * suggestion rows).
+ */
+export const getKeywordJobs = cache(async (projectId: string): Promise<{
+  volumes: Tables<"seo_jobs"> | null;
+  research: Tables<"seo_jobs"> | null;
+  researchDoneAt: string | null;
+}> => {
   const supabase = await createServerSupabase();
   const latest = (kind: "keyword_volumes" | "keyword_research") =>
     supabase.from("seo_jobs").select("*").eq("project_id", projectId).eq("kind", kind)
       .order("started_at", { ascending: false }).limit(1).maybeSingle();
-  const [volumes, research] = await Promise.all([latest("keyword_volumes"), latest("keyword_research")]);
-  if (volumes.error) throw new Error(`Nie udało się pobrać zadań fraz: ${volumes.error.message}`);
-  if (research.error) throw new Error(`Nie udało się pobrać zadań fraz: ${research.error.message}`);
-  return { volumes: volumes.data ?? null, research: research.data ?? null };
+  const latestDone = supabase.from("seo_jobs").select("finished_at").eq("project_id", projectId)
+    .eq("kind", "keyword_research").eq("status", "done")
+    .order("started_at", { ascending: false }).limit(1).maybeSingle();
+  const [volumes, research, done] = await Promise.all([latest("keyword_volumes"), latest("keyword_research"), latestDone]);
+  for (const res of [volumes, research, done]) {
+    if (res.error) throw new Error(`Nie udało się pobrać zadań fraz: ${res.error.message}`);
+  }
+  return { volumes: volumes.data ?? null, research: research.data ?? null, researchDoneAt: done.data?.finished_at ?? null };
 });
 
 /**
